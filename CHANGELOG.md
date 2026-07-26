@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.17.0](https://github.com/shuuul/obsidian-pivi/compare/0.16.2...0.17.0) (2026-07-26)
+
+
+### Features
+
+* **release:** add BRAT beta pre-release workflow ([5a7df90](https://github.com/shuuul/obsidian-pivi/commit/5a7df900585aac07d1f9840d401d73b950606c66))
+* **tools:** add sidebar capability approvals for bash and external access ([8145489](https://github.com/shuuul/obsidian-pivi/commit/814548986b3f513180a4e41e463930f726b68861))
+
+
+### Bug Fixes
+
+* **chat:** apply composer model switch to the running agent and block over-limit sends ([e3fd37c](https://github.com/shuuul/obsidian-pivi/commit/e3fd37cce594fd8703d57c88dec1ca26a7ec80e1))
+* **chat:** harden context recovery and live model switching ([edc4960](https://github.com/shuuul/obsidian-pivi/commit/edc4960bde6e8d700b29ef23012b252e85eb3185))
+* **chat:** self-heal stale session index during append refresh ([b972aa2](https://github.com/shuuul/obsidian-pivi/commit/b972aa2717d15da826367f23c8fb0434af9e8c77))
+* **engine:** pin openai-codex transport to SSE in the Obsidian renderer ([905c532](https://github.com/shuuul/obsidian-pivi/commit/905c532ca9d2cc3788bee6601200de8e5df38b22))
+* **network:** disarm connect socket timeout after response headers arrive ([4f35590](https://github.com/shuuul/obsidian-pivi/commit/4f3559062835ec034ac680defcdcbe90ae971af9))
+* **tests:** allow external read mocks to bypass capability approval gate ([85fc5ae](https://github.com/shuuul/obsidian-pivi/commit/85fc5ae46c84db8b528f6ed2cd160d6851f5565d))
+* **tools:** apply always-allowed bash entries immediately via session grants ([f9a564b](https://github.com/shuuul/obsidian-pivi/commit/f9a564b4cfb538d1e55fff096c1d767e1b0a6004))
+* **tools:** settle per-turn read budget against actually returned characters ([e830071](https://github.com/shuuul/obsidian-pivi/commit/e830071296ea398bbcb36cd4b7e831c3de972503))
+* **ui:** rank exact path and folder path-prefix matches higher in @ mentions ([ee8579e](https://github.com/shuuul/obsidian-pivi/commit/ee8579eb2b34af1e70c0eaff9926426607ef3a7c))
+
 ## [0.16.2](https://github.com/shuuul/obsidian-pivi/compare/0.16.1...0.16.2) (2026-07-24)
 
 
