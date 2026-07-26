@@ -291,6 +291,18 @@ describe('obsidian registered tool prompt section', () => {
     expect(section).toContain('ask the user to clarify before mutating files');
   });
 
+  it('lists run_in_background as a Required parameter for spawn_agent', () => {
+    const section = buildSection({ includeSubagent: true });
+
+    // The schema in createSubagentTool.ts marks run_in_background as required.
+    // The prompt's Required parameters list must match, otherwise weaker models
+    // omit the field and trigger tool-validation retries on the first turn.
+    expect(section).toContain('Required parameters: `label`');
+    expect(section).toContain('`run_in_background`');
+    expect(section).toMatch(/`run_in_background` selects async \(`true`\)/);
+    expect(section).toContain('must always be passed');
+  });
+
   it('omits markdown structure guidance when only obsidian_read is registered', () => {
     const section = buildSection({ obsidianTools: [TOOL_OBSIDIAN_READ] });
 

@@ -22,6 +22,25 @@ Settings saves refresh the affected registries and open-runtime prompts. Disable
 
 The base system prompt keeps note-backed answers concise: when requested information already exists in vault notes, the assistant returns only verified note wikilinks instead of repeating, quoting, or summarizing the stored content.
 
+## System prompt layers
+
+The agent system prompt is assembled in three layers under `packages/pivi-agent-core/src/prompt/`:
+
+```mermaid
+flowchart LR
+  Base["mainAgent.ts<br/>identity, paths, hygiene"] -- "appended" --> Full["System prompt"]
+  Tools["obsidianAgentTools.ts<br/>buildRegisteredToolsSection"] -- "appended as Available Tools" --> Full
+  Turn["buildTurnPrompt.ts<br/>per-turn payload"] -- "sent with each request" --> Request["Provider request"]
+  Pi["buildPiSystemPrompt.ts"] -- "injects date + tool registry" --> Full
+```
+
+- `mainAgent.ts` owns the static base prompt: Pivi identity, path conventions, vault mutation rules, Markdown hygiene, link verification, and the `<context_files>` delegation paragraph. It interpolates only `vaultPath` and `userName`.
+- `obsidianAgentTools.ts` builds the dynamic `## Available Tools` section from a `RegisteredToolSummary`. It lists each registered Obsidian tool with a one-line description and parameter shape, plus conditional MCP, Skills, Subagents, Web, Bash-allowlist, and reading-guidance blocks. This is the only place tool-by-tool parameter requirements are communicated to the model.
+- `buildTurnPrompt.ts` builds the per-turn payload from user input and context; it is not part of the system prompt.
+- `buildPiSystemPrompt.ts` composes the base prompt with the current ISO date and the registered-tools section.
+
+**Prompt/schema invariant:** When a tool schema in `packages/pivi-agent-core/src/engine/pi/` or `packages/obsidian-tools/` marks a field as required, the registered-tools prompt must list that field in its `Required parameters` sentence (or an equivalent explicit "must be passed" clause). Weaker models rely on the prose `Required parameters:` list rather than re-reading the JSON schema, so a mismatch causes first-turn tool-validation retries. The `spawn_agent` `run_in_background` field is the canonical example: the schema marks it required, so the prompt must list it alongside `label` and `message`.
+
 ## Obsidian tools
 
 | Area | Tools | Operation semantics |
@@ -129,4 +148,5 @@ When adding a tool:
 2. Put Obsidian execution in `@pivi/obsidian-tools` and Pi adaptation in the engine.
 3. Define registration prerequisites and settings refresh behavior.
 4. Document mutation, privacy, credentials, network, and recovery semantics.
-5. Add focused implementation, registry, prompt, and failure-path tests.
+5. Keep the registered-tools prompt in sync with the tool schema: every schema `required` field must appear in the prompt's `Required parameters` sentence so weaker models do not omit it and trigger tool-validation retries. Add a focused prompt test that asserts the required field name appears in the generated section.
+6. Add focused implementation, registry, prompt, and failure-path tests.
