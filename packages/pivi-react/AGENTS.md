@@ -8,6 +8,8 @@ This package is Pivi's React presentation boundary for chat and settings. It own
 
 It also owns UI internationalization under `src/i18n/` and ordered CSS sources under `styles/`. App composition creates the shared translator; package React consumers access it only through `I18nProvider` / `useT()`.
 
+Source layout: `mount/` (mount APIs, `ChatShell`, `ActiveChatUiBridge`), `chat/` (message list/tool/subagent views), `settings/` (React-owned settings pages), `store/` (immutable UI/projection stores), `context-badges/` (badge view models), `ports/` (Settings presentation ports), `selectionToolbar/` (selection-toolbar surface), `i18n/` (translator + locale catalogs), `icons/` (bundled static icon/provider-logo data), `platform/` (`PresentationPlatform` contract), `reorder/` (shared sortable-list interaction), `runtime/` (mount runtime helpers), `usage/` (usage-meter presentation), and `shared/` (modal layer and shared controls).
+
 ## Dependency direction
 
 - Depend only on React, ReactDOM, browser APIs, bundled static icon data, injected presentation-platform capabilities, and non-engine host-neutral `@pivi/pivi-agent-core` APIs/contracts/models.

@@ -12,6 +12,8 @@
 - `src/createObsidianTools.ts` constructs the full `ToolSpec[]` from an Obsidian `App`, settings, and optional image generator.
 - `src/obsidian/` contains per-tool factories plus their shared dependency, read-range, and result helpers. Tool factories accept `ObsidianToolDeps` and return `ToolSpec` values.
 - `src/obsidian/deps.ts` defines shared tool dependencies: vault API, external-file API, CLI transport, settings, vault name, and optional image generator.
+- `src/obsidian/readNote.ts`, `writeNote.ts`, `editNote.ts`, `search.ts`, `listPath.ts`, `mkdir.ts`, `movePath.ts`, `deletePath.ts`, `openPath.ts`, `noteInfo.ts`, `links.ts`, `properties.ts`, and `attachment.ts` define the core vault tools (`obsidian_read`, `obsidian_write`, `obsidian_edit`, `obsidian_search`, `obsidian_list`, `obsidian_mkdir`, `obsidian_move`, `obsidian_delete`, `obsidian_open`, `obsidian_note_info`, `obsidian_links`, `obsidian_properties`, `obsidian_attachment`) over the injected vault API; mutating paths go through `requireVaultRelativeMutationPath` containment.
+- `src/obsidian/tasks.ts` defines `obsidian_tasks` (CLI-backed; no public task index API). `src/obsidian/command.ts` and `src/obsidian/eval.ts` define the separately gated `obsidian_command` / `obsidian_eval` tools (`allowCommand` / `allowEval`).
 - `src/obsidian/history.ts` defines `obsidian_history`; it uses the Obsidian CLI history commands to list, read, and restore stored file versions, including deleted files when history exists.
 - `src/obsidian/daily.ts` defines `obsidian_daily`; it uses the official Obsidian CLI daily-note commands and avoids daily-notes internals.
 - `src/obsidian/graph.ts` defines `obsidian_graph`; it analyzes orphans, deadends, and unresolved links through the injected vault API / MetadataCache, without shelling out.
@@ -21,6 +23,7 @@
 - `src/obsidian/generateImage.ts` defines `obsidian_generate_image`; it consumes an injected image-generator port, saves binary output through `ObsidianVaultApi`, and optionally inserts standard Markdown `![](...)` embeds into notes. It intentionally ignores Obsidian's wiki-link attachment preference because wiki-style image embeds are not reliably recognized in every context.
 - `src/obsidian/bash.ts` defines `obsidian_bash`; it is registered only when `allowBash` is enabled, matches allowlist entries by exact command or prefix, prompts through `CapabilityApprovalPort` on miss, runs single-line commands through the user login shell (`$SHELL -lc`), constrains cwd to the vault, and invokes the injected process runner with shell forbidden at the Node spawn layer. Its schema describes it as a lowest-priority host diagnostic, never a vault file tool.
 - `src/bashAllowlist.ts` owns effective allowlist construction plus structured executable/argument matching helpers.
+- `src/loginShell.ts` resolves the user's login shell and builds the `$SHELL -lc` argv for `obsidian_bash` single-line commands.
 - `src/obsidian/readExternal.ts` defines `obsidian_read_external`; it reads external files by absolute path through the injected `ExternalFileApiLike`, with stats, automatically paged complete-line ranges, and large-file handling. Gated by `allowExternalRead`; paths outside allowed roots prompt through `CapabilityApprovalPort`.
 - `src/obsidian/listExternal.ts` defines `obsidian_list_external`; it lists direct children of an external folder by absolute path. Gated by `allowExternalRead`; paths outside allowed roots prompt through `CapabilityApprovalPort`.
 - `src/capabilityApprovalGate.ts` owns bash/external miss handling against `CapabilityApprovalPort` and session grants.
@@ -32,6 +35,7 @@
 ## Boundaries
 
 - Tool implementations use `@pivi/obsidian-host` APIs and the Obsidian CLI transport where public API coverage is unavailable.
+- Do not import `@pivi/pivi-agent-core/engine/pi` or raw `@earendil-works/*` SDKs; consume host-neutral core contracts only (enforced by ESLint and `check:architecture`).
 - Image generation tools depend only on an injected generator port; Pi/Codex provider wiring stays in app/Pi composition.
 - Do not import UI renderers. Return structured/text tool results and let UI packages render them.
 - Mutating vault operations execute directly; optional tools are setting-gated: `allowCommand`, `allowBash` plus `bashAllowlist`, `allowEval`, and `allowExternalRead` plus allowed external directory roots for external filesystem tools.

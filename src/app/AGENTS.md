@@ -81,6 +81,12 @@ flowchart LR
 | `ui/imperativeChatAdapter.ts` | Thin orchestrator: TabManager mount/lifecycle, React shell bridge, and tab/surface actions |
 | `ui/imperativeChatViewHandle.ts` | Semantic `PiviChatViewHandle` construction (`commands` + `maintenance`) |
 | `ui/imperativeChatMessagePresentation.ts` | React message-presentation runtime and content-adapter mounting |
+| `ui/imperativeChatDevelopment.ts` | Development-only debug/perf trace commands behind the semantic view handle; drives the disposable-tab stream/switch/subagent/cold-open workloads |
+| `ui/imperativeChatInlineEdit.ts` | `submitInlineEditTurn`: routes inline-edit instructions through the archived-session turn path and diff review |
+| `ui/imperativeChatTabAction.ts` | Shared `imperativeChatLogger` and the Notice-wrapped tab-action runner used by the adapter family |
+| `ui/createStreamingMarkdownContentAdapter.ts` | App-owned streaming Markdown `MessageContentAdapter` bridging `MessageRenderer` into React slots with perf recording |
+| `ui/inlineEditHelpers.ts` / `ui/inlineEditProtocol.ts` | Inline-edit selected-text escaping/context assembly and the `<replacement>`/`<insertion>`/reply turn-protocol parser |
+| `ui/inlineEditSurface/` | Editor-embedded inline-edit surface: `InlineEditSurfaceSession.ts` owns the session lifecycle, plus the diff-review field, keyboard controller, and DOM helpers mounted by `SelectionToolbarSurfaceController` |
 | `ui/defaultVaultSkillsPrompt.ts` | Localized owner-realm Obsidian Notice shown only after host-neutral Skills orchestration requests confirmation |
 | `ui/externalDirectory.ts` | Desktop directory pick/validate for settings ports (no `@/ui` import) |
 | `ui/PiviSettingTabHost.ts` | Obsidian 1.13 declarative settings-search bridge plus 1.12 `display()` fallback; both mount the same React `SettingsRoot` |
@@ -89,11 +95,19 @@ flowchart LR
 | `ui/createUiPorts.ts` | Explicit-workspace `createChatUiPorts(host, workspace)` and `createSettingsUiPorts(host, workspace)` public entries |
 | `ui/createUiPortHelpers.ts` | Shared workspace/env/subagent helpers for UI port adapters |
 | `ui/createSettingsModelsPort.ts` | Settings models/credential port wiring; prefetches interactive OAuth credentials via `getAuth` before readiness badges render; settings-authoritative provider removal and optional single-provider credential deletion |
+| `ui/createSettingsSkillsPort.ts` | Settings Skills port wiring: default vault-skills bundle install/update/remove orchestration and change notification |
 | `ui/createMcpSettingsPorts.ts` | Settings MCP save/reload/auth port wiring |
 | `ui/mentionEditor/createMentionEditorPort.ts` | Implements `SettingsPorts.mentionEditor`: mounts an imperative `MentionInput` with `MentionDropdownController` + `SlashCommandDropdown` into a React-owned container for command prompt editing |
 | `ui/createSubagentContentAdapter.ts` | Bridges React message-content mount/update calls to stored subagent imperative rendering without remounting on every stream update |
+| `ui/listObsidianCommands.ts` | Reads the host command registry for settings toolbar command pickers |
+| `ui/settingsHotkeys.ts` | Opens the Obsidian hotkeys tab pre-filtered for configurable Pivi shortcuts |
+| `ui/activateOpenSessionElsewhere.ts` | Reveals and activates another open chat view already bound to a session |
 | `workspace/PiWorkspaceServices.ts` | MCP, skills, tools, readiness, chat factories |
 | `workspace/createChatRuntimeServices.ts` | `PiChatRuntime` / aux-query construction only |
+| `workspace/workspaceServiceProviders.ts` | MCP connection-pool/diagnostics/tester and provider service construction helpers for `PiWorkspaceServices` |
+| `workspace/modelReadiness.ts` / `workspace/providerReadiness.ts` | Model/provider readiness derivation, connectivity testing, and metadata refresh |
+| `workspace/serviceContracts.ts` | Workspace-construction host contracts (`PiviWorkspaceHost`) shared by service providers |
+| `workspace/PiSlashCommandCatalog.ts` | Slash catalog composition over workspace commands, skills, MCP servers/tools, and built-in tool entries |
 | `workspace/obsidianHttpRequest.ts` | Adapts Obsidian HTTP into custom-provider composition without leaking host networking into the Pi engine |
 | `workspace/piUiFacades.ts` | Settings/model/auth facades for product UI |
 | `commandRegistration.ts` / `viewRegistration.ts` / `settingsRegistration.ts` | App → UI mount points |

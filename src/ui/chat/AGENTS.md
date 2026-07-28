@@ -78,6 +78,7 @@ flowchart TD
 | `src/app/ui/createSubagentContentAdapter.ts` | App-owned React `MessageContentAdapter` bridge for stored subagent mount/update; preserves the mounted adapter across incremental stream changes. |
 | `packages/pivi-react/src/mount/ChatShell.tsx` | React-owned header, logo, tabs, welcome/quote adapter slot, queue, composer toolbar (including input usage meter), todo status, navigation, auto-scroll status, and owner-realm interactions. Consumes snapshots/actions, not application runtime ports. |
 | `packages/pivi-react/src/mount/activeChatUiBridge.ts` | Runtime-only active-tab selector connecting immutable stores and React-exclusive portal elements without placing DOM in snapshots. |
+| `src/ui/chat/tabs/TabManager.ts` | Central tab aggregate: receives injected `ChatPorts` + perf recorder from the app adapter, owns tab collection/activation/archive/reorder, persisted binding restore, and cross-tab operations. |
 | `src/ui/chat/tabs/Tab.ts` | Creates one `TabData` graph and its portal/input scaffolds; activates, deactivates, and destroys per-tab resources. |
 | `src/ui/chat/tabs/types.ts` | Canonical tab aggregate, lifecycle states, UI/controller/service slots, and persisted tab binding shape. |
 | `src/ui/chat/tabs/tabControllerInit.ts` | Composition point for per-tab renderer and controllers; connects callbacks without importing `PiviViewHost`. |
@@ -96,6 +97,8 @@ flowchart TD
 | `src/ui/chat/rendering/MessageRenderer.ts` | Obsidian Markdown/user-content adapter host; React owns message shells and transcript scrolling. |
 | `src/ui/chat/state/ChatState.ts` | Mutable transient state plus immutable React snapshot publication; runtime state contains no message DOM. |
 | `src/ui/chat/services/SubagentManager.ts` | Correlates task, child-tool, agent-output, and asynchronous completion events into pure subagent records. |
+| `src/ui/chat/services/SubagentAsyncManagerBase.ts` | Shared base for background subagent tracking: job registration, completion waiters, and retention bookkeeping. |
+| `src/ui/chat/services/SubagentResultParser.ts` | Tolerant parsing of subagent terminal output into structured Agent-report/text results. |
 | `src/ui/chat/stream/streamSubagentLifecycle.ts` | UI stream coordinator for subagent tool_use/result/retry/hydrate. Depends on `ChatState`, scroll/thinking callbacks, and `window.setTimeout` — keep in `src/ui/chat/stream/`. Do not sink into core `SubagentManager` / engine jobs without first extracting a host-neutral pure reducer; engine already owns concurrency (`subagentConcurrencyLimiter`) and background jobs (`piBackgroundSubagentJobs`). |
 | `src/ui/chat/ui/RichChatInput.ts` | Uncontrolled contenteditable adapter with textarea-compatible API, mention badges, plain-text paste, ordered-list continuation, and IME-safe synchronization. React never owns its children. |
 
