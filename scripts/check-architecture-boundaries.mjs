@@ -235,9 +235,13 @@ const boundaryRules = [
     excludedRoots: [srcAppUiDir],
   },
   {
-    name: '@pivi/obsidian-tools does not import raw Pi SDKs',
+    name: '@pivi/obsidian-tools does not import raw Pi SDKs or the Pi engine',
     root: 'packages/obsidian-tools',
-    forbidden: [/^@earendil-works\//, obsidianReactPackagePattern],
+    forbidden: [
+      /^@earendil-works\//,
+      /^@pivi\/pivi-agent-core\/engine(?:\/pi)?(?:\/|$)/,
+      obsidianReactPackagePattern,
+    ],
   },
   {
     name: '@pivi/obsidian-host stays host-only',
