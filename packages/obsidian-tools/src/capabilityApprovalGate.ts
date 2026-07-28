@@ -15,9 +15,6 @@ import {
 
 import type { ExternalFileApiLike, ObsidianToolDeps } from './obsidian/deps';
 
-const OUTSIDE_ALLOWED_PATTERN = /outside allowed directories/i;
-const NOT_IN_ALLOWLIST_PATTERN = /not in allowlist/i;
-
 export function resolveExternalDirectoryRoot(
   absolutePath: string,
   expectDirectory: boolean,
@@ -138,15 +135,6 @@ export async function ensureBashCommandAllowed(
   if (result.decision === 'deny' || result.decision === 'cancel') {
     throw new Error(`Bash command denied by user: ${normalizedCommand}`);
   }
-}
-
-export function isCapabilityDeniedError(error: unknown): boolean {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-  return /denied by user/i.test(error.message)
-    || NOT_IN_ALLOWLIST_PATTERN.test(error.message)
-    || OUTSIDE_ALLOWED_PATTERN.test(error.message);
 }
 
 export const CAPABILITY_TOOL_NAMES = {

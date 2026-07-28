@@ -13,7 +13,6 @@ export {
   CAPABILITY_TOOL_NAMES,
   ensureBashCommandAllowed,
   ensureExternalDirectoryAccess,
-  isCapabilityDeniedError,
   resolveExternalDirectoryRoot,
 } from './capabilityApprovalGate';
 export { createObsidianTools } from './createObsidianTools';
