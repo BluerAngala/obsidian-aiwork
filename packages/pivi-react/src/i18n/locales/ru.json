@@ -81,7 +81,6 @@
       "restoreTab": "Восстановить {title}",
       "editTitle": "Изменить заголовок {title}",
       "editTitleInputLabel": "Заголовок вкладки",
-      "closeTab": "Закрыть {title}",
       "deleteTab": "Удалить {title}",
       "archived": "В архиве",
       "revealArchived": "Показать архивные вкладки",
@@ -122,7 +121,7 @@
       "externalRemove": "Удалить путь",
       "externalActiveTitle": "{count} внешних контекст(ов) (нажмите, чтобы добавить)",
       "externalIdleTitle": "Добавить внешние контексты (нажмите)",
-    "contextOverLimit": "Контекст (~{tokens}) превышает окно {limit} выбранной модели. Переключитесь на модель с большим контекстным окном или начните новую сессию."
+      "contextOverLimit": "Контекст (~{tokens}) превышает окно {limit} выбранной модели. Переключитесь на модель с большим контекстным окном или начните новую сессию."
     },
     "selection": {
       "linesSelected": "Выбрано {count} {lines}",

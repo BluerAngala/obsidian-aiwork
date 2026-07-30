@@ -81,7 +81,6 @@
       "restoreTab": "還原 {title}",
       "editTitle": "編輯 {title} 的標題",
       "editTitleInputLabel": "分頁標題",
-      "closeTab": "關閉 {title}",
       "deleteTab": "刪除 {title}",
       "archived": "已封存",
       "revealArchived": "顯示已封存分頁",
@@ -122,7 +121,7 @@
       "externalRemove": "移除路徑",
       "externalActiveTitle": "{count} 個外部上下文（點擊新增更多）",
       "externalIdleTitle": "新增外部上下文（點擊）",
-    "contextOverLimit": "目前上下文（約 {tokens}）已超出所選模型的 {limit} 上下文視窗。請切換到上下文視窗更大的模型，或開始新對話。"
+      "contextOverLimit": "目前上下文（約 {tokens}）已超出所選模型的 {limit} 上下文視窗。請切換到上下文視窗更大的模型，或開始新對話。"
     },
     "selection": {
       "linesSelected": "已選取 {count} {lines}",

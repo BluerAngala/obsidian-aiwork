@@ -81,7 +81,6 @@
       "restoreTab": "Restaurar {title}",
       "editTitle": "Editar título de {title}",
       "editTitleInputLabel": "Título da aba",
-      "closeTab": "Fechar {title}",
       "deleteTab": "Excluir {title}",
       "archived": "Arquivados",
       "revealArchived": "Mostrar abas arquivadas",
@@ -122,7 +121,7 @@
       "externalRemove": "Remover caminho",
       "externalActiveTitle": "{count} contexto(s) externo(s) (clique para adicionar mais)",
       "externalIdleTitle": "Adicionar contextos externos (clique)",
-    "contextOverLimit": "O contexto (~{tokens}) excede a janela de {limit} do modelo selecionado. Mude para um modelo com uma janela de contexto maior ou inicie uma nova sessão."
+      "contextOverLimit": "O contexto (~{tokens}) excede a janela de {limit} do modelo selecionado. Mude para um modelo com uma janela de contexto maior ou inicie uma nova sessão."
     },
     "selection": {
       "linesSelected": "{count} {lines} seleccionada(s)",

@@ -81,7 +81,6 @@
       "restoreTab": "{title} を復元",
       "editTitle": "{title} のタイトルを編集",
       "editTitleInputLabel": "タブタイトル",
-      "closeTab": "{title} を閉じる",
       "deleteTab": "{title} を削除",
       "archived": "アーカイブ済み",
       "revealArchived": "アーカイブ済みタブを表示",
@@ -122,7 +121,7 @@
       "externalRemove": "パスを削除",
       "externalActiveTitle": "外部コンテキスト {count} 件（クリックして追加）",
       "externalIdleTitle": "外部コンテキストを追加（クリック）",
-    "contextOverLimit": "コンテキスト（約 {tokens}）が選択したモデルの {limit} ウィンドウを超えています。より大きなコンテキストウィンドウのモデルに切り替えるか、新しいセッションを開始してください。"
+      "contextOverLimit": "コンテキスト（約 {tokens}）が選択したモデルの {limit} ウィンドウを超えています。より大きなコンテキストウィンドウのモデルに切り替えるか、新しいセッションを開始してください。"
     },
     "selection": {
       "linesSelected": "{count} {lines} 選択中",

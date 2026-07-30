@@ -211,22 +211,22 @@ describe('React ChatShell tabs', () => {
     const titleInput = screen.getByRole('textbox', { name: 'Tab title' });
     expect(screen.queryByRole('button', { name: 'Edit title for Needs attention' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Archive Needs attention' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Close Needs attention' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Delete Needs attention' })).not.toBeInTheDocument();
     titleInput.textContent = 'Renamed';
     fireEvent.input(titleInput);
     fireEvent.keyDown(titleInput, { key: 'Enter' });
     expect(mounted.tabActions.renameTab).toHaveBeenCalledWith('attention', 'Renamed');
     expect(screen.getByRole('button', { name: 'Edit title for Needs attention' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Archive Needs attention' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Close Needs attention' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Delete Needs attention' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Archive Needs attention' }));
     act(() => jest.advanceTimersByTime(200));
     expect(mounted.tabActions.archiveTab).toHaveBeenCalledWith('attention');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Close Active chat' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Active chat' }));
     act(() => jest.advanceTimersByTime(200));
-    expect(mounted.tabActions.closeTab).toHaveBeenCalledWith('active');
+    expect(mounted.tabActions.deleteTab).toHaveBeenCalledWith('active');
 
     await act(async () => mounted.mounted.dispose());
   });
@@ -271,27 +271,27 @@ describe('React ChatShell tabs', () => {
     expect(mounted.tabActions.renameTab).toHaveBeenCalledWith('attention', 'Renamed on blur');
     expect(screen.getByRole('button', { name: 'Edit title for Needs attention' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Archive Needs attention' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Close Needs attention' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Delete Needs attention' })).toBeInTheDocument();
     fireEvent.click(otherTab);
     expect(mounted.tabActions.switchTab).toHaveBeenCalledWith('active');
 
     await act(async () => mounted.mounted.dispose());
   });
 
-  it('guards duplicate close actions and does not select an exiting row from the keyboard', async () => {
+  it('guards duplicate delete actions and does not select an exiting row from the keyboard', async () => {
     jest.useFakeTimers();
     const mounted = await mountShell({ position: 'header' });
     fireEvent.click(screen.getByRole('button', { name: 'Switch tab: Active chat' }));
-    const close = screen.getByRole('button', { name: 'Close Needs attention' });
+    const remove = screen.getByRole('button', { name: 'Delete Needs attention' });
     const row = screen.getByRole('menuitem', { name: 'Needs attention' });
 
-    fireEvent.click(close);
-    fireEvent.click(close);
+    fireEvent.click(remove);
+    fireEvent.click(remove);
     fireEvent.keyDown(row, { key: 'Enter' });
     act(() => jest.advanceTimersByTime(200));
 
-    expect(mounted.tabActions.closeTab).toHaveBeenCalledTimes(1);
-    expect(mounted.tabActions.closeTab).toHaveBeenCalledWith('attention');
+    expect(mounted.tabActions.deleteTab).toHaveBeenCalledTimes(1);
+    expect(mounted.tabActions.deleteTab).toHaveBeenCalledWith('attention');
     expect(mounted.tabActions.switchTab).not.toHaveBeenCalled();
     await act(async () => mounted.mounted.dispose());
   });
@@ -302,7 +302,7 @@ describe('React ChatShell tabs', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Switch tab: Active chat' }));
     const active = screen.getByRole('menuitem', { name: 'Active chat' });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Close Needs attention' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Needs attention' }));
     active.focus();
     fireEvent.keyDown(active, { key: 'ArrowDown' });
 
@@ -480,9 +480,9 @@ describe('React ChatShell tabs', () => {
 
   it.each([
     ['header', 'archive'],
-    ['header', 'close'],
+    ['header', 'delete'],
     ['input', 'archive'],
-    ['input', 'close'],
+    ['input', 'delete'],
   ] as const)(
     'updates an open tab through %s %s without refreshing the switcher',
     async (position, action) => {
@@ -517,7 +517,7 @@ describe('React ChatShell tabs', () => {
           items: [...updated.filter(item => !item.isArchived), ...updated.filter(item => item.isArchived)],
         });
       });
-      mounted.tabActions.closeTab.mockImplementation((id) => {
+      mounted.tabActions.deleteTab.mockImplementation((id) => {
         mounted.store.update({
           ...snapshot(position),
           items: items.filter(item => item.id !== id),
@@ -533,7 +533,7 @@ describe('React ChatShell tabs', () => {
       const target = screen.getByRole('menuitem', { name: 'Open 11' });
       target.focus();
       fireEvent.click(screen.getByRole('button', {
-        name: action === 'archive' ? 'Archive Open 11' : 'Close Open 11',
+        name: action === 'archive' ? 'Archive Open 11' : 'Delete Open 11',
       }));
       act(() => jest.advanceTimersByTime(200));
 
@@ -543,7 +543,7 @@ describe('React ChatShell tabs', () => {
       expect(stableMenu.scrollTop).toBe(91);
       expect(screen.getByRole('menuitem', { name: 'Open 12' })).toHaveFocus();
       const updatedTarget = screen.queryByRole('menuitem', { name: 'Open 11' });
-      expect(updatedTarget === null).toBe(action === 'close');
+      expect(updatedTarget === null).toBe(action === 'delete');
       expect(updatedTarget?.classList.contains('is-archived') ?? false).toBe(action === 'archive');
 
       await act(async () => mounted.mounted.dispose());
@@ -552,9 +552,9 @@ describe('React ChatShell tabs', () => {
 
   it.each([
     ['header', 'archive'],
-    ['header', 'close'],
+    ['header', 'delete'],
     ['input', 'archive'],
-    ['input', 'close'],
+    ['input', 'delete'],
   ] as const)(
     'updates the currently active tab through %s %s without refreshing the switcher',
     async (position, action) => {
@@ -592,7 +592,7 @@ describe('React ChatShell tabs', () => {
         items = [...items.filter(item => !item.isArchived), ...items.filter(item => item.isArchived)];
         publish();
       });
-      mounted.tabActions.closeTab.mockImplementation((id) => {
+      mounted.tabActions.deleteTab.mockImplementation((id) => {
         items = items.filter(item => item.id !== id);
         publish();
       });
@@ -604,7 +604,7 @@ describe('React ChatShell tabs', () => {
       menu.scrollTop = 91;
 
       fireEvent.click(screen.getByRole('button', {
-        name: action === 'archive' ? 'Archive Open 10' : 'Close Open 10',
+        name: action === 'archive' ? 'Archive Open 10' : 'Delete Open 10',
       }));
 
       expect(mounted.tabActions.switchTab).toHaveBeenCalledWith('open-9');
@@ -619,7 +619,7 @@ describe('React ChatShell tabs', () => {
       expect(stableMenu.scrollTop).toBe(91);
       expect(screen.getByRole('button', { name: 'Switch tab: Open 9' })).toHaveAttribute('aria-expanded', 'true');
       const updatedTarget = screen.queryByRole('menuitem', { name: 'Open 10' });
-      expect(updatedTarget === null).toBe(action === 'close');
+      expect(updatedTarget === null).toBe(action === 'delete');
       expect(updatedTarget?.classList.contains('is-archived') ?? false).toBe(action === 'archive');
 
       await act(async () => mounted.mounted.dispose());

@@ -81,7 +81,6 @@
       "restoreTab": "Restaurar {title}",
       "editTitle": "Editar título de {title}",
       "editTitleInputLabel": "Título de pestaña",
-      "closeTab": "Cerrar {title}",
       "deleteTab": "Eliminar {title}",
       "archived": "Archivado",
       "revealArchived": "Mostrar pestañas archivadas",
@@ -122,7 +121,7 @@
       "externalRemove": "Eliminar ruta",
       "externalActiveTitle": "{count} contexto(s) externo(s) (haz clic para añadir más)",
       "externalIdleTitle": "Añadir contextos externos (clic)",
-    "contextOverLimit": "El contexto (~{tokens}) supera la ventana de {limit} del modelo seleccionado. Cambia a un modelo con una ventana de contexto mayor o inicia una nueva sesión."
+      "contextOverLimit": "El contexto (~{tokens}) supera la ventana de {limit} del modelo seleccionado. Cambia a un modelo con una ventana de contexto mayor o inicia una nueva sesión."
     },
     "selection": {
       "linesSelected": "{count} {lines} seleccionada(s)",

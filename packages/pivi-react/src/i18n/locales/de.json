@@ -86,7 +86,6 @@
       "restoreTab": "{title} wiederherstellen",
       "editTitle": "Titel für {title} bearbeiten",
       "editTitleInputLabel": "Tabtitel",
-      "closeTab": "{title} schließen",
       "deleteTab": "{title} löschen",
       "archived": "Archiviert",
       "revealArchived": "Archivierte Tabs anzeigen",
@@ -127,7 +126,7 @@
       "externalRemove": "Pfad entfernen",
       "externalActiveTitle": "{count} externe(r) Kontext(e) (klicken zum Hinzufügen)",
       "externalIdleTitle": "Externe Kontexte hinzufügen (klicken)",
-    "contextOverLimit": "Der Kontext (~{tokens}) überschreitet das {limit}-Fenster des gewählten Modells. Wechsle zu einem Modell mit größerem Kontextfenster oder starte eine neue Sitzung."
+      "contextOverLimit": "Der Kontext (~{tokens}) überschreitet das {limit}-Fenster des gewählten Modells. Wechsle zu einem Modell mit größerem Kontextfenster oder starte eine neue Sitzung."
     },
     "selection": {
       "linesSelected": "{count} {lines} ausgewählt",

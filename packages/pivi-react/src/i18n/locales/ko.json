@@ -81,7 +81,6 @@
       "restoreTab": "{title} 복원",
       "editTitle": "{title} 제목 편집",
       "editTitleInputLabel": "탭 제목",
-      "closeTab": "{title} 닫기",
       "deleteTab": "{title} 삭제",
       "archived": "보관됨",
       "revealArchived": "보관된 탭 표시",
@@ -122,7 +121,7 @@
       "externalRemove": "경로 제거",
       "externalActiveTitle": "외부 컨텍스트 {count}개 (클릭하여 더 추가)",
       "externalIdleTitle": "외부 컨텍스트 추가 (클릭)",
-    "contextOverLimit": "컨텍스트(약 {tokens})가 선택한 모델의 {limit} 컨텍스트 창을 초과했습니다. 더 큰 컨텍스트 창을 가진 모델로 전환하거나 새 세션을 시작하세요."
+      "contextOverLimit": "컨텍스트(약 {tokens})가 선택한 모델의 {limit} 컨텍스트 창을 초과했습니다. 더 큰 컨텍스트 창을 가진 모델로 전환하거나 새 세션을 시작하세요."
     },
     "selection": {
       "linesSelected": "{count} {lines} 선택됨",
