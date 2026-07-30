@@ -206,16 +206,21 @@ export function createImperativeChatAdapter(
       if (!manager) return;
       const tab = manager.getTab(tabId);
       const deletedSessionId = tab?.openSessionId ?? null;
+      const deletedSessionFile = tab?.sessionFile ?? null;
       const force = tab?.state.isStreaming ?? false;
       const closed = await manager.closeTab(tabId, force);
       if (!closed) return;
 
-      if (deletedSessionId) {
+      if (deletedSessionId || deletedSessionFile) {
         // Purge reads persisted bindings as well as live tabs. Commit the removal
         // before marking the archived session file deleted so it is not protected
         // by the 300 ms debounced tab-state write.
         await persistTabStateImmediate(manager.getPersistedState());
-        await mountedPorts?.sessions.deleteSession(deletedSessionId);
+        if (deletedSessionFile) {
+          await mountedPorts?.sessions.deleteSessionFile(deletedSessionFile, deletedSessionId);
+        } else if (deletedSessionId) {
+          await mountedPorts?.sessions.deleteSession(deletedSessionId);
+        }
       }
       publishTabSnapshot();
     }, 'chat.tabs.failedCloseTab', 'tab close failed');

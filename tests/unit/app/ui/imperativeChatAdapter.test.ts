@@ -210,6 +210,7 @@ function createHarness(options: HarnessOptions = {}) {
   jest.mocked(TabManager).mockImplementation(() => manager as unknown as TabManager);
 
   const deleteSession = jest.fn(async (_openSessionId: string) => undefined);
+  const deleteSessionFile = jest.fn(async (_sessionFile: string, _openSessionId?: string | null) => undefined);
   const persistTabStateImmediate = jest.fn(async () => undefined);
   const inputPortalContainer = {
     parentElement: null,
@@ -257,13 +258,14 @@ function createHarness(options: HarnessOptions = {}) {
     await adapter.mount(
       { empty: jest.fn() } as unknown as HTMLElement,
       {} as never,
-      { sessions: { deleteSession } } as unknown as ChatPorts,
+      { sessions: { deleteSession, deleteSessionFile } } as unknown as ChatPorts,
     );
   };
 
   return {
     adapter,
     deleteSession,
+    deleteSessionFile,
     handle: adapter.getViewHandle(),
     inputPortalContainer,
     loadPersistedTabState,
@@ -327,9 +329,29 @@ describe('imperative chat semantic view handle', () => {
       openTabs: [],
       activeTabId: null,
     });
-    expect(harness.deleteSession).toHaveBeenCalledWith(archivedTab.openSessionId);
+    expect(harness.deleteSessionFile).toHaveBeenCalledWith(
+      archivedTab.sessionFile,
+      archivedTab.openSessionId,
+    );
     expect(harness.persistTabStateImmediate.mock.invocationCallOrder[0])
-      .toBeLessThan(harness.deleteSession.mock.invocationCallOrder[0]!);
+      .toBeLessThan(harness.deleteSessionFile.mock.invocationCallOrder[0]!);
+  });
+
+  it('deletes a cold archived tab by its durable session file', async () => {
+    const harness = createHarness();
+    const archivedTab = createTab({
+      isArchived: true,
+      openSessionId: null,
+      sessionFile: '.pivi/sessions/cold.jsonl',
+    });
+    harness.manager.getTab.mockReturnValue(archivedTab);
+    harness.manager.getPersistedState.mockReturnValue({ openTabs: [], activeTabId: null });
+    await harness.mount();
+
+    await harness.adapter.getShellActions().deleteTab(archivedTab.id);
+
+    expect(harness.persistTabStateImmediate).toHaveBeenCalled();
+    expect(harness.deleteSessionFile).toHaveBeenCalledWith(archivedTab.sessionFile, null);
   });
 
   it('closes an open tab without deleting its durable session', async () => {

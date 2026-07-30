@@ -26,6 +26,7 @@ import {
   TOOL_OBSIDIAN_TAGS,
   TOOL_OBSIDIAN_TASKS,
   TOOL_OBSIDIAN_WRITE,
+  TOOL_PIVI_SESSIONS,
 } from '../tools';
 import { TOOL_SKILL, TOOL_SPAWN_AGENT } from '../tools';
 import {
@@ -364,6 +365,8 @@ function describeObsidianTool(name: string, context: ObsidianToolPromptContext):
       return context.obsidianCliAvailable
         ? 'List .base files, inspect configured views through the vault API, or query a base view through the Obsidian CLI'
         : 'List .base files and inspect configured views through the vault API; query is unavailable without Obsidian CLI';
+    case TOOL_PIVI_SESSIONS:
+      return 'List recoverable deleted Pivi sessions or restore one and open it in a visible Pivi tab';
     case TOOL_OBSIDIAN_BASH:
       return 'Lowest-priority host diagnostic only: run a single-line shell command through the user login shell when no registered tool can do the job; prefer pre-approved allowlist commands, but when the user explicitly requests a specific command you may call this tool even if it is not allowlisted (Pivi asks the user in the sidebar first); never use Bash to read, search, list, or modify vault files; use sub-agents for multi-file vault work; do not retry Bash after the user denies or validation rejects it';
     case TOOL_OBSIDIAN_COMMAND:
@@ -435,6 +438,8 @@ function describeObsidianToolParameters(name: string, context: ObsidianToolPromp
       return context.obsidianCliAvailable
         ? '`action` required list|views|query, `file?` base name or `path?` .base vault path required for views/query, `view?` query view name, `format?` json|csv|tsv|md|paths for query.'
         : '`action` required list|views (do not use query without CLI), `file?` base name or `path?` .base vault path required for views; `view?` and `format?` are query-only and unavailable without CLI.';
+    case TOOL_PIVI_SESSIONS:
+      return '`action` required list_deleted|restore, `sessionFile` required for restore.';
     case TOOL_OBSIDIAN_BASH:
       return '`command` required single-line shell command (pre-approved allowlist entry, or user-explicit command pending sidebar approval), `cwd?` optional working directory.';
     case TOOL_OBSIDIAN_COMMAND:

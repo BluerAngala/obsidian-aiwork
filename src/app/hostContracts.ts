@@ -57,6 +57,7 @@ export interface PiviChatViewCommands {
   getState(): PiviChatViewCommandState;
   createTab(): Promise<boolean>;
   startNewSession(): Promise<boolean>;
+  openSession(openSessionId: string): Promise<boolean>;
   closeActiveTab(): Promise<boolean>;
   cancelActiveTurn(): boolean;
   addEditorSelection(editor: Editor, markdownView: MarkdownView): boolean;
@@ -268,6 +269,7 @@ export interface PiviSettingsHost extends PiviHostCore {
   reconcileWorkspaceCommands(): Promise<void>;
   /** Session-file cleanup action exposed from the session-files settings section. */
   purgeDeletedSessionFiles(): Promise<number>;
+  purgeExpiredDeletedSessionFiles(): Promise<number>;
   getActiveEnvironmentVariables(): string;
   getEnvironmentVariablesForScope(scope: EnvironmentScope): string;
   applyEnvironmentVariables(

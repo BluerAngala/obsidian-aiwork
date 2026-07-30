@@ -31,6 +31,7 @@ export interface SettingsGeneralSnapshot {
   readonly enableAutoTitleGeneration: boolean;
   readonly userName: string;
   readonly excludedTags: readonly string[];
+  readonly deletedSessionRetentionDays?: number;
   readonly requireCommandOrControlEnterToSend: boolean;
   readonly keyboardNavigation: SettingsKeyboardNavigationSnapshot;
   readonly editorSelectionToolbar: SettingsEditorSelectionToolbarSnapshot;

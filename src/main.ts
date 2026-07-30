@@ -85,6 +85,7 @@ import {
 } from "@/app/workspaceCommandRegistry";
 
 const logger = new PluginLogger('PiviPlugin');
+const DELETED_SESSION_PURGE_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Thin Obsidian Plugin composition root. Product lifecycle, sessions, and
@@ -108,6 +109,7 @@ export default class PiviPlugin extends Plugin implements PiviPluginHost {
     getVaultPath: () => getVaultPath(this.app),
     getStore: () => this.requireSessionStore(),
   });
+  private deletedSessionOperationTail: Promise<void> = Promise.resolve();
   private sessionStore: SessionStore | null = null;
   private piWorkspace: PiWorkspaceServices | null = null;
   private workspaceInitialization: Promise<PiWorkspaceServices> | null = null;
@@ -127,6 +129,34 @@ export default class PiviPlugin extends Plugin implements PiviPluginHost {
     },
     this.app.secretStorage,
   );
+  readonly sessionRecovery = {
+    listDeleted: () => this.runDeletedSessionOperation(() => sessionApi.listDeletedSessions(
+      this.sessionContext(),
+      this.settings.deletedSessionRetentionDays,
+    )),
+    restore: (sessionFile: string) => this.runDeletedSessionOperation(async () => {
+      const restored = await sessionApi.restoreDeletedSession(
+        this.sessionContext(),
+        sessionFile,
+        async (openSession) => {
+          const view = await ensurePiviViewOpen(this.app, this.settings.chatViewPlacement);
+          const opened = await view?.getChatHandle()?.commands.openSession(openSession.id) ?? false;
+          if (!opened) throw new Error('Restored session could not be opened in a Pivi tab.');
+        },
+      );
+      return {
+        sessionId: restored.id,
+        title: restored.title,
+        sessionFile: restored.sessionFile ?? sessionFile,
+      };
+    }),
+  };
+
+  private runDeletedSessionOperation<T>(operation: () => Promise<T>): Promise<T> {
+    const result = this.deletedSessionOperationTail.then(operation, operation);
+    this.deletedSessionOperationTail = result.then(() => undefined, () => undefined);
+    return result;
+  }
 
   getVaultPath(): string | null {
     return getVaultPath(this.app);
@@ -260,6 +290,14 @@ export default class PiviPlugin extends Plugin implements PiviPluginHost {
       );
     }
     await initializePiviPlugin(this);
+    await this.purgeExpiredDeletedSessionFiles().catch((error: unknown) => {
+      logger.warn('Failed to purge expired deleted sessions during startup', error);
+    });
+    this.registerInterval(window.setInterval(() => {
+      void this.purgeExpiredDeletedSessionFiles().catch((error: unknown) => {
+        logger.warn('Failed to purge expired deleted sessions', error);
+      });
+    }, DELETED_SESSION_PURGE_INTERVAL_MS));
   }
 
   onunload(): void {
@@ -464,11 +502,28 @@ export default class PiviPlugin extends Plugin implements PiviPluginHost {
   }
 
   async deleteSession(id: string): Promise<void> {
-    await sessionApi.deleteSession(this.sessionContext(), id);
+    await this.runDeletedSessionOperation(() => sessionApi.deleteSession(this.sessionContext(), id));
+  }
+
+  async deleteSessionFile(sessionFile: string, openSessionId?: string | null): Promise<void> {
+    await this.runDeletedSessionOperation(() => sessionApi.deleteSessionFile(
+      this.sessionContext(),
+      sessionFile,
+      openSessionId,
+    ));
   }
 
   async purgeDeletedSessionFiles(): Promise<number> {
-    return sessionApi.purgeDeletedSessionFiles(this.sessionContext());
+    return this.runDeletedSessionOperation(() => (
+      sessionApi.purgeDeletedSessionFiles(this.sessionContext())
+    ));
+  }
+
+  async purgeExpiredDeletedSessionFiles(): Promise<number> {
+    return this.runDeletedSessionOperation(() => sessionApi.purgeExpiredDeletedSessionFiles(
+      this.sessionContext(),
+      this.settings.deletedSessionRetentionDays,
+    ));
   }
 
   async renameSession(
@@ -527,8 +582,8 @@ export default class PiviPlugin extends Plugin implements PiviPluginHost {
   }
 
   async persistTabManagerState(state: AppTabManagerState): Promise<void> {
-    this.lastKnownTabManagerState = state;
     await this.storage.setTabManagerState(state);
+    this.lastKnownTabManagerState = state;
   }
 
   getAllViews(): PiviChatView[] {

@@ -4,7 +4,9 @@ import type { PiviChatView } from '@/app/hostContracts';
 import {
   deleteSession,
   type PluginSessionContext,
+  purgeExpiredDeletedSessionFiles,
   purgeDeletedSessionFiles,
+  restoreDeletedSession,
 } from '@/app/pluginSessionApi';
 
 function createView(overrides: {
@@ -28,6 +30,7 @@ function createContext(overrides: Partial<PluginSessionContext> = {}): PluginSes
   return {
     sessionManager: {
       delete: jest.fn(async () => null),
+      getSync: jest.fn(() => null),
     } as never,
     requireSessionStore: () => ({
       deleteSession: jest.fn(async () => undefined),
@@ -56,6 +59,7 @@ describe('plugin session API semantic view maintenance', () => {
     const setDeletedSessionFiles = jest.fn(async () => undefined);
     const context = createContext({
       sessionManager: {
+        getSync: jest.fn(() => deleted),
         delete: jest.fn(async () => deleted),
       } as never,
       storage: {
@@ -72,10 +76,32 @@ describe('plugin session API semantic view maintenance', () => {
     await deleteSession(context, 'session-1');
 
     expect(setDeletedSessionFiles).toHaveBeenCalledWith([
-      '.pivi/sessions/deleted.jsonl',
+      expect.objectContaining({ sessionFile: '.pivi/sessions/deleted.jsonl' }),
     ]);
     expect(firstReset).toHaveBeenCalledWith('session-1');
     expect(secondReset).toHaveBeenCalledWith('session-1');
+  });
+
+  it('does not remove an open session when its recovery record cannot be saved', async () => {
+    const session = {
+      id: 'session-1',
+      sessionFile: '.pivi/sessions/deleted.jsonl',
+    } as OpenSessionState;
+    const remove = jest.fn(async () => session);
+    const context = createContext({
+      sessionManager: {
+        getSync: jest.fn(() => session),
+        delete: remove,
+      } as never,
+      storage: {
+        getDeletedSessionFiles: jest.fn(async () => []),
+        setDeletedSessionFiles: jest.fn(async () => { throw new Error('save failed'); }),
+        getTabManagerState: jest.fn(async () => null),
+      },
+    });
+
+    await expect(deleteSession(context, session.id)).rejects.toThrow('save failed');
+    expect(remove).not.toHaveBeenCalled();
   });
 
   it('protects session files bound by a live semantic view handle during purge', async () => {
@@ -86,7 +112,10 @@ describe('plugin session API semantic view maintenance', () => {
     const context = createContext({
       requireSessionStore: () => ({ deleteSession: deleteSessionFile }) as never,
       storage: {
-        getDeletedSessionFiles: jest.fn(async () => [boundFile, staleFile]),
+        getDeletedSessionFiles: jest.fn(async () => [
+          { sessionFile: boundFile, deletedAt: 1 },
+          { sessionFile: staleFile, deletedAt: 1 },
+        ]),
         setDeletedSessionFiles,
         getTabManagerState: jest.fn(async () => null),
       },
@@ -96,6 +125,114 @@ describe('plugin session API semantic view maintenance', () => {
     await expect(purgeDeletedSessionFiles(context)).resolves.toBe(1);
     expect(deleteSessionFile).toHaveBeenCalledTimes(1);
     expect(deleteSessionFile).toHaveBeenCalledWith(staleFile);
-    expect(setDeletedSessionFiles).toHaveBeenCalledWith([boundFile]);
+    expect(setDeletedSessionFiles).toHaveBeenCalledWith([
+      { sessionFile: boundFile, deletedAt: 1 },
+    ]);
+  });
+
+  it('purges only records whose individual retention window has expired', async () => {
+    const day = 24 * 60 * 60 * 1000;
+    const now = 40 * day;
+    const expiredFile = '.pivi/sessions/expired.jsonl';
+    const recentFile = '.pivi/sessions/recent.jsonl';
+    const deleteSessionFile = jest.fn(async () => undefined);
+    const setDeletedSessionFiles = jest.fn(async () => undefined);
+    const context = createContext({
+      requireSessionStore: () => ({ deleteSession: deleteSessionFile }) as never,
+      storage: {
+        getDeletedSessionFiles: jest.fn(async () => [
+          { sessionFile: expiredFile, deletedAt: now - 30 * day },
+          { sessionFile: recentFile, deletedAt: now - 30 * day + 1 },
+        ]),
+        setDeletedSessionFiles,
+        getTabManagerState: jest.fn(async () => null),
+      },
+    });
+
+    await expect(purgeExpiredDeletedSessionFiles(context, 30, now)).resolves.toBe(1);
+    expect(deleteSessionFile).toHaveBeenCalledWith(expiredFile);
+    expect(setDeletedSessionFiles).toHaveBeenCalledWith([
+      { sessionFile: recentFile, deletedAt: now - 30 * day + 1 },
+    ]);
+  });
+
+  it('restores a queued JSONL before removing its deletion record', async () => {
+    const sessionFile = '.pivi/sessions/recoverable.jsonl';
+    const restored = {
+      id: 'session-restored',
+      title: 'Recovered session',
+      sessionFile,
+    } as OpenSessionState;
+    const openByFile = jest.fn(async () => restored);
+    const setDeletedSessionFiles = jest.fn(async () => undefined);
+    const context = createContext({
+      sessionManager: { openByFile } as never,
+      storage: {
+        getDeletedSessionFiles: jest.fn(async () => [
+          { sessionFile, deletedAt: 123 },
+          { sessionFile: '.pivi/sessions/other.jsonl', deletedAt: 456 },
+        ]),
+        setDeletedSessionFiles,
+        getTabManagerState: jest.fn(async () => null),
+      },
+    });
+
+    await expect(restoreDeletedSession(context, sessionFile)).resolves.toBe(restored);
+    expect(openByFile).toHaveBeenCalledWith(sessionFile);
+    expect(setDeletedSessionFiles).toHaveBeenCalledWith([
+      { sessionFile: '.pivi/sessions/other.jsonl', deletedAt: 456 },
+    ]);
+    expect(openByFile.mock.invocationCallOrder[0]).toBeLessThan(
+      setDeletedSessionFiles.mock.invocationCallOrder[0] ?? Number.MAX_SAFE_INTEGER,
+    );
+  });
+
+  it('does not open a session that is not queued for recovery', async () => {
+    const openByFile = jest.fn();
+    const context = createContext({
+      sessionManager: { openByFile } as never,
+    });
+
+    await expect(restoreDeletedSession(context, '.pivi/sessions/not-deleted.jsonl'))
+      .rejects.toThrow('Session is not queued for recovery');
+    expect(openByFile).not.toHaveBeenCalled();
+  });
+
+  it('commits recovery before attempting to open the visible tab', async () => {
+    const sessionFile = '.pivi/sessions/recoverable.jsonl';
+    const setDeletedSessionFiles = jest.fn(async () => undefined);
+    const context = createContext({
+      sessionManager: {
+        openByFile: jest.fn(async () => ({ id: 'session-1', sessionFile }) as OpenSessionState),
+      } as never,
+      storage: {
+        getDeletedSessionFiles: jest.fn(async () => [{ sessionFile, deletedAt: 123 }]),
+        setDeletedSessionFiles,
+        getTabManagerState: jest.fn(async () => null),
+      },
+    });
+
+    await expect(restoreDeletedSession(context, sessionFile, async () => {
+      throw new Error('view unavailable');
+    })).rejects.toThrow('view unavailable');
+    expect(setDeletedSessionFiles).toHaveBeenCalledWith([]);
+  });
+
+  it('retains invalid queued paths instead of passing them to physical deletion', async () => {
+    const invalid = 'notes/important.md';
+    const deleteSessionFile = jest.fn(async () => undefined);
+    const setDeletedSessionFiles = jest.fn(async () => undefined);
+    const context = createContext({
+      requireSessionStore: () => ({ deleteSession: deleteSessionFile }) as never,
+      storage: {
+        getDeletedSessionFiles: jest.fn(async () => [{ sessionFile: invalid, deletedAt: 1 }]),
+        setDeletedSessionFiles,
+        getTabManagerState: jest.fn(async () => null),
+      },
+    });
+
+    await expect(purgeDeletedSessionFiles(context)).resolves.toBe(0);
+    expect(deleteSessionFile).not.toHaveBeenCalled();
+    expect(setDeletedSessionFiles).toHaveBeenCalledWith([{ sessionFile: invalid, deletedAt: 1 }]);
   });
 });

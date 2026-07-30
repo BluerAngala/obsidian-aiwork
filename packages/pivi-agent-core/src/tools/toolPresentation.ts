@@ -25,6 +25,7 @@ import {
   TOOL_OBSIDIAN_TAGS,
   TOOL_OBSIDIAN_TASKS,
   TOOL_OBSIDIAN_WRITE,
+  TOOL_PIVI_SESSIONS,
 } from './obsidianToolNames';
 import {
   TOOL_AGENT_OUTPUT,
@@ -123,6 +124,7 @@ export type ToolPresentationTranslationKey =
   | 'tools.display.read'
   | 'tools.display.readExternal'
   | 'tools.display.search'
+  | 'tools.display.sessions'
   | 'tools.display.tags'
   | 'tools.display.tasks'
   | 'tools.display.write'
@@ -313,6 +315,7 @@ export const TOOL_PRESENTATION_DESCRIPTORS: Readonly<Record<string, ToolPresenta
   [TOOL_OBSIDIAN_GRAPH]: obsidian('share-2', 'tools.display.graph', summarizeObsidianGraph),
   [TOOL_OBSIDIAN_TAGS]: obsidian('tag', 'tools.display.tags', summarizeObsidianTags),
   [TOOL_OBSIDIAN_BASE]: obsidian('database', 'tools.display.base', summarizeObsidianBase),
+  [TOOL_PIVI_SESSIONS]: obsidian('history', 'tools.display.sessions', summarizeObsidianActionTarget),
 };
 
 function resolveTodoProgress(input: Record<string, unknown>) {

@@ -35,6 +35,7 @@ import { createPropertiesTool } from './obsidian/properties';
 import { createReadExternalTool } from './obsidian/readExternal';
 import { createReadNoteTool } from './obsidian/readNote';
 import { createSearchTool } from './obsidian/search';
+import { createSessionsTool } from './obsidian/sessions';
 import { createTagsTool } from './obsidian/tags';
 import { createTasksTool } from './obsidian/tasks';
 import { createWriteNoteTool } from './obsidian/writeNote';
@@ -49,6 +50,7 @@ export function createObsidianTools(
     obsidianCliAvailable?: boolean;
     resolveReadMaxChars?: ObsidianToolDeps['resolveReadMaxChars'];
     capabilityApproval?: CapabilityApprovalPort | null;
+    sessionRecovery?: ObsidianToolDeps['sessionRecovery'];
   } = {},
 ): ToolSpec[] {
   const disabledTools = new Set(settings.disabledTools ?? []);
@@ -81,6 +83,7 @@ export function createObsidianTools(
     imageGenerator: options.imageGenerator,
     resolveReadMaxChars: options.resolveReadMaxChars,
     capabilityApproval: options.capabilityApproval ?? null,
+    sessionRecovery: options.sessionRecovery,
   };
 
   const tools: ToolSpec[] = [
@@ -103,6 +106,7 @@ export function createObsidianTools(
     createGraphTool(deps),
     createTagsTool(deps),
     createBaseTool(deps),
+    ...(options.sessionRecovery ? [createSessionsTool(deps)] : []),
   ];
 
   if (options.imageGenerator) {

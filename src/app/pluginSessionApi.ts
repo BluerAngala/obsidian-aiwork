@@ -2,6 +2,7 @@
  * Session CRUD and lifecycle helpers used by the plugin shell.
  * Keeps session orchestration out of the thin Obsidian Plugin class body.
  */
+import type { DeletedSessionFileRecord } from "@pivi/obsidian-host/bootstrap/storage";
 import type { AppTabManagerState } from "@pivi/obsidian-host/bootstrap/types";
 import type { OpenSessionState, SessionSummary } from "@pivi/pivi-agent-core/foundation";
 import { PluginLogger } from "@pivi/pivi-agent-core/foundation/pluginLogger";
@@ -11,13 +12,23 @@ import type { OpenSessionManager } from "@pivi/pivi-agent-core/session/openSessi
 import type { PiviChatView } from "./hostContracts";
 
 const logger = new PluginLogger('PluginSessionApi');
+const DAY_MS = 24 * 60 * 60 * 1000;
+const SESSION_FILE_PREFIX = '.pivi/sessions/';
+
+function isSafeSessionFile(sessionFile: string): boolean {
+  return sessionFile.startsWith(SESSION_FILE_PREFIX)
+    && sessionFile.endsWith('.jsonl')
+    && !sessionFile.includes('\\')
+    && !sessionFile.includes('\0')
+    && !sessionFile.split('/').includes('..');
+}
 
 export interface PluginSessionContext {
   sessionManager: OpenSessionManager;
   requireSessionStore(): SessionStore;
   storage: {
-    getDeletedSessionFiles(): Promise<string[]>;
-    setDeletedSessionFiles(files: string[]): Promise<void>;
+    getDeletedSessionFiles(): Promise<DeletedSessionFileRecord[]>;
+    setDeletedSessionFiles(records: DeletedSessionFileRecord[]): Promise<void>;
     getTabManagerState(): Promise<AppTabManagerState | null>;
   };
   getSessionList(): SessionSummary[];
@@ -64,33 +75,74 @@ export async function deleteSession(
   ctx: PluginSessionContext,
   id: string,
 ): Promise<void> {
-  const deleted = await ctx.sessionManager.delete(id);
-  if (!deleted) return;
+  const session = ctx.sessionManager.getSync(id);
+  if (!session) return;
 
-  if (deleted.sessionFile) {
-    await markSessionFileDeleted(ctx, deleted.sessionFile);
+  if (session.sessionFile) {
+    await markSessionFileDeleted(ctx, session.sessionFile);
   }
+  await ctx.sessionManager.delete(id);
 
   for (const view of ctx.getAllViews()) {
     await view.getChatHandle()?.maintenance.resetSession(id);
   }
 }
 
+export async function deleteSessionFile(
+  ctx: PluginSessionContext,
+  sessionFile: string,
+  openSessionId?: string | null,
+): Promise<void> {
+  if (!isSafeSessionFile(sessionFile)) {
+    throw new Error(`Invalid deleted session path: ${sessionFile}`);
+  }
+  await markSessionFileDeleted(ctx, sessionFile);
+  if (!openSessionId) return;
+  await ctx.sessionManager.delete(openSessionId);
+  for (const view of ctx.getAllViews()) {
+    await view.getChatHandle()?.maintenance.resetSession(openSessionId);
+  }
+}
+
 export async function purgeDeletedSessionFiles(
   ctx: PluginSessionContext,
 ): Promise<number> {
-  const deletedSessionFiles = await ctx.storage.getDeletedSessionFiles();
-  if (deletedSessionFiles.length === 0) {
+  return purgeDeletedSessionRecords(ctx, () => true);
+}
+
+export async function purgeExpiredDeletedSessionFiles(
+  ctx: PluginSessionContext,
+  retentionDays: number,
+  now = Date.now(),
+): Promise<number> {
+  return purgeDeletedSessionRecords(
+    ctx,
+    (record) => now >= record.deletedAt + retentionDays * DAY_MS,
+  );
+}
+
+async function purgeDeletedSessionRecords(
+  ctx: PluginSessionContext,
+  shouldPurge: (record: DeletedSessionFileRecord) => boolean,
+): Promise<number> {
+  const records = await ctx.storage.getDeletedSessionFiles();
+  if (records.length === 0) {
     return 0;
   }
 
   const protectedSessionFiles = await getProtectedSessionFiles(ctx);
-  const remainingDeletedSessionFiles: string[] = [];
+  const remaining: DeletedSessionFileRecord[] = [];
   let deletedCount = 0;
 
-  for (const sessionFile of deletedSessionFiles) {
-    if (protectedSessionFiles.has(sessionFile)) {
-      remainingDeletedSessionFiles.push(sessionFile);
+  for (const record of records) {
+    const { sessionFile } = record;
+    if (!shouldPurge(record) || protectedSessionFiles.has(sessionFile)) {
+      remaining.push(record);
+      continue;
+    }
+    if (!isSafeSessionFile(sessionFile)) {
+      remaining.push(record);
+      logger.warn(`Refusing to purge invalid session path ${sessionFile}`);
       continue;
     }
 
@@ -98,19 +150,63 @@ export async function purgeDeletedSessionFiles(
       await ctx.requireSessionStore().deleteSession(sessionFile);
       deletedCount++;
     } catch (error) {
-      remainingDeletedSessionFiles.push(sessionFile);
+      remaining.push(record);
       logger.warn(`Failed to purge deleted session ${sessionFile}`, error);
     }
   }
 
-  await ctx.storage.setDeletedSessionFiles(remainingDeletedSessionFiles);
+  await ctx.storage.setDeletedSessionFiles(remaining);
   return deletedCount;
+}
+
+export async function listDeletedSessions(
+  ctx: PluginSessionContext,
+  retentionDays: number,
+): Promise<Array<DeletedSessionFileRecord & { expiresAt: number; retentionDays: number }>> {
+  return (await ctx.storage.getDeletedSessionFiles()).map((record) => ({
+    ...record,
+    expiresAt: record.deletedAt + retentionDays * DAY_MS,
+    retentionDays,
+  }));
+}
+
+export async function restoreDeletedSession(
+  ctx: PluginSessionContext,
+  sessionFile: string,
+  openVisibleSession?: (restored: OpenSessionState) => Promise<void>,
+): Promise<OpenSessionState> {
+  if (!isSafeSessionFile(sessionFile)) {
+    throw new Error(`Invalid deleted session path: ${sessionFile}`);
+  }
+  const records = await ctx.storage.getDeletedSessionFiles();
+  if (!records.some((record) => record.sessionFile === sessionFile)) {
+    throw new Error(`Session is not queued for recovery: ${sessionFile}`);
+  }
+  const wasOpen = ctx.getSessionList().some((session) => session.sessionFile === sessionFile);
+  let restored: OpenSessionState;
+  try {
+    restored = await ctx.sessionManager.openByFile(sessionFile);
+  } catch (error) {
+    throw new Error(`Deleted session file is missing or unreadable: ${sessionFile}`, { cause: error });
+  }
+  try {
+    await ctx.storage.setDeletedSessionFiles(
+      records.filter((record) => record.sessionFile !== sessionFile),
+    );
+  } catch (error) {
+    if (!wasOpen) await ctx.sessionManager.delete(restored.id);
+    throw error;
+  }
+  await openVisibleSession?.(restored);
+  return restored;
 }
 
 export async function hideDeletedSessionSummaries(
   ctx: PluginSessionContext,
 ): Promise<void> {
-  const deletedSessionFiles = new Set(await ctx.storage.getDeletedSessionFiles());
+  const deletedSessionFiles = new Set(
+    (await ctx.storage.getDeletedSessionFiles()).map((record) => record.sessionFile),
+  );
   if (deletedSessionFiles.size === 0) {
     return;
   }
@@ -183,10 +279,13 @@ async function markSessionFileDeleted(
   sessionFile: string,
 ): Promise<void> {
   const deletedSessionFiles = await ctx.storage.getDeletedSessionFiles();
-  if (deletedSessionFiles.includes(sessionFile)) {
+  if (deletedSessionFiles.some((record) => record.sessionFile === sessionFile)) {
     return;
   }
-  await ctx.storage.setDeletedSessionFiles([...deletedSessionFiles, sessionFile]);
+  await ctx.storage.setDeletedSessionFiles([
+    ...deletedSessionFiles,
+    { sessionFile, deletedAt: Date.now() },
+  ]);
 }
 
 async function getProtectedSessionFiles(

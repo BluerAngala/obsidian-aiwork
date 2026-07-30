@@ -497,6 +497,7 @@
     },
     "sessionFiles": {
       "heading": "工作階段檔案",
+      "retention": { "name": "保留已移除工作階段", "desc": "永久刪除工作階段檔案前保留的天數。" },
       "deleteRemoved": {
         "name": "刪除已移除的工作階段檔案",
         "desc": "僅永久刪除已從歷史移除、且未封存或目前未開啟的工作階段檔案。",
@@ -926,6 +927,7 @@
       "write": "寫入",
       "writeDesc": "建立筆記、附加/前置內容，或有意覆寫整篇筆記。",
       "search": "搜尋",
+      "sessions": "工作階段",
       "searchDesc": "搜尋筆記文字、標籤，或列出資料夾中的 Markdown 檔案。",
       "noteInfo": "筆記資訊",
       "noteInfoDesc": "讀取中繼資料、標籤、出鏈和 frontmatter。",

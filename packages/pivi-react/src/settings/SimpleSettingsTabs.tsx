@@ -19,6 +19,7 @@ import { EditorToolbarSection } from './EditorToolbarSection';
 import { buildNavMappingText, parseNavMappings } from './keyboardNavigation';
 import type { SettingsUiStore } from './SettingsUiStore';
 import { useSettingsUiSnapshot } from './SettingsUiStore';
+import type { SettingsGeneralSnapshot } from './types';
 
 async function saveGeneral(
   store: SettingsUiStore,
@@ -351,7 +352,12 @@ export function GeneralSettingsTab({
           />
         </SettingRow>
       </SettingsSection>
-      <SessionFilesSettingsSection actions={actions} feedback={feedback} />
+      <SessionFilesSettingsSection
+        actions={actions}
+        feedback={feedback}
+        general={general}
+        saveGeneral={async (patch) => { await save(patch); }}
+      />
       <SettingsSection title={t('settings.personalizationContext')}>
         <SettingRow name={t('settings.userName.name')} description={t('settings.userName.desc')}>
           <input
@@ -467,14 +473,32 @@ export function SubagentsSettingsTab({
   );
 }
 
-export function SessionFilesSettingsSection({ actions, feedback }: {
+export function SessionFilesSettingsSection({ actions, feedback, general, saveGeneral }: {
   readonly actions: SettingsActionsPort;
   readonly feedback: SettingsFeedbackPort;
+  readonly general: SettingsGeneralSnapshot;
+  readonly saveGeneral: (patch: Partial<SettingsGeneralSnapshot>) => Promise<void>;
 }) {
   const t = useT();
   const [pending, setPending] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [retentionText, setRetentionText] = useState(String(general.deletedSessionRetentionDays ?? 30));
   const mounted = useMountedRef();
+  useEffect(() => {
+    setRetentionText(String(general.deletedSessionRetentionDays ?? 30));
+  }, [general.deletedSessionRetentionDays]);
+  const commitRetention = () => {
+    const parsed = Number(retentionText.trim());
+    if (!Number.isFinite(parsed) || !Number.isInteger(parsed)) {
+      setRetentionText(String(general.deletedSessionRetentionDays ?? 30));
+      return;
+    }
+    const value = Math.max(1, Math.min(3650, parsed));
+    setRetentionText(String(value));
+    if (value !== general.deletedSessionRetentionDays) {
+      void saveGeneral({ deletedSessionRetentionDays: value });
+    }
+  };
   const clean = async () => {
     setPending(true);
     try {
@@ -491,6 +515,21 @@ export function SessionFilesSettingsSection({ actions, feedback }: {
   };
   return (
     <SettingsSection title={t('settings.sessionFiles.heading')}>
+      <SettingRow name={t('settings.sessionFiles.retention.name')} description={t('settings.sessionFiles.retention.desc')}>
+        <input
+          className="pivi-settings-control"
+          type="number"
+          aria-label={t('settings.sessionFiles.retention.name')}
+          min={1}
+          max={3650}
+          value={retentionText}
+          onChange={(event) => setRetentionText(event.currentTarget.value)}
+          onBlur={commitRetention}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') event.currentTarget.blur();
+          }}
+        />
+      </SettingRow>
       <SettingRow name={t('settings.sessionFiles.deleteRemoved.name')} description={t('settings.sessionFiles.deleteRemoved.desc')}>
         <button className="pivi-button--danger" type="button" disabled={pending} onClick={() => setConfirmOpen(true)}>
           {t('settings.sessionFiles.deleteRemoved.button')}

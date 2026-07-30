@@ -53,6 +53,7 @@ function createHandle(): PiviChatViewHandle {
       })),
       createTab: jest.fn(async () => true),
       startNewSession: jest.fn(async () => true),
+      openSession: jest.fn(async () => true),
       closeActiveTab: jest.fn(async () => true),
       cancelActiveTurn: jest.fn(() => true),
     addEditorSelection: jest.fn(() => true),

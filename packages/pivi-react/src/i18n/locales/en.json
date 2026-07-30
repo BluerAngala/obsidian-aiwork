@@ -497,6 +497,7 @@
     },
     "sessionFiles": {
       "heading": "Session files",
+      "retention": { "name": "Keep removed sessions for", "desc": "Days before removed session files are permanently deleted." },
       "deleteRemoved": {
         "name": "Delete removed session files",
         "desc": "Permanently deletes only session files that were removed from history and are not archived or currently open.",
@@ -926,6 +927,7 @@
       "write": "Write",
       "writeDesc": "Create notes, append/prepend content, or intentionally overwrite full notes.",
       "search": "Search",
+      "sessions": "Sessions",
       "searchDesc": "Search note text, tags, or list markdown files in folders.",
       "noteInfo": "Note info",
       "noteInfoDesc": "Read metadata, tags, outgoing links, and frontmatter.",

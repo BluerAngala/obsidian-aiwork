@@ -43,6 +43,7 @@ export interface ChatSessionPort {
   }): Promise<OpenSessionState>;
   openSessionFile(sessionFile: string): Promise<OpenSessionState>;
   deleteSession(id: string): Promise<void>;
+  deleteSessionFile(sessionFile: string, openSessionId?: string | null): Promise<void>;
   renameSession(
     id: string,
     title: string,

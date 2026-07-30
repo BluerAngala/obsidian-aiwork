@@ -497,6 +497,7 @@
     },
     "sessionFiles": {
       "heading": "Archivos de sesión",
+      "retention": { "name": "Conservar sesiones eliminadas durante", "desc": "Días antes de eliminar permanentemente los archivos de sesión." },
       "deleteRemoved": {
         "name": "Eliminar archivos de sesión quitados",
         "desc": "Elimina permanentemente solo los archivos de sesión quitados del historial y que no están archivados ni abiertos.",
@@ -926,6 +927,7 @@
       "write": "Escribir",
       "writeDesc": "Crear notas, añadir al inicio/final o sobrescribir notas completas a propósito.",
       "search": "Buscar",
+      "sessions": "Sesiones",
       "searchDesc": "Buscar texto o etiquetas de notas, o listar archivos markdown en carpetas.",
       "noteInfo": "Info de nota",
       "noteInfoDesc": "Leer metadatos, etiquetas, enlaces salientes y frontmatter.",

@@ -671,6 +671,7 @@ export interface PiviSettings {
 
   // Content settings
   excludedTags: string[];
+  deletedSessionRetentionDays: number;
 
   // Environment
   sharedEnvironmentVariables: string;

@@ -36,6 +36,7 @@ export const DEFAULT_PIVI_SETTINGS: PiviSettings = {
   enableAutoTitleGeneration: true,
   titleGenerationModel: "",
   excludedTags: [],
+  deletedSessionRetentionDays: 30,
   sharedEnvironmentVariables: "",
   customContextLimits: {},
   keyboardNavigation: {

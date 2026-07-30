@@ -2,6 +2,11 @@ import type { FileStore } from "@pivi/pivi-agent-core/ports";
 
 import type { AppTabManagerState } from "./types";
 
+export interface DeletedSessionFileRecord {
+  sessionFile: string;
+  deletedAt: number;
+}
+
 /**
  * Minimal shared app storage contract.
  *
@@ -16,7 +21,7 @@ export interface SharedAppStorage {
   savePiviSettings(settings: Record<string, unknown>): Promise<void>;
   setTabManagerState(state: AppTabManagerState): Promise<void>;
   getTabManagerState(): Promise<AppTabManagerState | null>;
-  setDeletedSessionFiles(sessionFiles: string[]): Promise<void>;
-  getDeletedSessionFiles(): Promise<string[]>;
+  setDeletedSessionFiles(records: DeletedSessionFileRecord[]): Promise<void>;
+  getDeletedSessionFiles(): Promise<DeletedSessionFileRecord[]>;
   getAdapter(): FileStore;
 }

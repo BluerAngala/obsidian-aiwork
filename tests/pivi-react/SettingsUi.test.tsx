@@ -10,7 +10,7 @@ const snapshot: SettingsUiSnapshotData = {
   general: {
     locale: 'en', chatViewPlacement: 'right-sidebar', tabBarPosition: 'input', enableAutoScroll: true,
     deferMathRenderingDuringStreaming: true, enableAutoTitleGeneration: false,
-    userName: '', excludedTags: [],
+    userName: '', excludedTags: [], deletedSessionRetentionDays: 30,
     requireCommandOrControlEnterToSend: false,
     keyboardNavigation: { scrollUpKey: 'w', scrollDownKey: 's', focusInputKey: 'i' },
     editorSelectionToolbar: { enabled: true, shortcuts: [] },
@@ -216,6 +216,20 @@ describe('React settings foundation', () => {
 
     expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Delete removed files' })).not.toBeInTheDocument();
+  });
+
+  it('persists the deleted-session retention period in days', async () => {
+    const saveGeneral = jest.fn(async () => undefined);
+    render(withTestPresentationPlatform(<I18nProvider i18n={createI18n()}><SettingsRoot ports={createPorts({ saveGeneral })} /></I18nProvider>));
+
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Keep removed sessions for' }), {
+      target: { value: '14' },
+    });
+    expect(saveGeneral).not.toHaveBeenCalled();
+    fireEvent.blur(screen.getByRole('spinbutton', { name: 'Keep removed sessions for' }));
+    await act(async () => undefined);
+
+    expect(saveGeneral).toHaveBeenCalledWith({ deletedSessionRetentionDays: 14 });
   });
 
   it('maps Top and Bottom labels to the existing tab position values', async () => {

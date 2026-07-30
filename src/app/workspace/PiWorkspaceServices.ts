@@ -288,6 +288,7 @@ function createObsidianBaseToolProvider(
       obsidianCliAvailable,
       resolveReadMaxChars,
       capabilityApproval: capabilityApproval ?? null,
+      sessionRecovery: host.sessionRecovery,
     });
 
     const webSearchSettings = getWebSearchToolsSettingsFromBag(host.settings);

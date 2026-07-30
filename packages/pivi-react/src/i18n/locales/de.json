@@ -497,6 +497,7 @@
     },
     "sessionFiles": {
       "heading": "Sitzungsdateien",
+      "retention": { "name": "Entfernte Sitzungen aufbewahren für", "desc": "Tage bis entfernte Sitzungsdateien endgültig gelöscht werden." },
       "deleteRemoved": {
         "name": "Entfernte Sitzungsdateien löschen",
         "desc": "Löscht dauerhaft nur Sitzungsdateien, die aus dem Verlauf entfernt wurden und weder archiviert noch geöffnet sind.",
@@ -926,6 +927,7 @@
       "write": "Schreiben",
       "writeDesc": "Notizen erstellen, anhängen/voranstellen oder absichtlich vollständig überschreiben.",
       "search": "Suchen",
+      "sessions": "Sitzungen",
       "searchDesc": "Notiztext, Tags suchen oder Markdown-Dateien in Ordnern auflisten.",
       "noteInfo": "Notizinfo",
       "noteInfoDesc": "Metadaten, Tags, ausgehende Links und Frontmatter lesen.",

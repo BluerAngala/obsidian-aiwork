@@ -89,6 +89,7 @@ export type ChatUiCompositionHost = PiviChatCompositionHost & {
   }): Promise<OpenSessionState>;
   openSessionByFile(sessionFile: string): Promise<OpenSessionState>;
   deleteSession(id: string): Promise<void>;
+  deleteSessionFile(sessionFile: string, id?: string | null): Promise<void>;
   renameSession(
     id: string,
     title: string,
@@ -193,6 +194,7 @@ export function createChatUiPorts(
       createSession: (options) => host.createOpenSession(options),
       openSessionFile: (sessionFile) => host.openSessionByFile(sessionFile),
       deleteSession: (id) => host.deleteSession(id),
+      deleteSessionFile: (file, id) => host.deleteSessionFile(file, id),
       renameSession: (id, title, titleSource) => host.renameSession(id, title, titleSource),
       updateSession: (id, updates) => host.updateSession(id, updates),
       forkSession: (openSession, atEntryId) => host.forkSessionAt(openSession, atEntryId),
@@ -300,6 +302,7 @@ export function createSettingsUiPorts(
         enableAutoTitleGeneration: settings.enableAutoTitleGeneration,
         userName: settings.userName,
         excludedTags: settings.excludedTags,
+        deletedSessionRetentionDays: settings.deletedSessionRetentionDays ?? 30,
         requireCommandOrControlEnterToSend: settings.requireCommandOrControlEnterToSend ?? false,
         keyboardNavigation: {
           scrollUpKey: host.settings.keyboardNavigation.scrollUpKey,
@@ -328,6 +331,9 @@ export function createSettingsUiPorts(
     host.settings.enableAutoTitleGeneration = next.enableAutoTitleGeneration;
     host.settings.userName = next.userName;
     host.settings.excludedTags = [...next.excludedTags];
+    host.settings.deletedSessionRetentionDays = Math.max(1, Math.min(
+      3650, Math.trunc(next.deletedSessionRetentionDays ?? 30),
+    ));
     host.settings.requireCommandOrControlEnterToSend = next.requireCommandOrControlEnterToSend;
     host.settings.keyboardNavigation = {
       scrollUpKey: next.keyboardNavigation.scrollUpKey,
@@ -340,6 +346,7 @@ export function createSettingsUiPorts(
       }
     }
     await host.saveSettings();
+    if (patch.deletedSessionRetentionDays !== undefined) await host.purgeExpiredDeletedSessionFiles();
   };
   const saveEditorSelectionToolbar = async (
     settings: EditorSelectionToolbarSettings,

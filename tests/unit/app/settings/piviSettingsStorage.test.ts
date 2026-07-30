@@ -41,6 +41,29 @@ function createMemoryAdapter(initialContent?: string): Pick<
 
 describe("PiviSettingsStorage", () => {
 
+  it("backfills a 30-day deleted-session retention window", async () => {
+    const adapter = createMemoryAdapter(JSON.stringify({}));
+    const storage = new PiviSettingsStorage(
+      adapter as unknown as FileStore,
+      createPiviSettingsCodec(),
+    );
+
+    const settings = await storage.load();
+
+    expect(settings.deletedSessionRetentionDays).toBe(30);
+    expect(JSON.parse(adapter.writes.at(-1) ?? "{}").deletedSessionRetentionDays).toBe(30);
+  });
+
+  it("repairs invalid deleted-session retention values", async () => {
+    const adapter = createMemoryAdapter(JSON.stringify({ deletedSessionRetentionDays: 0 }));
+    const storage = new PiviSettingsStorage(
+      adapter as unknown as FileStore,
+      createPiviSettingsCodec(),
+    );
+
+    await expect(storage.load()).resolves.toMatchObject({ deletedSessionRetentionDays: 30 });
+  });
+
   it("persists default subagent settings when an existing settings record omits them", async () => {
     const adapter = createMemoryAdapter(JSON.stringify({
       agentSettings: { visibleModels: ["opencode-go/deepseek-v4-flash"] },

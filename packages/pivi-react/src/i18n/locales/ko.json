@@ -497,6 +497,7 @@
     },
     "sessionFiles": {
       "heading": "세션 파일",
+      "retention": { "name": "삭제된 세션 보관 기간", "desc": "영구 삭제하기 전까지의 일수입니다." },
       "deleteRemoved": {
         "name": "제거된 세션 파일 삭제",
         "desc": "기록에서 제거되었고 보관되지 않았으며 현재 열려 있지 않은 세션 파일만 영구 삭제합니다.",
@@ -926,6 +927,7 @@
       "write": "쓰기",
       "writeDesc": "노트 만들기, 앞/뒤 추가, 또는 의도적 전체 덮어쓰기.",
       "search": "검색",
+      "sessions": "세션",
       "searchDesc": "노트 텍스트·태그를 검색하거나 폴더의 마크다운 파일을 나열합니다.",
       "noteInfo": "노트 정보",
       "noteInfoDesc": "메타데이터, 태그, 나가는 링크, frontmatter를 읽습니다.",

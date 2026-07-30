@@ -497,6 +497,7 @@
     },
     "sessionFiles": {
       "heading": "会话文件",
+      "retention": { "name": "保留已移除会话", "desc": "永久删除会话文件前保留的天数。" },
       "deleteRemoved": {
         "name": "删除已移除的会话文件",
         "desc": "仅永久删除已从历史中移除、且未归档或当前未打开的会话文件。",
@@ -926,6 +927,7 @@
       "write": "写入",
       "writeDesc": "创建笔记、追加/前置内容，或有意覆盖整篇笔记。",
       "search": "搜索",
+      "sessions": "会话",
       "searchDesc": "搜索笔记文本、标签，或列出文件夹中的 Markdown 文件。",
       "noteInfo": "笔记信息",
       "noteInfoDesc": "读取元数据、标签、出链和 frontmatter。",

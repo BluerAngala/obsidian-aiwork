@@ -89,6 +89,13 @@ export function createImperativeChatViewHandle(
         await getTabManager()?.createNewSession();
         return true;
       },
+      async openSession(openSessionId) {
+        const manager = getTabManager();
+        if (!manager) return false;
+        await manager.openSession(openSessionId, { preferNewTab: true });
+        publishTabSnapshot();
+        return true;
+      },
       async closeActiveTab() {
         const manager = getTabManager();
         const tabId = manager?.getActiveTabId() ?? null;

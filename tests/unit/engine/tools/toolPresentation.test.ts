@@ -155,6 +155,7 @@ const EXPECTED_DESCRIPTORS: Readonly<Record<string, ExpectedDescriptor>> = {
   obsidian_graph: expectedDescriptor('share-2', 'obsidian', { labelKey: 'tools.display.graph' }),
   obsidian_tags: expectedDescriptor('tag', 'obsidian', { labelKey: 'tools.display.tags' }),
   obsidian_base: expectedDescriptor('database', 'obsidian', { labelKey: 'tools.display.base' }),
+  pivi_sessions: expectedDescriptor('history', 'obsidian', { labelKey: 'tools.display.sessions' }),
 };
 
 describe('tool presentation registry', () => {
@@ -174,9 +175,9 @@ describe('tool presentation registry', () => {
     }
   });
 
-  it('owns label keys for all 26 Obsidian tools', () => {
+  it('owns label keys for all 27 Obsidian tools', () => {
     const obsidianTools = [...OBSIDIAN_AGENT_TOOLS, ...OBSIDIAN_OPTIONAL_TOOLS];
-    expect(obsidianTools).toHaveLength(26);
+    expect(obsidianTools).toHaveLength(27);
     expect(obsidianTools.map(name => getToolPresentationDescriptor(name).labelKey)).toEqual([
       'tools.display.read',
       'tools.display.outline',
@@ -199,6 +200,7 @@ describe('tool presentation registry', () => {
       'tools.display.graph',
       'tools.display.tags',
       'tools.display.base',
+      'tools.display.sessions',
       'tools.display.readExternal',
       'tools.display.listExternal',
       'tools.display.command',

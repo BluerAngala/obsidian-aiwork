@@ -78,6 +78,7 @@ describe('obsidian registered tool prompt section', () => {
       obsidian_graph: ['`actions?`', '`limit?`', '`includeNonMarkdown?`'],
       obsidian_tags: ['`action`', '`name?`', '`sort?`', '`verbose?`'],
       obsidian_base: ['`action`', '`file?`', '`path?`', '`view?`', '`format?`'],
+      pivi_sessions: ['`action`', '`sessionFile`'],
       obsidian_read_external: ['`path`', '`mode?`', '`startLine?`', '`endLine?`', '`maxChars?`'],
       obsidian_list_external: ['`path`'],
       obsidian_command: ['`id`'],
