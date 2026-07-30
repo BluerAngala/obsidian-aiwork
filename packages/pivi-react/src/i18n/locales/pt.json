@@ -82,6 +82,7 @@
       "editTitle": "Editar título de {title}",
       "editTitleInputLabel": "Título da aba",
       "closeTab": "Fechar {title}",
+      "deleteTab": "Excluir {title}",
       "archived": "Arquivados",
       "revealArchived": "Mostrar abas arquivadas",
       "failedCreateChat": "Falha ao criar o chat",

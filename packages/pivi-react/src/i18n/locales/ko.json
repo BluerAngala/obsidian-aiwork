@@ -82,6 +82,7 @@
       "editTitle": "{title} 제목 편집",
       "editTitleInputLabel": "탭 제목",
       "closeTab": "{title} 닫기",
+      "deleteTab": "{title} 삭제",
       "archived": "보관됨",
       "revealArchived": "보관된 탭 표시",
       "failedCreateChat": "채팅을 만들지 못했습니다",

@@ -82,6 +82,7 @@
       "editTitle": "Изменить заголовок {title}",
       "editTitleInputLabel": "Заголовок вкладки",
       "closeTab": "Закрыть {title}",
+      "deleteTab": "Удалить {title}",
       "archived": "В архиве",
       "revealArchived": "Показать архивные вкладки",
       "failedCreateChat": "Не удалось создать чат",

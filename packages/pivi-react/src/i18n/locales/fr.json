@@ -82,6 +82,7 @@
       "editTitle": "Modifier le titre de {title}",
       "editTitleInputLabel": "Titre de l’onglet",
       "closeTab": "Fermer {title}",
+      "deleteTab": "Supprimer {title}",
       "archived": "Archivé",
       "revealArchived": "Afficher les onglets archivés",
       "failedCreateChat": "Échec de la création du chat",

@@ -82,6 +82,7 @@
       "editTitle": "{title} のタイトルを編集",
       "editTitleInputLabel": "タブタイトル",
       "closeTab": "{title} を閉じる",
+      "deleteTab": "{title} を削除",
       "archived": "アーカイブ済み",
       "revealArchived": "アーカイブ済みタブを表示",
       "failedCreateChat": "チャットの作成に失敗しました",

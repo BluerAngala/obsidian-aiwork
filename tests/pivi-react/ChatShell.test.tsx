@@ -56,6 +56,7 @@ function actions(): jest.Mocked<ChatTabActions> {
   return {
     archiveTab: jest.fn(),
     closeTab: jest.fn(),
+    deleteTab: jest.fn(),
     reorderTabs: jest.fn(async (
       _openIds: readonly string[],
       _archivedIds: readonly string[],
@@ -438,7 +439,7 @@ describe('React ChatShell tabs', () => {
       }));
       const items = [...openItems, ...archivedItems];
       act(() => mounted.store.update({ ...snapshot(position), items }));
-      mounted.tabActions.closeTab.mockImplementation((id) => {
+      mounted.tabActions.deleteTab.mockImplementation((id) => {
         mounted.store.update({
           ...snapshot(position),
           items: items.filter(item => item.id !== id),
@@ -454,8 +455,10 @@ describe('React ChatShell tabs', () => {
       const focusedRow = screen.getByRole('menuitem', { name: 'Archive 2' });
       focusedRow.focus();
       expect(focusedRow).toHaveFocus();
-      fireEvent.click(screen.getByRole('button', { name: 'Close Archive 2' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Delete Archive 2' }));
       act(() => jest.advanceTimersByTime(200));
+
+      expect(mounted.tabActions.deleteTab).toHaveBeenCalledWith('archive-2');
 
       const stableMenu = screen.getByRole('menu');
       expect(stableMenu).toBe(menu);

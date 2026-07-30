@@ -82,6 +82,7 @@
       "editTitle": "Editar título de {title}",
       "editTitleInputLabel": "Título de pestaña",
       "closeTab": "Cerrar {title}",
+      "deleteTab": "Eliminar {title}",
       "archived": "Archivado",
       "revealArchived": "Mostrar pestañas archivadas",
       "failedCreateChat": "Error al crear el chat",

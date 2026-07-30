@@ -41,6 +41,7 @@ type TestTab = {
   id: string;
   openSessionId: string | null;
   sessionFile: string | null;
+  isArchived: boolean;
   draftModel: string | null;
   lifecycleState?: string;
   service: TestService | null;
@@ -131,6 +132,7 @@ function createTab(overrides: Partial<TestTab> = {}): TestTab {
     id: 'tab-1',
     openSessionId: 'session-1',
     sessionFile: '.pivi/sessions/one.jsonl',
+    isArchived: false,
     draftModel: 'draft-model',
     service: createService(),
     serviceInitialized: true,
@@ -207,6 +209,7 @@ function createHarness(options: HarnessOptions = {}) {
   const manager = createManager();
   jest.mocked(TabManager).mockImplementation(() => manager as unknown as TabManager);
 
+  const deleteSession = jest.fn(async (_openSessionId: string) => undefined);
   const persistTabStateImmediate = jest.fn(async () => undefined);
   const inputPortalContainer = {
     parentElement: null,
@@ -254,12 +257,13 @@ function createHarness(options: HarnessOptions = {}) {
     await adapter.mount(
       { empty: jest.fn() } as unknown as HTMLElement,
       {} as never,
-      {} as ChatPorts,
+      { sessions: { deleteSession } } as unknown as ChatPorts,
     );
   };
 
   return {
     adapter,
+    deleteSession,
     handle: adapter.getViewHandle(),
     inputPortalContainer,
     loadPersistedTabState,
@@ -304,6 +308,41 @@ describe('imperative chat semantic view handle', () => {
     expect(withdrawQueuedMessageToComposer).toHaveBeenCalledWith('queued-2');
     expect(steerQueuedMessage).toHaveBeenCalledWith('queued-3');
     expect(refresh).toHaveBeenCalledTimes(3);
+  });
+
+  it('marks an archived session deleted after removing its persisted tab binding', async () => {
+    const harness = createHarness();
+    const archivedTab = createTab({ isArchived: true });
+    harness.manager.getTab.mockReturnValue(archivedTab);
+    harness.manager.getPersistedState.mockReturnValue({
+      openTabs: [],
+      activeTabId: null,
+    });
+    await harness.mount();
+
+    await harness.adapter.getShellActions().deleteTab(archivedTab.id);
+
+    expect(harness.manager.closeTab).toHaveBeenCalledWith(archivedTab.id, false);
+    expect(harness.persistTabStateImmediate).toHaveBeenCalledWith({
+      openTabs: [],
+      activeTabId: null,
+    });
+    expect(harness.deleteSession).toHaveBeenCalledWith(archivedTab.openSessionId);
+    expect(harness.persistTabStateImmediate.mock.invocationCallOrder[0])
+      .toBeLessThan(harness.deleteSession.mock.invocationCallOrder[0]!);
+  });
+
+  it('closes an open tab without deleting its durable session', async () => {
+    const harness = createHarness();
+    const openTab = createTab({ isArchived: false });
+    harness.manager.getTab.mockReturnValue(openTab);
+    await harness.mount();
+
+    await harness.adapter.getShellActions().closeTab(openTab.id);
+
+    expect(harness.manager.closeTab).toHaveBeenCalledWith(openTab.id, false);
+    expect(harness.deleteSession).not.toHaveBeenCalled();
+    expect(harness.persistTabStateImmediate).not.toHaveBeenCalled();
   });
 
   it('drives an exact 100 KB Markdown stream and restores the active state', async () => {

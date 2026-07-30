@@ -87,6 +87,7 @@
       "editTitle": "Edit title for {title}",
       "editTitleInputLabel": "Tab title",
       "closeTab": "Close {title}",
+      "deleteTab": "Delete {title}",
       "archived": "Archived",
       "revealArchived": "Show archived tabs",
       "failedCreateChat": "Failed to create chat",

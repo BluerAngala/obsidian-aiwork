@@ -82,6 +82,7 @@
       "editTitle": "编辑 {title} 的标题",
       "editTitleInputLabel": "标签页标题",
       "closeTab": "关闭 {title}",
+      "deleteTab": "删除 {title}",
       "archived": "已归档",
       "revealArchived": "显示已归档标签页",
       "failedCreateChat": "创建聊天失败",

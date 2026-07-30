@@ -191,9 +191,32 @@ export function createImperativeChatAdapter(
 
   const handleTabClose = (tabId: TabId): Promise<void> =>
     runTabAction(async () => {
-      const tab = tabManager?.getTab(tabId);
+      const manager = tabManager;
+      if (!manager) return;
+      const tab = manager.getTab(tabId);
       const force = tab?.state.isStreaming ?? false;
-      await tabManager?.closeTab(tabId, force);
+      const closed = await manager.closeTab(tabId, force);
+      if (!closed) return;
+      publishTabSnapshot();
+    }, 'chat.tabs.failedCloseTab', 'tab close failed');
+
+  const handleTabDelete = (tabId: TabId): Promise<void> =>
+    runTabAction(async () => {
+      const manager = tabManager;
+      if (!manager) return;
+      const tab = manager.getTab(tabId);
+      const deletedSessionId = tab?.openSessionId ?? null;
+      const force = tab?.state.isStreaming ?? false;
+      const closed = await manager.closeTab(tabId, force);
+      if (!closed) return;
+
+      if (deletedSessionId) {
+        // Purge reads persisted bindings as well as live tabs. Commit the removal
+        // before marking the archived session file deleted so it is not protected
+        // by the 300 ms debounced tab-state write.
+        await persistTabStateImmediate(manager.getPersistedState());
+        await mountedPorts?.sessions.deleteSession(deletedSessionId);
+      }
       publishTabSnapshot();
     }, 'chat.tabs.failedCloseTab', 'tab close failed');
 
@@ -271,6 +294,7 @@ export function createImperativeChatAdapter(
       return {
         switchTab: tabId => handleTabClick(tabId),
         archiveTab: tabId => handleTabArchive(tabId),
+        deleteTab: tabId => handleTabDelete(tabId),
         reorderTabs: (openIds, archivedIds) => handleTabReorder(openIds, archivedIds),
         renameTab: (tabId, title) => handleTabRenameTitle(tabId, title),
         closeTab: tabId => handleTabClose(tabId),
