@@ -38,6 +38,7 @@
     "messageActions": {
       "copyAriaLabel": "Nachricht kopieren",
       "copyAgentResponseAriaLabel": "Diese Agentenantwort kopieren",
+      "copyConversationAsMarkdownAriaLabel": "Unterhaltung bis zu diesem Turn als Markdown kopieren",
       "scrollToRecentUserAriaLabel": "Zur neuesten Benutzernachricht scrollen"
     },
     "messageImages": {

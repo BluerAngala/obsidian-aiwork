@@ -38,6 +38,7 @@
     "messageActions": {
       "copyAriaLabel": "メッセージをコピー",
       "copyAgentResponseAriaLabel": "このエージェント応答をコピー",
+      "copyConversationAsMarkdownAriaLabel": "このターンまでの会話を Markdown としてコピー",
       "scrollToRecentUserAriaLabel": "最新のユーザーメッセージへスクロール"
     },
     "inlineContext": {

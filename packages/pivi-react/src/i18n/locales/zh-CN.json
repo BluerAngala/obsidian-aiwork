@@ -38,6 +38,7 @@
     "messageActions": {
       "copyAriaLabel": "复制消息",
       "copyAgentResponseAriaLabel": "复制这条助手回复",
+      "copyConversationAsMarkdownAriaLabel": "将截至此轮的对话复制为 Markdown",
       "scrollToRecentUserAriaLabel": "滚动到最近的用户消息"
     },
     "inlineContext": {

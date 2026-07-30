@@ -273,21 +273,25 @@ describe('MessageList', () => {
   });
 
   it('renders snapshot messages and delegates only eligible actions', async () => {
-    const actions = renderList();
+    const copyConversationAsMarkdown = jest.fn();
+    const actions = renderList({ copyConversationAsMarkdown });
 
     expect(screen.getByText('Question')).toBeInTheDocument();
     expect(screen.getByText('Answer')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Copy message' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Copy this agent response' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Copy conversation through this turn as Markdown' })).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Fork conversation' })).toHaveLength(1);
     expect(screen.getAllByRole('button', { name: 'Redo agent response' })).toHaveLength(1);
 
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Copy message' })));
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Copy conversation through this turn as Markdown' })));
     fireEvent.click(screen.getByRole('button', { name: 'Fork conversation' }));
     fireEvent.click(screen.getByRole('button', { name: 'Redo agent response' }));
     fireEvent.click(screen.getByRole('button', { name: 'Scroll to most recent user message' }));
 
     expect(actions.copy).toHaveBeenCalledWith(messages[0]);
+    expect(copyConversationAsMarkdown).toHaveBeenCalledWith('assistant-1');
     expect(actions.fork).toHaveBeenCalledWith('assistant-1');
     expect(actions.redo).toHaveBeenCalledWith('assistant-1');
     expect(actions.scrollToRecentUser).toHaveBeenCalledTimes(1);

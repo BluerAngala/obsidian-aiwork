@@ -38,6 +38,7 @@
     "messageActions": {
       "copyAriaLabel": "Copy message",
       "copyAgentResponseAriaLabel": "Copy this agent response",
+      "copyConversationAsMarkdownAriaLabel": "Copy conversation through this turn as Markdown",
       "scrollToRecentUserAriaLabel": "Scroll to most recent user message"
     },
     "messageImages": {

@@ -38,6 +38,7 @@
     "messageActions": {
       "copyAriaLabel": "Копировать сообщение",
       "copyAgentResponseAriaLabel": "Копировать этот ответ агента",
+      "copyConversationAsMarkdownAriaLabel": "Копировать разговор до этого хода как Markdown",
       "scrollToRecentUserAriaLabel": "К последнему сообщению пользователя"
     },
     "inlineContext": {

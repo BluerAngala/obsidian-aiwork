@@ -111,13 +111,16 @@ function UserContent({ contentAdapters, message }: { contentAdapters?: MessageCo
 }
 
 function MessageCopyButton({
-  role,
+  ariaLabel,
+  icon = 'copy',
   onCopy,
+  roleClass,
 }: {
-  role: ChatMessage['role'];
+  ariaLabel: string;
+  icon?: string;
   onCopy: () => void | Promise<void>;
+  roleClass: string;
 }) {
-  const t = useT();
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [copied, setCopied] = useState(false);
   useEffect(() => {
@@ -126,13 +129,6 @@ function MessageCopyButton({
     const timeout = ownerWindow.setTimeout(() => setCopied(false), COPY_FEEDBACK_MS);
     return () => ownerWindow.clearTimeout(timeout);
   }, [copied]);
-
-  const roleClass = role === 'user'
-    ? 'pivi-user-msg-copy-btn'
-    : 'pivi-assistant-msg-copy-btn';
-  const ariaLabel = role === 'assistant'
-    ? t('chat.messageActions.copyAgentResponseAriaLabel')
-    : t('chat.messageActions.copyAriaLabel');
 
   return (
     <button
@@ -144,7 +140,7 @@ function MessageCopyButton({
       ref={buttonRef}
       type="button"
     >
-      <PlatformIcon name={copied ? 'check' : 'copy'} />
+      <PlatformIcon name={copied ? 'check' : icon} />
     </button>
   );
 }
@@ -185,7 +181,10 @@ export const MessageView = memo(function MessageView({ actions, contentAdapters,
   const showScroll = !hideActions && message.role === 'assistant';
   const showRedo = !hideActions && message.role === 'assistant' && actions.canRedo(message.id);
   const showFork = !hideActions && message.role === 'assistant' && actions.canFork(message);
-  const showActions = canCopy || showScroll || showRedo || showFork;
+  const showMarkdownCopy = !hideActions
+    && message.role === 'assistant'
+    && actions.copyConversationAsMarkdown !== undefined;
+  const showActions = canCopy || showMarkdownCopy || showScroll || showRedo || showFork;
   const roleActionsClass = message.role === 'user'
     ? 'pivi-user-msg-actions'
     : 'pivi-assistant-msg-actions';
@@ -212,7 +211,27 @@ export const MessageView = memo(function MessageView({ actions, contentAdapters,
       {showActions ? (
         <div className={`pivi-message-actions ${roleActionsClass}`}>
           {canCopy
-            ? <MessageCopyButton role={message.role} onCopy={() => actions.copy(getLatestMessage())} />
+            ? (
+              <MessageCopyButton
+                ariaLabel={message.role === 'assistant'
+                  ? t('chat.messageActions.copyAgentResponseAriaLabel')
+                  : t('chat.messageActions.copyAriaLabel')}
+                onCopy={() => actions.copy(getLatestMessage())}
+                roleClass={message.role === 'user'
+                  ? 'pivi-user-msg-copy-btn'
+                  : 'pivi-assistant-msg-copy-btn'}
+              />
+            )
+            : null}
+          {showMarkdownCopy
+            ? (
+              <MessageCopyButton
+                ariaLabel={t('chat.messageActions.copyConversationAsMarkdownAriaLabel')}
+                icon="file-text"
+                onCopy={() => actions.copyConversationAsMarkdown?.(message.id)}
+                roleClass="pivi-conversation-markdown-copy-btn"
+              />
+            )
             : null}
           {showScroll
             ? (

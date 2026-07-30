@@ -38,6 +38,7 @@
     "messageActions": {
       "copyAriaLabel": "메시지 복사",
       "copyAgentResponseAriaLabel": "이 에이전트 응답 복사",
+      "copyConversationAsMarkdownAriaLabel": "이 턴까지의 대화를 Markdown으로 복사",
       "scrollToRecentUserAriaLabel": "가장 최근 사용자 메시지로 스크롤"
     },
     "inlineContext": {

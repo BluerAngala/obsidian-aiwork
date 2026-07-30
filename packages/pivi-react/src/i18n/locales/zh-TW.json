@@ -38,6 +38,7 @@
     "messageActions": {
       "copyAriaLabel": "複製訊息",
       "copyAgentResponseAriaLabel": "複製這則助手回覆",
+      "copyConversationAsMarkdownAriaLabel": "將截至此輪的對話複製為 Markdown",
       "scrollToRecentUserAriaLabel": "捲動到最近的使用者訊息"
     },
     "inlineContext": {
