@@ -622,30 +622,32 @@ export function IntegrationsSettingsSection({
       <>
         <SettingsActionFeedback feedback={loadFeedback} />
         {sections.map((section) => (
-          <SettingsSection key={section.id} title={section.heading}>
-            <p className="pivi-setting-description">{section.description}</p>
-            <div className="pivi-settings-action-group">
-              {section.actions.map((action) => (
-                <span className="pivi-settings-action-group" key={action.id}>
-                  <button
-                    type="button"
-                    disabled={pending || action.disabled}
-                    title={action.disabledReason}
-                    onClick={() => { void run(action.id); }}
-                  >
-                    {action.label}
-                  </button>
-                  <SettingsActionFeedback
-                    feedback={actionFeedback[action.id] ?? (
-                      action.disabledReason
-                        ? { kind: 'error' as const, message: action.disabledReason }
-                        : null
-                    )}
-                  />
-                </span>
-              ))}
-            </div>
-          </SettingsSection>
+          <SettingRow
+            key={section.id}
+            className="pivi-integration-setting pivi-setting-row--centered"
+            name={section.heading}
+            description={section.description}
+          >
+            {section.actions.map((action) => (
+              <span className="pivi-settings-action-group" key={action.id}>
+                <button
+                  type="button"
+                  disabled={pending || action.disabled}
+                  title={action.disabledReason}
+                  onClick={() => { void run(action.id); }}
+                >
+                  {action.label}
+                </button>
+                <SettingsActionFeedback
+                  feedback={actionFeedback[action.id] ?? (
+                    action.disabledReason
+                      ? { kind: 'error' as const, message: action.disabledReason }
+                      : null
+                  )}
+                />
+              </span>
+            ))}
+          </SettingRow>
         ))}
       </>
     );

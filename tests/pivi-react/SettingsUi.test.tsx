@@ -311,11 +311,13 @@ describe('React settings foundation', () => {
       runAction,
     };
     const { container } = render(withTestPresentationPlatform(<I18nProvider i18n={createI18n()}><SettingsRoot ports={ports} initialTab="general" /></I18nProvider>));
-    const styleHeading = await screen.findByRole('heading', { name: 'Style Settings' });
-    expect(styleHeading).toHaveClass('pivi-settings-section-heading');
+    const styleLabel = await screen.findByText('Style Settings');
     await screen.findByText('Connect Pivi to the note host.');
-    const integrationSetting = container.querySelector<HTMLElement>('.pivi-integration-setting.pivi-setting-stack');
-    expect(integrationSetting).toBeNull();
+    const integrationSetting = styleLabel.closest<HTMLElement>('.pivi-setting-row');
+    expect(integrationSetting).toHaveClass('pivi-integration-setting', 'pivi-setting-row--centered');
+    expect(integrationSetting?.querySelector('.pivi-setting-row__control'))
+      .toContainElement(screen.getByRole('button', { name: 'Connect' }));
+    expect(container.querySelector('.pivi-integration-setting.pivi-setting-stack')).toBeNull();
     expect(screen.getAllByRole('button', { name: 'Connect' })).toHaveLength(1);
     fireEvent.click(screen.getByRole('button', { name: 'Connect' }));
     await act(async () => undefined);
