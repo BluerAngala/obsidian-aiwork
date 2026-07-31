@@ -1,3 +1,4 @@
+import type { SessionSummary } from '@pivi/pivi-agent-core/foundation';
 import type { ChatPorts } from '@pivi/pivi-agent-core/runtime/chatPorts';
 import type { MessageViewportHandle } from '@pivi/pivi-react';
 import {
@@ -21,7 +22,12 @@ import { imperativeChatLogger, runTabAction } from '@/app/ui/imperativeChatTabAc
 import { createImperativeChatViewHandle } from '@/app/ui/imperativeChatViewHandle';
 import { QuoteBackgroundController } from '@/ui/chat/controllers/quoteBackground';
 import { TabManager } from '@/ui/chat/tabs/TabManager';
-import type { TabId, TabManagerViewHost } from '@/ui/chat/tabs/types';
+import {
+  generateTabId,
+  type PersistedTabManagerState,
+  type TabId,
+  type TabManagerViewHost,
+} from '@/ui/chat/tabs/types';
 import {
   cancelScheduledAnimationFrame,
   scheduleAnimationFrame,
@@ -60,6 +66,37 @@ export interface CreatedImperativeChatAdapter {
   getSurfaceActions(): ChatSurfaceActions;
   getWelcomeQuoteAdapter(): WelcomeQuoteAdapter;
   getViewHandle(): PiviChatViewHandle;
+}
+
+function reconcileDurableSessionTabs(
+  persistedState: PersistedTabManagerState | null,
+  sessions: readonly SessionSummary[],
+): PersistedTabManagerState | null {
+  const openTabs = [...(persistedState?.openTabs ?? [])];
+  const managedSessionFiles = new Set(openTabs.flatMap((tab) => (
+    typeof tab.sessionFile === 'string' ? [tab.sessionFile] : []
+  )));
+
+  for (const session of sessions) {
+    if (!session.sessionFile || managedSessionFiles.has(session.sessionFile)) continue;
+    openTabs.push({
+      tabId: generateTabId(),
+      sessionFile: session.sessionFile,
+      isArchived: true,
+    });
+    managedSessionFiles.add(session.sessionFile);
+  }
+
+  if (openTabs.length === 0) return null;
+
+  let activeTabId = persistedState?.activeTabId ?? null;
+  if (!openTabs.some((tab) => !tab.isArchived)) {
+    const tabId = generateTabId();
+    openTabs.unshift({ tabId });
+    activeTabId = tabId;
+  }
+
+  return { openTabs, activeTabId };
 }
 
 export function createImperativeChatAdapter(
@@ -386,8 +423,11 @@ export function createImperativeChatAdapter(
         perfRecorder,
       );
 
-      const persistedState = await loadPersistedTabState();
-      if (persistedState?.openTabs.length) {
+      const persistedState = reconcileDurableSessionTabs(
+        await loadPersistedTabState(),
+        ports.sessions.listSessions(),
+      );
+      if (persistedState) {
         await tabManager.restoreState(persistedState);
       } else {
         await tabManager.createTab();

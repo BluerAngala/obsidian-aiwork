@@ -67,6 +67,7 @@ import {
   createSessionStore,
   createSharedStorage,
 } from "@/app/serviceGraph";
+import { readSessionTranscript } from "@/app/sessionTranscript";
 import {
   applyEnvironmentVariablesBatch as applyEnvironmentVariablesBatchForPlugin,
   getActiveEnvironmentVariables as getActiveEnvironmentVariablesFromSettings,
@@ -130,6 +131,14 @@ export default class PiviPlugin extends Plugin implements PiviPluginHost {
     this.app.secretStorage,
   );
   readonly sessionRecovery = {
+    read: async (sessionFile: string) => {
+      const summary = this.sessions.find((session) => session.sessionFile === sessionFile);
+      if (!summary) throw new Error(`Session not found: ${sessionFile}`);
+      return readSessionTranscript({
+        sessionFile,
+        store: this.requireSessionStore(),
+      });
+    },
     listDeleted: () => this.runDeletedSessionOperation(() => sessionApi.listDeletedSessions(
       this.sessionContext(),
       this.settings.deletedSessionRetentionDays,

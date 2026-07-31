@@ -49,6 +49,8 @@ function iconForToken(token: ContextBadgeToken): ContextBadgeIcon {
       return { name: 'image-plus' };
     case 'agent':
       return { name: 'bot' };
+    case 'session':
+      return { name: 'messages-square' };
     case 'inline-context':
     case 'selected-text-template':
       return { name: 'text-select' };
@@ -138,6 +140,19 @@ export function createContextBadgeViewModel(
         tooltip: t('chat.contextBadges.agentTooltip', { agent: token.agentId }),
         icon: iconForToken(token),
         tone: 'tool',
+        clickable: false,
+        removable: false,
+        disabled: true,
+      };
+    case 'session':
+      return {
+        kind: token.kind,
+        token: token.token,
+        label: token.title,
+        tooltip: t('chat.contextBadges.sessionTooltip', { session: token.title }),
+        ariaLabel: t('chat.contextBadges.sessionAriaLabel', { session: token.title }),
+        icon: iconForToken(token),
+        tone: 'context',
         clickable: false,
         removable: false,
         disabled: true,

@@ -19,6 +19,13 @@ export interface ChatTurnRequest {
   inlineContexts?: InlineContextReference[];
   externalContextPaths?: string[];
   enabledMcpServers?: Set<string>;
+  referencedSessions?: ReferencedSession[];
+}
+
+export interface ReferencedSession {
+  sessionId: string;
+  sessionFile: string;
+  title: string;
 }
 
 export interface PreparedChatTurn {

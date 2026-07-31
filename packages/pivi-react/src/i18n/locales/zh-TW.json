@@ -257,6 +257,8 @@
       "skillTooltip": "技能：{skill}",
       "toolTooltip": "工具：{tool}",
       "agentTooltip": "代理程式：{agent}",
+      "sessionTooltip": "工作階段：{session}",
+      "sessionAriaLabel": "引用的工作階段：{session}",
       "selectedText": "所選文字",
       "selectedTextTemplateTooltip": "執行此命令時的所選文字",
       "removeSelectedTextTemplate": "移除所選文字變數",

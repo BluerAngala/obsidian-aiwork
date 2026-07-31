@@ -257,6 +257,8 @@
       "skillTooltip": "Навык: {skill}",
       "toolTooltip": "Инструмент: {tool}",
       "agentTooltip": "Агент: {agent}",
+      "sessionTooltip": "Сессия: {session}",
+      "sessionAriaLabel": "Упомянутая сессия: {session}",
       "selectedText": "Выделенный текст",
       "selectedTextTemplateTooltip": "Текст, выделенный при запуске этой команды",
       "removeSelectedTextTemplate": "Удалить переменную выделенного текста",

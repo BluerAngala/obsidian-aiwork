@@ -32,6 +32,15 @@ export interface TurnSubmissionSources {
   } | null;
 }
 
+function collectReferencedSessions(
+  manager: FileContextManager | null,
+  content: string,
+): ChatTurnRequest['referencedSessions'] {
+  return typeof manager?.collectReferencedSessions === 'function'
+    ? manager.collectReferencedSessions(content)
+    : undefined;
+}
+
 /** Build display text and provider-neutral turn request from composer state. */
 export function buildTurnSubmission(
   sources: TurnSubmissionSources,
@@ -84,6 +93,9 @@ export function buildTurnSubmission(
       canvasSelection: canvasContext,
       externalContextPaths: externalContextPaths && externalContextPaths.length > 0
         ? externalContextPaths
+        : undefined,
+      referencedSessions: !isCompact
+        ? collectReferencedSessions(fileContextManager, promptContent)
         : undefined,
       // Settings-enabled MCP servers are active by default; slash mentions remain optional emphasis.
     },

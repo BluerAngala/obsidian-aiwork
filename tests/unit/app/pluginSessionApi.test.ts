@@ -8,6 +8,7 @@ import {
   purgeDeletedSessionFiles,
   restoreDeletedSession,
 } from '@/app/pluginSessionApi';
+import { readSessionTranscript } from '@/app/sessionTranscript';
 
 function createView(overrides: {
   resetSession?: jest.Mock<Promise<void>, [string]>;
@@ -49,6 +50,60 @@ function createContext(overrides: Partial<PluginSessionContext> = {}): PluginSes
 }
 
 describe('plugin session API semantic view maintenance', () => {
+  it('formats a paged session as formal conversation only', async () => {
+    const ref = {
+      sessionId: 'session-1',
+      sessionFile: '.pivi/sessions/one.jsonl',
+    };
+    const readOlder = jest.fn(async () => ({
+      messages: [{
+        id: 'rebuilt',
+        role: 'user' as const,
+        content: 'internal context',
+        isRebuiltContext: true,
+        timestamp: 1,
+      }, {
+        id: 'user-1',
+        role: 'user' as const,
+        content: 'Question',
+        timestamp: 2,
+      }],
+      hasOlder: false,
+      totalMessageCount: 4,
+      olderMessageCount: 0,
+      olderUserMessageCount: 0,
+    }));
+    const transcript = await readSessionTranscript({
+      sessionFile: ref.sessionFile,
+      store: {
+        open: jest.fn(async () => ref),
+        openRecent: jest.fn(async () => ({
+          messages: [{
+            id: 'agent-1',
+            role: 'assistant',
+            content: 'fallback must not leak',
+            contentBlocks: [
+              { type: 'thinking', content: 'private reasoning' },
+              { type: 'tool_use', toolId: 'tool-1' },
+              { type: 'text', content: 'Answer' },
+            ],
+            timestamp: 3,
+          }],
+          hasOlder: true,
+          totalMessageCount: 4,
+          olderMessageCount: 2,
+          olderUserMessageCount: 2,
+        })),
+        readOlder,
+      } as never,
+    });
+
+    expect(transcript).toBe('## User\n\nQuestion\n\n## Agent\n\nAnswer');
+    expect(transcript).not.toContain('private reasoning');
+    expect(transcript).not.toContain('internal context');
+    expect(readOlder).toHaveBeenCalledWith(ref, 'agent-1', 200);
+  });
+
   it('resets a deleted open session through every mounted view handle', async () => {
     const firstReset = jest.fn(async (_openSessionId: string) => undefined);
     const secondReset = jest.fn(async (_openSessionId: string) => undefined);

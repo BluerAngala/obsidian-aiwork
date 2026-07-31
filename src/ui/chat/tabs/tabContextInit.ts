@@ -33,6 +33,7 @@ export function initializeContextManagers(
         tab.ui.externalContextSelector?.getExternalContexts() || [],
       getSkillNames: () =>
         new Set(ports.catalog.listSkills().map((skill) => skill.name)),
+      getSessions: () => ports.sessions.listSessions(),
     },
     dom.inputContainerEl,
   );

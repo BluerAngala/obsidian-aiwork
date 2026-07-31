@@ -12,12 +12,12 @@ export function createSessionsTool(deps: ObsidianToolDeps): ToolSpec {
   return {
     name: TOOL_PIVI_SESSIONS,
     label: 'Pivi Sessions',
-    description: 'List recoverable deleted Pivi sessions or restore one and open it in a visible Pivi tab.',
+    description: 'Read a durable Pivi session, list recoverable deleted sessions, or restore one and open it in a visible Pivi tab.',
     parameters: {
       type: 'object',
       properties: {
-        action: { type: 'string', enum: ['list_deleted', 'restore'] },
-        sessionFile: { type: 'string', description: 'Required for restore.' },
+        action: { type: 'string', enum: ['read', 'list_deleted', 'restore'] },
+        sessionFile: { type: 'string', description: 'Required for read and restore.' },
       },
       required: ['action'],
       additionalProperties: false,
@@ -28,11 +28,14 @@ export function createSessionsTool(deps: ObsidianToolDeps): ToolSpec {
         const sessions = await recovery.listDeleted();
         return textResult(JSON.stringify({ sessions }, null, 2), { action: 'list_deleted' });
       }
-      if (input.action !== 'restore') {
-        throw new Error('Invalid sessions action: must be list_deleted or restore.');
+      if (input.action !== 'read' && input.action !== 'restore') {
+        throw new Error('Invalid sessions action: must be read, list_deleted, or restore.');
       }
       if (typeof input.sessionFile !== 'string' || input.sessionFile.trim().length === 0) {
-        throw new Error('sessionFile is required for restore action.');
+        throw new Error('sessionFile is required for read and restore actions.');
+      }
+      if (input.action === 'read') {
+        return textResult(await recovery.read(input.sessionFile), { action: 'read' });
       }
       const restored = await recovery.restore(input.sessionFile);
       return textResult(JSON.stringify(restored, null, 2), { action: 'restore' });

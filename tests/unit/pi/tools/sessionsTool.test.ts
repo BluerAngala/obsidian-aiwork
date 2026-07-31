@@ -1,6 +1,7 @@
 import { createSessionsTool, type ObsidianToolDeps } from '@pivi/obsidian-tools';
 
 function makeDeps() {
+  const read = jest.fn(async () => '## User\n\nQuestion\n\n## Agent\n\nAnswer');
   const listDeleted = jest.fn(async () => [{
     sessionFile: '.pivi/sessions/deleted.jsonl',
     deletedAt: 100,
@@ -13,9 +14,9 @@ function makeDeps() {
     sessionFile,
   }));
   const deps = {
-    sessionRecovery: { listDeleted, restore },
+    sessionRecovery: { read, listDeleted, restore },
   } as unknown as ObsidianToolDeps;
-  return { deps, listDeleted, restore };
+  return { deps, read, listDeleted, restore };
 }
 
 function getText(result: unknown): string {
@@ -24,6 +25,18 @@ function getText(result: unknown): string {
 }
 
 describe('createSessionsTool', () => {
+  it('reads one durable session by exact file path', async () => {
+    const { deps, read } = makeDeps();
+
+    const result = await createSessionsTool(deps).execute('call-1', {
+      action: 'read',
+      sessionFile: '.pivi/sessions/active.jsonl',
+    });
+
+    expect(read).toHaveBeenCalledWith('.pivi/sessions/active.jsonl');
+    expect(getText(result)).toBe('## User\n\nQuestion\n\n## Agent\n\nAnswer');
+  });
+
   it('lists recoverable sessions with their expiry metadata', async () => {
     const { deps, listDeleted } = makeDeps();
 

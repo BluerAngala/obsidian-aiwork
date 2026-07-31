@@ -15,6 +15,7 @@ export interface ChatTurnRequest {
   inlineContexts?: InlineContextReference[];
   externalContextPaths?: string[];
   enabledMcpServers?: Set<string>;
+  referencedSessions?: Array<{ sessionId: string; sessionFile: string; title: string }>;
 }
 
 export interface BuiltTurnPrompt {

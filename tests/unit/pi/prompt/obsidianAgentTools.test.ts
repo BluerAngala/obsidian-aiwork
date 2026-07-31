@@ -22,6 +22,7 @@ import {
   TOOL_OBSIDIAN_READ_EXTERNAL,
   TOOL_OBSIDIAN_SEARCH,
   TOOL_OBSIDIAN_TAGS,
+  TOOL_PIVI_SESSIONS,
   TOOL_SPAWN_AGENT,
 } from '@pivi/pivi-agent-core/tools';
 
@@ -99,6 +100,13 @@ describe('obsidian registered tool prompt section', () => {
 
     expect(section).toContain('![](assets/image.png)');
     expect(section).not.toContain('![[image]]');
+  });
+
+  it('documents every Pivi Sessions action and read requirement', () => {
+    const section = buildSection({ obsidianTools: [TOOL_PIVI_SESSIONS] });
+
+    expect(section).toContain('read|list_deleted|restore');
+    expect(section).toContain('`sessionFile` required for read/restore');
   });
 
   it('documents obsidian_history and its recovery workflow', () => {

@@ -14,6 +14,7 @@ export type MentionBadgeKind =
   | 'skill'
   | 'tool'
   | 'agent'
+  | 'session'
   | 'inline-context'
   | 'selected-text-template';
 
@@ -62,6 +63,14 @@ export interface AgentMentionPart {
   label: string;
 }
 
+export interface SessionMentionPart {
+  kind: 'session';
+  raw: string;
+  sessionId: string;
+  sessionFile: string;
+  title: string;
+}
+
 export interface InlineContextMentionPart {
   kind: 'inline-context';
   raw: string;
@@ -82,6 +91,7 @@ export type MentionBadgePart =
   | SkillMentionPart
   | ToolMentionPart
   | AgentMentionPart
+  | SessionMentionPart
   | InlineContextMentionPart
   | SelectedTextTemplateMentionPart;
 
@@ -119,6 +129,8 @@ export interface MentionBadgeParseContext {
   mcpServerNames: Set<string>;
   skillCommandNames?: Set<string>;
   externalContextEntries?: ExternalContextDisplayEntry[];
+  /** Chat-only durable Session metadata. Omit from Settings mention editors. */
+  sessions?: ReadonlyArray<{ id: string; title: string; sessionFile?: string }>;
   /** Render command-template variables as editable badges. Settings editors only. */
   parseWorkspaceCommandVariables?: boolean;
 }

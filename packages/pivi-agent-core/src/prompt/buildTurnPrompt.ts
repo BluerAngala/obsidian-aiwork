@@ -81,6 +81,13 @@ function appendTurnContexts(prompt: string, request: ChatTurnRequest): string {
     result = appendContextFiles(result, contextFiles);
   }
 
+  if (request.referencedSessions && request.referencedSessions.length > 0) {
+    const rows = request.referencedSessions.map((session) =>
+      `  <session id="${escapeXmlAttribute(session.sessionId)}" file="${escapeXmlAttribute(session.sessionFile)}" title="${escapeXmlAttribute(session.title)}" />`,
+    );
+    result = `${result}\n\n<context_sessions>\n${rows.join('\n')}\n</context_sessions>`;
+  }
+
   return result;
 }
 

@@ -6,7 +6,7 @@ import {
   type ChatPerfRecorder,
   type ChatTabSnapshotItem,
 } from '@pivi/pivi-react/store';
-import type { ChatMessage } from '@pivi/pivi-agent-core/foundation';
+import type { ChatMessage, SessionSummary } from '@pivi/pivi-agent-core/foundation';
 import type { ChatPorts } from '@pivi/pivi-agent-core/runtime/chatPorts';
 import { Component, type Editor, type MarkdownView } from 'obsidian';
 
@@ -202,6 +202,7 @@ function createPresentationTab(uiStore: ChatUiStore): TestTab {
 
 type HarnessOptions = {
   persistedState?: PersistedTabManagerState | null;
+  sessions?: SessionSummary[];
   ownerWindow?: Pick<Window, 'cancelAnimationFrame' | 'requestAnimationFrame'> | null;
 };
 
@@ -258,7 +259,13 @@ function createHarness(options: HarnessOptions = {}) {
     await adapter.mount(
       { empty: jest.fn() } as unknown as HTMLElement,
       {} as never,
-      { sessions: { deleteSession, deleteSessionFile } } as unknown as ChatPorts,
+      {
+        sessions: {
+          deleteSession,
+          deleteSessionFile,
+          listSessions: () => options.sessions ?? [],
+        },
+      } as unknown as ChatPorts,
     );
   };
 
@@ -915,6 +922,60 @@ describe('imperative chat semantic view handle', () => {
     expect(blank.manager.restoreState).not.toHaveBeenCalled();
     expect(blank.manager.createTab).toHaveBeenCalledTimes(1);
     expect(blank.manager.prefetchSlashCommandCaches).toHaveBeenCalledTimes(1);
+  });
+
+  it('restores every unbound durable Session as an archived tab', async () => {
+    const activeSessionFile = '.pivi/sessions/active.jsonl';
+    const archivedSessionFile = '.pivi/sessions/legacy-unbound.jsonl';
+    const persistedState: PersistedTabManagerState = {
+      openTabs: [{ tabId: 'active-tab', sessionFile: activeSessionFile }],
+      activeTabId: 'active-tab',
+    };
+    const harness = createHarness({
+      persistedState,
+      sessions: [{
+        id: 'active-session',
+        title: 'Active',
+        sessionFile: activeSessionFile,
+      }, {
+        id: 'legacy-session',
+        title: 'Legacy',
+        sessionFile: archivedSessionFile,
+      }] as SessionSummary[],
+    });
+
+    await harness.mount();
+
+    expect(harness.manager.restoreState).toHaveBeenCalledWith({
+      activeTabId: 'active-tab',
+      openTabs: [
+        { tabId: 'active-tab', sessionFile: activeSessionFile },
+        expect.objectContaining({
+          sessionFile: archivedSessionFile,
+          isArchived: true,
+        }),
+      ],
+    });
+  });
+
+  it('keeps all durable Sessions archived when no active tab was persisted', async () => {
+    const sessionFile = '.pivi/sessions/legacy-unbound.jsonl';
+    const harness = createHarness({
+      sessions: [{
+        id: 'legacy-session',
+        title: 'Legacy',
+        sessionFile,
+      }] as SessionSummary[],
+    });
+
+    await harness.mount();
+
+    const restoredState = harness.manager.restoreState.mock.calls[0]?.[0] as PersistedTabManagerState;
+    expect(restoredState.activeTabId).toBe(restoredState.openTabs[0]?.tabId);
+    expect(restoredState.openTabs).toEqual([
+      expect.not.objectContaining({ isArchived: true }),
+      expect.objectContaining({ sessionFile, isArchived: true }),
+    ]);
   });
 
   it('activates the current tab snapshot, portal targets, and store relay', async () => {

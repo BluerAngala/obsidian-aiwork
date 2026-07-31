@@ -257,6 +257,8 @@
       "skillTooltip": "スキル: {skill}",
       "toolTooltip": "ツール: {tool}",
       "agentTooltip": "エージェント: {agent}",
+      "sessionTooltip": "セッション: {session}",
+      "sessionAriaLabel": "参照セッション: {session}",
       "selectedText": "選択したテキスト",
       "selectedTextTemplateTooltip": "このコマンドの実行時に選択されているテキスト",
       "removeSelectedTextTemplate": "選択テキスト変数を削除",

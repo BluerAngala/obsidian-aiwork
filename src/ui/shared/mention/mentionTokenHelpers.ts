@@ -38,5 +38,7 @@ export function getMentionItemWidthText(item: MentionItem): string {
       return item.name;
     case 'selected-text-template':
       return item.name;
+    case 'session':
+      return `${item.name} ${item.preview || item.sessionFile}`;
   }
 }

@@ -12,6 +12,11 @@ import { getOwnerWindowEventConstructor } from '../utils/obsidianPrivateApi';
 import type { ComposerInput } from './composerInputTypes';
 import { buildVaultMentionItems } from './mentionDropdownVaultItems';
 import {
+  buildSessionMentionItems,
+  findSessionMentionQuery,
+  type SessionMentionProvider,
+} from './mentionSessionItems';
+import {
   DEFAULT_MENTION_DROPDOWN_MAX_WIDTH,
   ESTIMATED_MENTION_TEXT_CHAR_WIDTH,
   EXPANDED_MENTION_DROPDOWN_MAX_WIDTH,
@@ -27,16 +32,16 @@ import {
   type MentionItem,
 } from './types';
 
+/* eslint-disable max-lines -- The shared controller intentionally owns one keyboard/overlay lifecycle. */
+
 type MentionInputElement = ComposerInput | HTMLTextAreaElement | HTMLInputElement;
 const MENTION_FILTER_DEBOUNCE_MS = 40;
-
 function getTextOffsetClientRect(inputEl: MentionInputElement, offset: number): DOMRect | null {
   if ('getTextOffsetClientRect' in inputEl && typeof inputEl.getTextOffsetClientRect === 'function') {
     return inputEl.getTextOffsetClientRect(offset);
   }
   return null;
 }
-
 export type { AgentMentionProvider };
 
 export interface MentionDropdownOptions {
@@ -44,7 +49,6 @@ export interface MentionDropdownOptions {
   /** Exposes command-template variables. Enable only for the Settings command editor. */
   suggestSelectedTextTemplate?: boolean;
 }
-
 export interface MentionDropdownCallbacks {
   onAttachFile: (path: string) => void;
   onMcpMentionChange?: (servers: Set<string>) => void;
@@ -60,11 +64,9 @@ export interface MentionDropdownCallbacks {
   getActiveVaultFilePath?: () => string | null;
   normalizePathForVault: (path: string | undefined | null) => string | null;
 }
-
 export interface McpMentionProvider {
   getContextSavingServers: () => Array<{ name: string }>;
 }
-
 export class MentionDropdownController {
   private containerEl: HTMLElement;
   private inputEl: MentionInputElement;
@@ -76,16 +78,16 @@ export class MentionDropdownController {
   private activeAgentFilter = false;
   private mcpManager: McpMentionProvider | null = null;
   private agentService: AgentMentionProvider | null = null;
+  private sessionProvider: SessionMentionProvider | null = null;
+  private sessionMode = false;
   private fixed: boolean;
   private suggestSelectedTextTemplate: boolean;
   private debounceTimer: number | null = null;
   private pendingSearchText: string | null = null;
   private overlayListenersAttached = false;
-
   private get ownerWindow(): Window {
     return getActiveWindow(this.containerEl);
   }
-
   constructor(
     containerEl: HTMLElement,
     inputEl: MentionInputElement,
@@ -106,22 +108,21 @@ export class MentionDropdownController {
       fixedClassName: 'pivi-mention-dropdown-fixed',
     });
   }
-
   setMcpManager(manager: McpMentionProvider | null): void {
     this.mcpManager = manager;
   }
-
   setAgentService(service: AgentMentionProvider | null): void {
     if (this.agentService !== service && this.dropdown.isVisible()) {
       this.hide();
     }
     this.agentService = service;
   }
-
+  setSessionProvider(provider: SessionMentionProvider | null): void {
+    this.sessionProvider = provider;
+  }
   isVisible(): boolean {
     return this.dropdown.isVisible();
   }
-
   hide(): void {
     if (this.debounceTimer !== null) {
       getActiveWindow(this.containerEl).clearTimeout(this.debounceTimer);
@@ -137,7 +138,6 @@ export class MentionDropdownController {
   containsElement(el: Node): boolean {
     return this.dropdown.getElement()?.contains(el) ?? false;
   }
-
   destroy(): void {
     if (this.debounceTimer !== null) {
       getActiveWindow(this.containerEl).clearTimeout(this.debounceTimer);
@@ -172,9 +172,17 @@ export class MentionDropdownController {
 
     const text = this.inputEl.value;
     this.updateMcpMentionsFromText(text);
-
     const cursorPos = this.inputEl.selectionStart || 0;
     const textBeforeCursor = text.substring(0, cursorPos);
+    const sessionMention = findSessionMentionQuery(textBeforeCursor);
+    if (sessionMention) {
+      this.mentionStartIndex = sessionMention.startIndex;
+      this.sessionMode = true;
+      this.pendingSearchText = null;
+      this.showMentionDropdown(sessionMention.query);
+      return;
+    }
+    this.sessionMode = false;
     const lastAtIndex = textBeforeCursor.lastIndexOf('@');
 
     if (lastAtIndex === -1) {
@@ -253,11 +261,16 @@ export class MentionDropdownController {
     const searchLower = searchText.toLowerCase();
     this.filteredMentionItems = [];
 
+    if (this.sessionMode) {
+      this.filteredMentionItems.push(...buildSessionMentionItems(this.sessionProvider, searchLower));
+      this.selectedMentionIndex = 0;
+      this.renderMentionDropdown();
+      return;
+    }
     const externalContexts = this.callbacks.getExternalContexts() || [];
     const contextEntries = buildExternalContextDisplayEntries(externalContexts);
 
     const isFilterSearch = searchText.includes('/');
-
     if (isFilterSearch && searchLower.startsWith('agents/')) {
       this.activeAgentFilter = true;
       const agentSearchText = searchText.substring('agents/'.length).toLowerCase();
@@ -279,7 +292,6 @@ export class MentionDropdownController {
       this.renderMentionDropdown();
       return;
     }
-
     this.activeAgentFilter = false;
 
     const selectedTextLabel = t('chat.contextBadges.selectedText');
@@ -356,6 +368,7 @@ export class MentionDropdownController {
           case 'agent-folder': return 'pivi-mention-item--agent-folder';
           case 'context-folder': return 'pivi-mention-item--context-folder';
           case 'selected-text-template': return 'pivi-mention-item--selected-text-template';
+          case 'session': return 'pivi-mention-item--session';
         }
       },
       renderItem: (item, itemEl) => {
@@ -376,6 +389,9 @@ export class MentionDropdownController {
             break;
           case 'selected-text-template':
             setIcon(iconEl, 'text-select');
+            break;
+          case 'session':
+            setIcon(iconEl, 'messages-square');
             break;
         }
 
@@ -423,6 +439,12 @@ export class MentionDropdownController {
             textEl.createSpan({
               cls: 'pivi-mention-name pivi-mention-name-selected-text-template',
             }).setText(item.name);
+            break;
+          case 'session':
+            textEl.createSpan({ cls: 'pivi-mention-name' }).setText(item.name);
+            textEl.createSpan({
+              cls: 'pivi-mention-path pivi-mention-path-secondary',
+            }).setText(item.preview || item.sessionFile);
             break;
         }
       },
@@ -649,9 +671,14 @@ export class MentionDropdownController {
       case 'selected-text-template':
         this.insertReplacement(beforeAt, `${SELECTED_TEXT_TEMPLATE_TOKEN} `, afterCursor);
         break;
+      case 'session':
+        this.insertReplacement(beforeAt, `@@{${selectedItem.id}} `, afterCursor);
+        break;
     }
 
     this.hide();
     this.inputEl.focus();
   }
 }
+
+/* eslint-enable max-lines -- End of the intentionally unified controller lifecycle. */

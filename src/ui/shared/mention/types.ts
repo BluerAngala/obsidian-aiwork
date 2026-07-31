@@ -55,10 +55,19 @@ export interface SelectedTextTemplateMentionItem {
   name: string;
 }
 
+export interface SessionMentionItem {
+  type: 'session';
+  id: string;
+  name: string;
+  preview: string;
+  sessionFile: string;
+}
+
 export type MentionItem =
   | FileMentionItem
   | FolderMentionItem
   | ContextFolderMentionItem
   | AgentMentionItem
   | AgentFolderMentionItem
+  | SessionMentionItem
   | SelectedTextTemplateMentionItem;

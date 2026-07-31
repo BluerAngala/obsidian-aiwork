@@ -56,6 +56,7 @@ export interface ObsidianToolDeps {
 }
 
 export interface SessionRecoveryPort {
+  read(sessionFile: string): Promise<string>;
   listDeleted(): Promise<Array<{
     sessionFile: string;
     deletedAt: number;

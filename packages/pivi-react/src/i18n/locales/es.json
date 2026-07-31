@@ -257,6 +257,8 @@
       "skillTooltip": "Habilidad: {skill}",
       "toolTooltip": "Herramienta: {tool}",
       "agentTooltip": "Agente: {agent}",
+      "sessionTooltip": "Sesión: {session}",
+      "sessionAriaLabel": "Sesión referenciada: {session}",
       "selectedText": "Texto seleccionado",
       "selectedTextTemplateTooltip": "Texto seleccionado al ejecutar este comando",
       "removeSelectedTextTemplate": "Eliminar variable de texto seleccionado",
