@@ -10,7 +10,7 @@ Copy [000-template.md](000-template.md) to start a spec.
 
 | Spec | Created | Outcome |
 |---|---|---|
-| _None_ | — | — |
+| [040-agent-managed-pivi-capabilities.md](040-agent-managed-pivi-capabilities.md) | 2026-07-31 | Agent-managed MCP, pinned-package Skills, and Pivi Commands with one-shot confirmation and automatic transactional refresh. |
 
 ## Archived specs
 
