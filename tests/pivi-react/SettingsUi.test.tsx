@@ -211,11 +211,12 @@ describe('React settings foundation', () => {
     expect(screen.getByRole('combobox', { name: 'Language' })).toHaveValue('en');
   });
 
-  it('uses the concise session-file delete action', () => {
+  it('labels permanent session deletion clearly and centers its action row', () => {
     render(withTestPresentationPlatform(<I18nProvider i18n={createI18n()}><SettingsRoot ports={createPorts()} /></I18nProvider>));
 
-    expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Delete removed files' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Delete permanently' })).toBeInTheDocument();
+    expect(screen.getByText('Permanently delete removed sessions').closest('.pivi-setting-row'))
+      .toHaveClass('pivi-setting-row--centered');
   });
 
   it('persists the deleted-session retention period in days', async () => {
@@ -838,14 +839,14 @@ describe('React settings foundation', () => {
     const purgeDeletedSessionFiles = jest.fn(() => new Promise<number>((resolvePromise) => { resolve = resolvePromise; }));
     const ports = createPorts({ purgeDeletedSessionFiles });
     render(withTestPresentationPlatform(<I18nProvider i18n={createI18n()}><SettingsRoot ports={ports} /></I18nProvider>));
-    const button = screen.getByRole('button', { name: 'Delete' });
+    const button = screen.getByRole('button', { name: 'Delete permanently' });
     fireEvent.click(button);
-    const dialog = screen.getByRole('dialog', { name: 'Delete removed session files?' });
-    const confirmDelete = within(dialog).getByRole('button', { name: 'Delete' });
+    const dialog = screen.getByRole('dialog', { name: 'Permanently delete removed sessions?' });
+    const confirmDelete = within(dialog).getByRole('button', { name: 'Delete permanently' });
     fireEvent.click(confirmDelete);
     expect(confirmDelete).toBeDisabled();
     await act(async () => resolve(3));
-    expect(ports.feedback.notify).toHaveBeenCalledWith('Deleted 3 removed session file(s).');
+    expect(ports.feedback.notify).toHaveBeenCalledWith('Permanently deleted 3 removed session file(s).');
   });
 
   it('requires Apply before environment changes are persisted', async () => {

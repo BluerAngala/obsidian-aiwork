@@ -530,7 +530,11 @@ export function SessionFilesSettingsSection({ actions, feedback, general, saveGe
           }}
         />
       </SettingRow>
-      <SettingRow name={t('settings.sessionFiles.deleteRemoved.name')} description={t('settings.sessionFiles.deleteRemoved.desc')}>
+      <SettingRow
+        className="pivi-setting-row--centered"
+        name={t('settings.sessionFiles.deleteRemoved.name')}
+        description={t('settings.sessionFiles.deleteRemoved.desc')}
+      >
         <button className="pivi-button--danger" type="button" disabled={pending} onClick={() => setConfirmOpen(true)}>
           {t('settings.sessionFiles.deleteRemoved.button')}
         </button>

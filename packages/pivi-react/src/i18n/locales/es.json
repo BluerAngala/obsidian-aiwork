@@ -502,13 +502,13 @@
       "heading": "Archivos de sesión",
       "retention": { "name": "Conservar sesiones eliminadas durante", "desc": "Días antes de eliminar permanentemente los archivos de sesión." },
       "deleteRemoved": {
-        "name": "Eliminar archivos de sesión quitados",
-        "desc": "Elimina permanentemente solo los archivos de sesión quitados del historial y que no están archivados ni abiertos.",
-        "button": "Eliminar",
-        "success": "Se eliminaron {count} archivo(s) de sesión quitado(s).",
-        "failed": "Error al eliminar archivos de sesión quitados",
-        "confirmTitle": "¿Eliminar archivos de sesión retirados?",
-        "confirmDescription": "Esto elimina permanentemente solo los archivos de sesión retirados del historial que no están archivados ni abiertos."
+        "name": "Eliminar permanentemente las sesiones quitadas",
+        "desc": "Elimina las sesiones quitadas mediante Eliminar. Las sesiones abiertas y archivadas no se ven afectadas.",
+        "button": "Eliminar permanentemente",
+        "success": "Se eliminaron permanentemente {count} archivo(s) de sesión quitado(s).",
+        "failed": "Error al eliminar permanentemente las sesiones quitadas",
+        "confirmTitle": "¿Eliminar permanentemente las sesiones quitadas?",
+        "confirmDescription": "Esto elimina las sesiones quitadas mediante Eliminar. Las sesiones abiertas y archivadas no se verán afectadas."
       }
     },
     "sharedEnvironment": {

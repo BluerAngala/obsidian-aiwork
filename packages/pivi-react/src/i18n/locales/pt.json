@@ -502,13 +502,13 @@
       "heading": "Arquivos de sessão",
       "retention": { "name": "Manter sessões removidas por", "desc": "Dias antes de excluir permanentemente os arquivos de sessão." },
       "deleteRemoved": {
-        "name": "Excluir arquivos de sessão removidos",
-        "desc": "Exclui permanentemente apenas arquivos de sessão removidos do histórico, não arquivados e não abertos.",
-        "button": "Excluir",
-        "success": "Excluído(s) {count} arquivo(s) de sessão removido(s).",
-        "failed": "Falha ao excluir arquivos de sessão removidos",
-        "confirmTitle": "Excluir arquivos de sessão removidos?",
-        "confirmDescription": "Isso exclui permanentemente apenas arquivos de sessão removidos do histórico que não estão arquivados nem abertos."
+        "name": "Excluir permanentemente as sessões removidas",
+        "desc": "Exclui as sessões removidas com a ação Excluir. As sessões abertas e arquivadas não são afetadas.",
+        "button": "Excluir permanentemente",
+        "success": "Excluído(s) permanentemente {count} arquivo(s) de sessão removido(s).",
+        "failed": "Falha ao excluir permanentemente as sessões removidas",
+        "confirmTitle": "Excluir permanentemente as sessões removidas?",
+        "confirmDescription": "Isso exclui as sessões removidas com a ação Excluir. As sessões abertas e arquivadas não serão afetadas."
       }
     },
     "sharedEnvironment": {

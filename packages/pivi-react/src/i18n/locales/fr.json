@@ -502,13 +502,13 @@
       "heading": "Fichiers de session",
       "retention": { "name": "Conserver les sessions supprimées pendant", "desc": "Nombre de jours avant leur suppression définitive." },
       "deleteRemoved": {
-        "name": "Supprimer les fichiers de session retirés",
-        "desc": "Supprime définitivement uniquement les fichiers de session retirés de l’historique, non archivés et non ouverts.",
-        "button": "Supprimer",
-        "success": "{count} fichier(s) de session retiré(s) supprimé(s).",
-        "failed": "Échec de la suppression des fichiers de session retirés",
-        "confirmTitle": "Supprimer les fichiers de session retirés ?",
-        "confirmDescription": "Cela supprime définitivement uniquement les fichiers de session retirés de l’historique et qui ne sont ni archivés ni ouverts."
+        "name": "Supprimer définitivement les sessions retirées",
+        "desc": "Supprime les sessions retirées avec l’action Supprimer. Les sessions ouvertes et archivées ne sont pas affectées.",
+        "button": "Supprimer définitivement",
+        "success": "{count} fichier(s) de session retiré(s) supprimé(s) définitivement.",
+        "failed": "Échec de la suppression définitive des sessions retirées",
+        "confirmTitle": "Supprimer définitivement les sessions retirées ?",
+        "confirmDescription": "Cela supprime les sessions retirées avec l’action Supprimer. Les sessions ouvertes et archivées ne seront pas affectées."
       }
     },
     "sharedEnvironment": {

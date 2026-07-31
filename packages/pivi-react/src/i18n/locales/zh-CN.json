@@ -502,13 +502,13 @@
       "heading": "会话文件",
       "retention": { "name": "保留已移除会话", "desc": "永久删除会话文件前保留的天数。" },
       "deleteRemoved": {
-        "name": "删除已移除的会话文件",
-        "desc": "仅永久删除已从历史中移除、且未归档或当前未打开的会话文件。",
-        "button": "删除",
-        "success": "已删除 {count} 个已移除的会话文件。",
-        "failed": "删除已移除的会话文件失败",
-        "confirmTitle": "删除已移除的会话文件？",
-        "confirmDescription": "这将永久删除已从历史记录中移除且未归档或当前未打开的会话文件。"
+        "name": "永久删除已移除的会话",
+        "desc": "删除通过“删除”操作移除的会话。已打开和已归档的会话不受影响。",
+        "button": "永久删除",
+        "success": "已永久删除 {count} 个已移除的会话文件。",
+        "failed": "永久删除已移除的会话失败",
+        "confirmTitle": "永久删除已移除的会话？",
+        "confirmDescription": "这将删除通过“删除”操作移除的会话。已打开和已归档的会话不会受影响。"
       }
     },
     "sharedEnvironment": {

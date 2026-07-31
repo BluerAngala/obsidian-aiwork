@@ -502,13 +502,13 @@
       "heading": "Sitzungsdateien",
       "retention": { "name": "Entfernte Sitzungen aufbewahren für", "desc": "Tage bis entfernte Sitzungsdateien endgültig gelöscht werden." },
       "deleteRemoved": {
-        "name": "Entfernte Sitzungsdateien löschen",
-        "desc": "Löscht dauerhaft nur Sitzungsdateien, die aus dem Verlauf entfernt wurden und weder archiviert noch geöffnet sind.",
-        "button": "Löschen",
-        "success": "{count} entfernte Sitzungsdatei(en) gelöscht.",
-        "failed": "Entfernte Sitzungsdateien konnten nicht gelöscht werden",
-        "confirmTitle": "Entfernte Sitzungsdateien löschen?",
-        "confirmDescription": "Dies löscht dauerhaft nur Sitzungsdateien, die aus dem Verlauf entfernt wurden und weder archiviert noch geöffnet sind."
+        "name": "Entfernte Sitzungen endgültig löschen",
+        "desc": "Löscht über die Aktion „Löschen“ entfernte Sitzungen. Geöffnete und archivierte Sitzungen bleiben erhalten.",
+        "button": "Endgültig löschen",
+        "success": "{count} entfernte Sitzungsdatei(en) endgültig gelöscht.",
+        "failed": "Entfernte Sitzungen konnten nicht endgültig gelöscht werden",
+        "confirmTitle": "Entfernte Sitzungen endgültig löschen?",
+        "confirmDescription": "Dies löscht über die Aktion „Löschen“ entfernte Sitzungen. Geöffnete und archivierte Sitzungen bleiben erhalten."
       }
     },
     "sharedEnvironment": {

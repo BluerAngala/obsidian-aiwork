@@ -502,13 +502,13 @@
       "heading": "Session files",
       "retention": { "name": "Keep removed sessions for", "desc": "Days before removed session files are permanently deleted." },
       "deleteRemoved": {
-        "name": "Delete removed session files",
-        "desc": "Permanently deletes only session files that were removed from history and are not archived or currently open.",
-        "button": "Delete",
-        "confirmTitle": "Delete removed session files?",
-        "confirmDescription": "This permanently deletes session files that were removed from history and are not archived or currently open.",
-        "success": "Deleted {count} removed session file(s).",
-        "failed": "Failed to delete removed session files"
+        "name": "Permanently delete removed sessions",
+        "desc": "Deletes sessions removed with Delete. Open and archived sessions are not affected.",
+        "button": "Delete permanently",
+        "confirmTitle": "Permanently delete removed sessions?",
+        "confirmDescription": "This deletes sessions removed with Delete. Open and archived sessions will not be affected.",
+        "success": "Permanently deleted {count} removed session file(s).",
+        "failed": "Failed to permanently delete removed sessions"
       }
     },
     "sharedEnvironment": {

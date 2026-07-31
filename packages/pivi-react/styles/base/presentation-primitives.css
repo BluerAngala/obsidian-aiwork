@@ -10,6 +10,10 @@
   border-top: none;
 }
 
+.pivi-setting-row--centered {
+  align-items: center;
+}
+
 .pivi-setting-row__info {
   flex: 1 1 0;
   min-width: 0;
@@ -262,6 +266,10 @@
   .pivi-setting-row {
     flex-direction: column;
     gap: var(--pivi-spacing-sm);
+  }
+
+  .pivi-setting-row--centered {
+    align-items: flex-start;
   }
 
   .pivi-setting-row__control {
