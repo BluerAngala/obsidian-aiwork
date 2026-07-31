@@ -2,6 +2,7 @@ import {
   TOOL_OBSIDIAN_BASH,
   TOOL_OBSIDIAN_READ,
   TOOL_OBSIDIAN_TASKS,
+  TOOL_PIVI_SESSIONS,
 } from '@pivi/pivi-agent-core/tools';
 
 import type { PiviSettingsHost } from '@/app/hostContracts';
@@ -35,6 +36,12 @@ describe('Obsidian settings integration adapter', () => {
       available: false,
     });
     expect(rows.find((row) => row.name === TOOL_OBSIDIAN_BASH)).toMatchObject({
+      enabled: true,
+      available: true,
+    });
+    expect(rows.find((row) => row.name === TOOL_PIVI_SESSIONS)).toMatchObject({
+      label: 'Pivi Sessions',
+      description: 'Read durable sessions, list recoverable deleted sessions, or restore one in a visible Pivi tab.',
       enabled: true,
       available: true,
     });
