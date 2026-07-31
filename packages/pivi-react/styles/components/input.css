@@ -32,11 +32,6 @@
   background: var(--pivi-host-background-primary);
 }
 
-.pivi-input-wrapper:focus-within {
-  outline: var(--pivi-focus-ring);
-  outline-offset: var(--pivi-focus-offset);
-}
-
 /* Context row (file chip start, selection indicator end) - inside input wrapper at top */
 /* Collapsed by default; expanded via .has-content class; textarea fills remaining space */
 .pivi-context-row {
