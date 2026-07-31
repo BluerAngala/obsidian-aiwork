@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 
 import type { Locale, TranslationKey } from '../i18n';
 import { useI18n, useT } from '../i18n';
@@ -74,6 +74,8 @@ function EnvironmentSection({ environment, feedback }: {
   readonly feedback: SettingsFeedbackPort;
 }) {
   const t = useT();
+  const nameId = useId();
+  const descriptionId = `${nameId}-desc`;
   const [entries, setEntries] = useState(() => environment.listEntries('shared'));
   const [value, setValue] = useState(() => environmentEntriesToSafeText(environment.listEntries('shared')));
   const [savedValue, setSavedValue] = useState(value);
@@ -143,23 +145,32 @@ function EnvironmentSection({ environment, feedback }: {
           ))}
         </div>
       ) : null}
-      <SettingRow name={t('settings.sharedEnvironment.name')} description={t('settings.sharedEnvironment.desc')}>
-        <textarea
-          className="pivi-settings-control pivi-settings-control--fill pivi-settings-env-textarea"
-          rows={6}
-          placeholder={t('settings.sharedEnvironment.placeholder')}
-          value={value}
-          onChange={(event) => {
-            setValue(event.target.value);
-            setApplyFeedback(null);
-          }}
-          aria-label={t('settings.sharedEnvironment.name')}
-        />
-        <button type="button" className="pivi-button--primary" disabled={!isDirty || applying} onClick={apply}>
-          {t('settings.sharedEnvironment.apply')}
-        </button>
-        <SettingsActionFeedback feedback={applyFeedback} />
-      </SettingRow>
+      <div className="pivi-setting-row pivi-environment-setting">
+        <div className="pivi-setting-row__info">
+          <div className="pivi-setting-row__name" id={nameId}>{t('settings.sharedEnvironment.name')}</div>
+          <div className="pivi-setting-description" id={descriptionId}>{t('settings.sharedEnvironment.desc')}</div>
+          <div className="pivi-settings-action-group pivi-environment-setting__actions">
+            <button type="button" className="pivi-button--primary" disabled={!isDirty || applying} onClick={apply}>
+              {t('settings.sharedEnvironment.apply')}
+            </button>
+            <SettingsActionFeedback feedback={applyFeedback} />
+          </div>
+        </div>
+        <div className="pivi-setting-row__control">
+          <textarea
+            className="pivi-settings-control pivi-settings-control--fill pivi-settings-env-textarea"
+            rows={6}
+            placeholder={t('settings.sharedEnvironment.placeholder')}
+            value={value}
+            onChange={(event) => {
+              setValue(event.target.value);
+              setApplyFeedback(null);
+            }}
+            aria-labelledby={nameId}
+            aria-describedby={descriptionId}
+          />
+        </div>
+      </div>
     </SettingsSection>
   );
 }

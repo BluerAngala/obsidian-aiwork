@@ -860,6 +860,10 @@ describe('React settings foundation', () => {
     });
     render(withTestPresentationPlatform(<I18nProvider i18n={createI18n()}><SettingsRoot ports={ports} /></I18nProvider>));
     const textarea = screen.getByLabelText('Environment variables');
+    const environmentRow = textarea.closest<HTMLElement>('.pivi-environment-setting');
+    expect(environmentRow?.querySelector('.pivi-setting-row__control')).toContainElement(textarea);
+    expect(environmentRow?.querySelector('.pivi-setting-row__info'))
+      .toContainElement(screen.getByRole('button', { name: 'Apply changes' }));
     fireEvent.change(textarea, { target: { value: 'FOO=changed' } });
     fireEvent.blur(textarea);
     expect(importEnvironmentText).not.toHaveBeenCalled();
