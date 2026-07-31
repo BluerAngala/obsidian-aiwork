@@ -160,14 +160,12 @@
       "expand": "展開任務清單 — 已完成 {completed}/{total}"
     },
     "activity": {
-      "backgroundTask": "背景任務",
       "subagentTask": "子代理任務",
       "expand": "點擊展開",
       "collapse": "點擊收合",
       "prompt": "提示詞",
       "result": "結果",
       "noPrompt": "未提供提示詞",
-      "sessionEnded": "工作階段在任務完成前已結束",
       "done": "完成",
       "error": "錯誤"
     },
@@ -500,7 +498,10 @@
     },
     "sessionFiles": {
       "heading": "工作階段檔案",
-      "retention": { "name": "保留已移除工作階段", "desc": "永久刪除工作階段檔案前保留的天數。" },
+      "retention": {
+        "name": "保留已移除工作階段",
+        "desc": "永久刪除工作階段檔案前保留的天數。"
+      },
       "deleteRemoved": {
         "name": "永久刪除已移除的工作階段",
         "desc": "刪除透過「刪除」操作移除的工作階段。已開啟和已封存的工作階段不受影響。",

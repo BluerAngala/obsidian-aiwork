@@ -160,14 +160,12 @@
       "expand": "Développer la liste des tâches — {completed} sur {total} terminées"
     },
     "activity": {
-      "backgroundTask": "Tâche en arrière-plan",
       "subagentTask": "Tâche du sous-agent",
       "expand": "Cliquer pour développer",
       "collapse": "Cliquer pour réduire",
       "prompt": "Instruction",
       "result": "Résultat",
       "noPrompt": "Aucune instruction fournie",
-      "sessionEnded": "La session s’est terminée avant la fin de la tâche",
       "done": "Terminé",
       "error": "Erreur"
     },
@@ -500,7 +498,10 @@
     },
     "sessionFiles": {
       "heading": "Fichiers de session",
-      "retention": { "name": "Conserver les sessions supprimées pendant", "desc": "Nombre de jours avant leur suppression définitive." },
+      "retention": {
+        "name": "Conserver les sessions supprimées pendant",
+        "desc": "Nombre de jours avant leur suppression définitive."
+      },
       "deleteRemoved": {
         "name": "Supprimer définitivement les sessions retirées",
         "desc": "Supprime les sessions retirées avec l’action Supprimer. Les sessions ouvertes et archivées ne sont pas affectées.",

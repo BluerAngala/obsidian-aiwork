@@ -20,6 +20,45 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
 }
 
+function dedupeDeletedSessionRecords(
+  records: readonly DeletedSessionFileRecord[],
+): DeletedSessionFileRecord[] {
+  return Array.from(
+    new Map(records.map((record) => [record.sessionFile, record])).values(),
+  );
+}
+
+function normalizeDeletedSessionFiles(
+  value: unknown,
+): { records: DeletedSessionFileRecord[]; changed: boolean } {
+  if (!Array.isArray(value)) {
+    return { records: [], changed: false };
+  }
+  const migratedAt = Date.now();
+  let changed = false;
+  const records = value.flatMap((entry): DeletedSessionFileRecord[] => {
+    if (typeof entry === "string") {
+      changed = true;
+      return [{ sessionFile: entry, deletedAt: migratedAt }];
+    }
+    if (
+      isRecord(entry)
+      && typeof entry.sessionFile === "string"
+      && typeof entry.deletedAt === "number"
+      && Number.isFinite(entry.deletedAt)
+    ) {
+      return [{ sessionFile: entry.sessionFile, deletedAt: entry.deletedAt }];
+    }
+    changed = true;
+    return [];
+  });
+  const normalized = dedupeDeletedSessionRecords(records);
+  if (normalized.length !== records.length) {
+    changed = true;
+  }
+  return { records: normalized, changed };
+}
+
 export type SharedStorageNoticeMessages = {
   failedSaveTabLayout: string;
   failedSaveDeletedSessions: string;
@@ -129,9 +168,36 @@ export class SharedStorageService implements SharedAppStorage {
   async setDeletedSessionFiles(records: DeletedSessionFileRecord[]): Promise<void> {
     try {
       await this.updatePluginData((data) => {
-        data.deletedSessionFiles = Array.from(
-          new Map(records.map((record) => [record.sessionFile, record])).values(),
-        );
+        data.deletedSessionFiles = dedupeDeletedSessionRecords(records);
+      });
+    } catch (error) {
+      new Notice(this.notices.failedSaveDeletedSessions);
+      throw error;
+    }
+  }
+
+  async updateDeletedSessionFiles(
+    update: (records: readonly DeletedSessionFileRecord[]) => DeletedSessionFileRecord[],
+  ): Promise<void> {
+    try {
+      await this.runPluginDataOperation(async () => {
+        const loaded: unknown = await this.plugin.loadData();
+        const data = isRecord(loaded) ? loaded : {};
+        const { records, changed } = normalizeDeletedSessionFiles(data.deletedSessionFiles);
+        const next = dedupeDeletedSessionRecords(update(records));
+        if (
+          changed
+          || next.length !== records.length
+          || next.some((record, index) => {
+            const previous = records[index];
+            return !previous
+              || previous.sessionFile !== record.sessionFile
+              || previous.deletedAt !== record.deletedAt;
+          })
+        ) {
+          data.deletedSessionFiles = next;
+          await this.plugin.saveData(data);
+        }
       });
     } catch (error) {
       new Notice(this.notices.failedSaveDeletedSessions);
@@ -145,30 +211,12 @@ export class SharedStorageService implements SharedAppStorage {
       if (!isRecord(data) || !Array.isArray(data.deletedSessionFiles)) {
         return [];
       }
-      const migratedAt = Date.now();
-      let changed = false;
-      const records = data.deletedSessionFiles.flatMap((value): DeletedSessionFileRecord[] => {
-        if (typeof value === "string") {
-          changed = true;
-          return [{ sessionFile: value, deletedAt: migratedAt }];
-        }
-        if (
-          isRecord(value)
-          && typeof value.sessionFile === "string"
-          && typeof value.deletedAt === "number"
-          && Number.isFinite(value.deletedAt)
-        ) {
-          return [{ sessionFile: value.sessionFile, deletedAt: value.deletedAt }];
-        }
-        changed = true;
-        return [];
-      });
-      const normalized = Array.from(new Map(records.map((record) => [record.sessionFile, record])).values());
-      if (changed || normalized.length !== records.length) {
-        data.deletedSessionFiles = normalized;
+      const { records, changed } = normalizeDeletedSessionFiles(data.deletedSessionFiles);
+      if (changed) {
+        data.deletedSessionFiles = records;
         await this.plugin.saveData(data);
       }
-      return normalized;
+      return records;
     });
   }
 

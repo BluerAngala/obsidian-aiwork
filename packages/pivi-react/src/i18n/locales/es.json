@@ -160,14 +160,12 @@
       "expand": "Expandir lista de tareas: {completed} de {total} completadas"
     },
     "activity": {
-      "backgroundTask": "Tarea en segundo plano",
       "subagentTask": "Tarea de subagente",
       "expand": "Haz clic para expandir",
       "collapse": "Haz clic para contraer",
       "prompt": "Instrucción",
       "result": "Resultado",
       "noPrompt": "No se proporcionó ninguna instrucción",
-      "sessionEnded": "La sesión terminó antes de completar la tarea",
       "done": "Hecho",
       "error": "Error"
     },
@@ -500,7 +498,10 @@
     },
     "sessionFiles": {
       "heading": "Archivos de sesión",
-      "retention": { "name": "Conservar sesiones eliminadas durante", "desc": "Días antes de eliminar permanentemente los archivos de sesión." },
+      "retention": {
+        "name": "Conservar sesiones eliminadas durante",
+        "desc": "Días antes de eliminar permanentemente los archivos de sesión."
+      },
       "deleteRemoved": {
         "name": "Eliminar permanentemente las sesiones quitadas",
         "desc": "Elimina las sesiones quitadas mediante Eliminar. Las sesiones abiertas y archivadas no se ven afectadas.",

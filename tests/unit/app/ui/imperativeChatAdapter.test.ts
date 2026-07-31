@@ -361,6 +361,32 @@ describe('imperative chat semantic view handle', () => {
     expect(harness.deleteSessionFile).toHaveBeenCalledWith(archivedTab.sessionFile, null);
   });
 
+  it('deletes a session created by the close-time save of the first turn', async () => {
+    const harness = createHarness();
+    const streamingTab = createTab({
+      isArchived: true,
+      openSessionId: null,
+      sessionFile: null,
+    });
+    streamingTab.state.isStreaming = true;
+    harness.manager.getTab.mockReturnValue(streamingTab);
+    harness.manager.closeTab.mockImplementation(async () => {
+      streamingTab.openSessionId = 'open-lazy';
+      streamingTab.sessionFile = '.pivi/sessions/lazy.jsonl';
+      return true;
+    });
+    harness.manager.getPersistedState.mockReturnValue({ openTabs: [], activeTabId: null });
+    await harness.mount();
+
+    await harness.adapter.getShellActions().deleteTab(streamingTab.id);
+
+    expect(harness.manager.closeTab).toHaveBeenCalledWith(streamingTab.id, true);
+    expect(harness.deleteSessionFile).toHaveBeenCalledWith(
+      '.pivi/sessions/lazy.jsonl',
+      'open-lazy',
+    );
+  });
+
   it('closes an open tab without deleting its durable session', async () => {
     const harness = createHarness();
     const openTab = createTab({ isArchived: false });

@@ -41,6 +41,7 @@ import {
   installCustomProviders,
 } from './installPiCustomProviders';
 import { cachePiAiRegistryModels } from './piModelRegistry';
+import { withScopedGoogleTransport } from './scopedGoogleProvider';
 import {
   createApiKeyOnlyProvider,
   createSubscriptionOAuthProvider,
@@ -100,7 +101,7 @@ function installSupportedProviders(models: MutableModels): void {
     'Claude',
   ));
   models.setProvider(deepseekProvider());
-  models.setProvider(googleProvider());
+  models.setProvider(withScopedGoogleTransport(googleProvider(), () => providerFetch));
   models.setProvider(kimiCodingProvider());
   models.setProvider(minimaxProvider());
   models.setProvider(minimaxCnProvider());
@@ -108,7 +109,7 @@ function installSupportedProviders(models: MutableModels): void {
   models.setProvider(moonshotaiCnProvider());
   models.setProvider(openaiProvider());
   models.setProvider(openaiCodexProvider());
-  models.setProvider(opencodeProvider());
+  models.setProvider(withScopedGoogleTransport(opencodeProvider(), () => providerFetch));
   models.setProvider(opencodeGoProvider());
   models.setProvider(openrouterProvider());
   models.setProvider(createApiKeyOnlyProvider(xai));

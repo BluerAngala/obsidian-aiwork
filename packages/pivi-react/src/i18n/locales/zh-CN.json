@@ -160,14 +160,12 @@
       "expand": "展开任务列表 — 已完成 {completed}/{total}"
     },
     "activity": {
-      "backgroundTask": "后台任务",
       "subagentTask": "子代理任务",
       "expand": "点击展开",
       "collapse": "点击折叠",
       "prompt": "提示词",
       "result": "结果",
       "noPrompt": "未提供提示词",
-      "sessionEnded": "会话在任务完成前已结束",
       "done": "完成",
       "error": "错误"
     },
@@ -500,7 +498,10 @@
     },
     "sessionFiles": {
       "heading": "会话文件",
-      "retention": { "name": "保留已移除会话", "desc": "永久删除会话文件前保留的天数。" },
+      "retention": {
+        "name": "保留已移除会话",
+        "desc": "永久删除会话文件前保留的天数。"
+      },
       "deleteRemoved": {
         "name": "永久删除已移除的会话",
         "desc": "删除通过“删除”操作移除的会话。已打开和已归档的会话不受影响。",

@@ -160,14 +160,12 @@
       "expand": "작업 목록 펼치기 — {total}개 중 {completed}개 완료"
     },
     "activity": {
-      "backgroundTask": "백그라운드 작업",
       "subagentTask": "하위 에이전트 작업",
       "expand": "클릭하여 펼치기",
       "collapse": "클릭하여 접기",
       "prompt": "프롬프트",
       "result": "결과",
       "noPrompt": "프롬프트가 없습니다",
-      "sessionEnded": "작업이 완료되기 전에 세션이 종료되었습니다",
       "done": "완료",
       "error": "오류"
     },
@@ -500,7 +498,10 @@
     },
     "sessionFiles": {
       "heading": "세션 파일",
-      "retention": { "name": "삭제된 세션 보관 기간", "desc": "영구 삭제하기 전까지의 일수입니다." },
+      "retention": {
+        "name": "삭제된 세션 보관 기간",
+        "desc": "영구 삭제하기 전까지의 일수입니다."
+      },
       "deleteRemoved": {
         "name": "제거된 세션 영구 삭제",
         "desc": "삭제 작업으로 제거한 세션을 삭제합니다. 열려 있거나 보관된 세션에는 영향을 주지 않습니다.",

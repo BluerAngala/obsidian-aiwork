@@ -27,6 +27,26 @@ function createView(overrides: {
   };
 }
 
+function createQueueStorage(initial: Array<{ sessionFile: string; deletedAt: number }> = []) {
+  let records = [...initial];
+  const getDeletedSessionFiles = jest.fn(async () => [...records]);
+  const setDeletedSessionFiles = jest.fn(async (next: typeof records) => {
+    records = [...next];
+  });
+  const updateDeletedSessionFiles = jest.fn(async (
+    update: (current: readonly typeof records[number][]) => typeof records,
+  ) => {
+    records = update(records);
+  });
+  return {
+    getDeletedSessionFiles,
+    setDeletedSessionFiles,
+    updateDeletedSessionFiles,
+    getTabManagerState: jest.fn(async () => null),
+    snapshot: () => [...records],
+  };
+}
+
 function createContext(overrides: Partial<PluginSessionContext> = {}): PluginSessionContext {
   return {
     sessionManager: {
@@ -36,11 +56,7 @@ function createContext(overrides: Partial<PluginSessionContext> = {}): PluginSes
     requireSessionStore: () => ({
       deleteSession: jest.fn(async () => undefined),
     }) as never,
-    storage: {
-      getDeletedSessionFiles: jest.fn(async () => []),
-      setDeletedSessionFiles: jest.fn(async () => undefined),
-      getTabManagerState: jest.fn(async () => null),
-    },
+    storage: createQueueStorage(),
     getSessionList: () => [],
     getAllViews: () => [],
     setSessions: jest.fn(),
@@ -111,17 +127,13 @@ describe('plugin session API semantic view maintenance', () => {
       id: 'session-1',
       sessionFile: '.pivi/sessions/deleted.jsonl',
     } as OpenSessionState;
-    const setDeletedSessionFiles = jest.fn(async () => undefined);
+    const storage = createQueueStorage();
     const context = createContext({
       sessionManager: {
         getSync: jest.fn(() => deleted),
         delete: jest.fn(async () => deleted),
       } as never,
-      storage: {
-        getDeletedSessionFiles: jest.fn(async () => []),
-        setDeletedSessionFiles,
-        getTabManagerState: jest.fn(async () => null),
-      },
+      storage,
       getAllViews: () => [
         createView({ resetSession: firstReset }),
         createView({ resetSession: secondReset }),
@@ -130,7 +142,8 @@ describe('plugin session API semantic view maintenance', () => {
 
     await deleteSession(context, 'session-1');
 
-    expect(setDeletedSessionFiles).toHaveBeenCalledWith([
+    expect(storage.updateDeletedSessionFiles).toHaveBeenCalled();
+    expect(storage.snapshot()).toEqual([
       expect.objectContaining({ sessionFile: '.pivi/sessions/deleted.jsonl' }),
     ]);
     expect(firstReset).toHaveBeenCalledWith('session-1');
@@ -143,16 +156,14 @@ describe('plugin session API semantic view maintenance', () => {
       sessionFile: '.pivi/sessions/deleted.jsonl',
     } as OpenSessionState;
     const remove = jest.fn(async () => session);
+    const storage = createQueueStorage();
+    storage.updateDeletedSessionFiles.mockRejectedValue(new Error('save failed'));
     const context = createContext({
       sessionManager: {
         getSync: jest.fn(() => session),
         delete: remove,
       } as never,
-      storage: {
-        getDeletedSessionFiles: jest.fn(async () => []),
-        setDeletedSessionFiles: jest.fn(async () => { throw new Error('save failed'); }),
-        getTabManagerState: jest.fn(async () => null),
-      },
+      storage,
     });
 
     await expect(deleteSession(context, session.id)).rejects.toThrow('save failed');
@@ -161,26 +172,22 @@ describe('plugin session API semantic view maintenance', () => {
 
   it('protects session files bound by a live semantic view handle during purge', async () => {
     const deleteSessionFile = jest.fn(async () => undefined);
-    const setDeletedSessionFiles = jest.fn(async () => undefined);
     const boundFile = '.pivi/sessions/bound.jsonl';
     const staleFile = '.pivi/sessions/stale.jsonl';
+    const storage = createQueueStorage([
+      { sessionFile: boundFile, deletedAt: 1 },
+      { sessionFile: staleFile, deletedAt: 1 },
+    ]);
     const context = createContext({
       requireSessionStore: () => ({ deleteSession: deleteSessionFile }) as never,
-      storage: {
-        getDeletedSessionFiles: jest.fn(async () => [
-          { sessionFile: boundFile, deletedAt: 1 },
-          { sessionFile: staleFile, deletedAt: 1 },
-        ]),
-        setDeletedSessionFiles,
-        getTabManagerState: jest.fn(async () => null),
-      },
+      storage,
       getAllViews: () => [createView({ boundSessionFiles: [boundFile] })],
     });
 
     await expect(purgeDeletedSessionFiles(context)).resolves.toBe(1);
     expect(deleteSessionFile).toHaveBeenCalledTimes(1);
     expect(deleteSessionFile).toHaveBeenCalledWith(staleFile);
-    expect(setDeletedSessionFiles).toHaveBeenCalledWith([
+    expect(storage.snapshot()).toEqual([
       { sessionFile: boundFile, deletedAt: 1 },
     ]);
   });
@@ -191,22 +198,18 @@ describe('plugin session API semantic view maintenance', () => {
     const expiredFile = '.pivi/sessions/expired.jsonl';
     const recentFile = '.pivi/sessions/recent.jsonl';
     const deleteSessionFile = jest.fn(async () => undefined);
-    const setDeletedSessionFiles = jest.fn(async () => undefined);
+    const storage = createQueueStorage([
+      { sessionFile: expiredFile, deletedAt: now - 30 * day },
+      { sessionFile: recentFile, deletedAt: now - 30 * day + 1 },
+    ]);
     const context = createContext({
       requireSessionStore: () => ({ deleteSession: deleteSessionFile }) as never,
-      storage: {
-        getDeletedSessionFiles: jest.fn(async () => [
-          { sessionFile: expiredFile, deletedAt: now - 30 * day },
-          { sessionFile: recentFile, deletedAt: now - 30 * day + 1 },
-        ]),
-        setDeletedSessionFiles,
-        getTabManagerState: jest.fn(async () => null),
-      },
+      storage,
     });
 
     await expect(purgeExpiredDeletedSessionFiles(context, 30, now)).resolves.toBe(1);
     expect(deleteSessionFile).toHaveBeenCalledWith(expiredFile);
-    expect(setDeletedSessionFiles).toHaveBeenCalledWith([
+    expect(storage.snapshot()).toEqual([
       { sessionFile: recentFile, deletedAt: now - 30 * day + 1 },
     ]);
   });
@@ -219,26 +222,22 @@ describe('plugin session API semantic view maintenance', () => {
       sessionFile,
     } as OpenSessionState;
     const openByFile = jest.fn(async () => restored);
-    const setDeletedSessionFiles = jest.fn(async () => undefined);
+    const storage = createQueueStorage([
+      { sessionFile, deletedAt: 123 },
+      { sessionFile: '.pivi/sessions/other.jsonl', deletedAt: 456 },
+    ]);
     const context = createContext({
       sessionManager: { openByFile } as never,
-      storage: {
-        getDeletedSessionFiles: jest.fn(async () => [
-          { sessionFile, deletedAt: 123 },
-          { sessionFile: '.pivi/sessions/other.jsonl', deletedAt: 456 },
-        ]),
-        setDeletedSessionFiles,
-        getTabManagerState: jest.fn(async () => null),
-      },
+      storage,
     });
 
     await expect(restoreDeletedSession(context, sessionFile)).resolves.toBe(restored);
     expect(openByFile).toHaveBeenCalledWith(sessionFile);
-    expect(setDeletedSessionFiles).toHaveBeenCalledWith([
+    expect(storage.snapshot()).toEqual([
       { sessionFile: '.pivi/sessions/other.jsonl', deletedAt: 456 },
     ]);
     expect(openByFile.mock.invocationCallOrder[0]).toBeLessThan(
-      setDeletedSessionFiles.mock.invocationCallOrder[0] ?? Number.MAX_SAFE_INTEGER,
+      storage.updateDeletedSessionFiles.mock.invocationCallOrder[0] ?? Number.MAX_SAFE_INTEGER,
     );
   });
 
@@ -255,39 +254,86 @@ describe('plugin session API semantic view maintenance', () => {
 
   it('commits recovery before attempting to open the visible tab', async () => {
     const sessionFile = '.pivi/sessions/recoverable.jsonl';
-    const setDeletedSessionFiles = jest.fn(async () => undefined);
+    const storage = createQueueStorage([{ sessionFile, deletedAt: 123 }]);
     const context = createContext({
       sessionManager: {
         openByFile: jest.fn(async () => ({ id: 'session-1', sessionFile }) as OpenSessionState),
       } as never,
-      storage: {
-        getDeletedSessionFiles: jest.fn(async () => [{ sessionFile, deletedAt: 123 }]),
-        setDeletedSessionFiles,
-        getTabManagerState: jest.fn(async () => null),
-      },
+      storage,
     });
 
     await expect(restoreDeletedSession(context, sessionFile, async () => {
       throw new Error('view unavailable');
     })).rejects.toThrow('view unavailable');
-    expect(setDeletedSessionFiles).toHaveBeenCalledWith([]);
+    expect(storage.snapshot()).toEqual([]);
   });
 
   it('retains invalid queued paths instead of passing them to physical deletion', async () => {
     const invalid = 'notes/important.md';
     const deleteSessionFile = jest.fn(async () => undefined);
-    const setDeletedSessionFiles = jest.fn(async () => undefined);
+    const storage = createQueueStorage([{ sessionFile: invalid, deletedAt: 1 }]);
     const context = createContext({
       requireSessionStore: () => ({ deleteSession: deleteSessionFile }) as never,
-      storage: {
-        getDeletedSessionFiles: jest.fn(async () => [{ sessionFile: invalid, deletedAt: 1 }]),
-        setDeletedSessionFiles,
-        getTabManagerState: jest.fn(async () => null),
-      },
+      storage,
     });
 
     await expect(purgeDeletedSessionFiles(context)).resolves.toBe(0);
     expect(deleteSessionFile).not.toHaveBeenCalled();
-    expect(setDeletedSessionFiles).toHaveBeenCalledWith([{ sessionFile: invalid, deletedAt: 1 }]);
+    expect(storage.updateDeletedSessionFiles).not.toHaveBeenCalled();
+    expect(storage.snapshot()).toEqual([{ sessionFile: invalid, deletedAt: 1 }]);
+  });
+
+  it('keeps both concurrent delete marks when each starts from an empty queue', async () => {
+    const first = {
+      id: 'session-a',
+      sessionFile: '.pivi/sessions/a.jsonl',
+    } as OpenSessionState;
+    const second = {
+      id: 'session-b',
+      sessionFile: '.pivi/sessions/b.jsonl',
+    } as OpenSessionState;
+    const storage = createQueueStorage();
+    // Simulate the pre-fix lost-update race: two callers read empty, then write.
+    // The atomic updater always sees the latest committed queue.
+    let gate: (() => void) | undefined;
+    const release = new Promise<void>((resolve) => { gate = resolve; });
+    let inFlight = 0;
+    storage.updateDeletedSessionFiles.mockImplementation(async (update) => {
+      inFlight += 1;
+      if (inFlight === 1) {
+        await release;
+      }
+      const current = storage.snapshot();
+      const next = update(current);
+      await storage.setDeletedSessionFiles(next);
+    });
+
+    const contextA = createContext({
+      sessionManager: {
+        getSync: jest.fn(() => first),
+        delete: jest.fn(async () => first),
+      } as never,
+      storage,
+    });
+    const contextB = createContext({
+      sessionManager: {
+        getSync: jest.fn(() => second),
+        delete: jest.fn(async () => second),
+      } as never,
+      storage,
+    });
+
+    const pendingA = deleteSession(contextA, first.id);
+    await Promise.resolve();
+    const pendingB = deleteSession(contextB, second.id);
+    await Promise.resolve();
+    gate?.();
+    await Promise.all([pendingA, pendingB]);
+
+    const files = storage.snapshot().map((record) => record.sessionFile).sort();
+    expect(files).toEqual([
+      '.pivi/sessions/a.jsonl',
+      '.pivi/sessions/b.jsonl',
+    ]);
   });
 });

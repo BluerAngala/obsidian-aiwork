@@ -165,14 +165,12 @@
       "expand": "Aufgabenliste ausklappen – {completed} von {total} erledigt"
     },
     "activity": {
-      "backgroundTask": "Hintergrundaufgabe",
       "subagentTask": "Unteragentenaufgabe",
       "expand": "Zum Erweitern klicken",
       "collapse": "Zum Einklappen klicken",
       "prompt": "Prompt",
       "result": "Ergebnis",
       "noPrompt": "Kein Prompt angegeben",
-      "sessionEnded": "Die Sitzung endete vor Abschluss der Aufgabe",
       "done": "Erledigt",
       "error": "Fehler"
     },
@@ -500,7 +498,10 @@
     },
     "sessionFiles": {
       "heading": "Sitzungsdateien",
-      "retention": { "name": "Entfernte Sitzungen aufbewahren für", "desc": "Tage bis entfernte Sitzungsdateien endgültig gelöscht werden." },
+      "retention": {
+        "name": "Entfernte Sitzungen aufbewahren für",
+        "desc": "Tage bis entfernte Sitzungsdateien endgültig gelöscht werden."
+      },
       "deleteRemoved": {
         "name": "Entfernte Sitzungen endgültig löschen",
         "desc": "Löscht über die Aktion „Löschen“ entfernte Sitzungen. Geöffnete und archivierte Sitzungen bleiben erhalten.",

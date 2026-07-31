@@ -29,6 +29,9 @@ export interface PluginSessionContext {
   storage: {
     getDeletedSessionFiles(): Promise<DeletedSessionFileRecord[]>;
     setDeletedSessionFiles(records: DeletedSessionFileRecord[]): Promise<void>;
+    updateDeletedSessionFiles(
+      update: (records: readonly DeletedSessionFileRecord[]) => DeletedSessionFileRecord[],
+    ): Promise<void>;
     getTabManagerState(): Promise<AppTabManagerState | null>;
   };
   getSessionList(): SessionSummary[];
@@ -125,37 +128,42 @@ async function purgeDeletedSessionRecords(
   ctx: PluginSessionContext,
   shouldPurge: (record: DeletedSessionFileRecord) => boolean,
 ): Promise<number> {
+  // Physical deletes must finish before the queue write so a failed disk delete
+  // keeps the recovery record. Queue membership itself is still committed
+  // atomically so concurrent mark/restore cannot clobber surviving entries.
   const records = await ctx.storage.getDeletedSessionFiles();
   if (records.length === 0) {
     return 0;
   }
 
   const protectedSessionFiles = await getProtectedSessionFiles(ctx);
-  const remaining: DeletedSessionFileRecord[] = [];
+  const purgedFiles = new Set<string>();
   let deletedCount = 0;
 
   for (const record of records) {
     const { sessionFile } = record;
     if (!shouldPurge(record) || protectedSessionFiles.has(sessionFile)) {
-      remaining.push(record);
       continue;
     }
     if (!isSafeSessionFile(sessionFile)) {
-      remaining.push(record);
       logger.warn(`Refusing to purge invalid session path ${sessionFile}`);
       continue;
     }
 
     try {
       await ctx.requireSessionStore().deleteSession(sessionFile);
+      purgedFiles.add(sessionFile);
       deletedCount++;
     } catch (error) {
-      remaining.push(record);
       logger.warn(`Failed to purge deleted session ${sessionFile}`, error);
     }
   }
 
-  await ctx.storage.setDeletedSessionFiles(remaining);
+  if (purgedFiles.size > 0) {
+    await ctx.storage.updateDeletedSessionFiles((current) => (
+      current.filter((record) => !purgedFiles.has(record.sessionFile))
+    ));
+  }
   return deletedCount;
 }
 
@@ -190,9 +198,11 @@ export async function restoreDeletedSession(
     throw new Error(`Deleted session file is missing or unreadable: ${sessionFile}`, { cause: error });
   }
   try {
-    await ctx.storage.setDeletedSessionFiles(
-      records.filter((record) => record.sessionFile !== sessionFile),
-    );
+    // Open succeeds first; only then drop the recovery record. Removal is
+    // atomic against concurrent queue mutations so sibling entries stay put.
+    await ctx.storage.updateDeletedSessionFiles((current) => (
+      current.filter((record) => record.sessionFile !== sessionFile)
+    ));
   } catch (error) {
     if (!wasOpen) await ctx.sessionManager.delete(restored.id);
     throw error;
@@ -278,14 +288,12 @@ async function markSessionFileDeleted(
   ctx: PluginSessionContext,
   sessionFile: string,
 ): Promise<void> {
-  const deletedSessionFiles = await ctx.storage.getDeletedSessionFiles();
-  if (deletedSessionFiles.some((record) => record.sessionFile === sessionFile)) {
-    return;
-  }
-  await ctx.storage.setDeletedSessionFiles([
-    ...deletedSessionFiles,
-    { sessionFile, deletedAt: Date.now() },
-  ]);
+  await ctx.storage.updateDeletedSessionFiles((current) => {
+    if (current.some((record) => record.sessionFile === sessionFile)) {
+      return [...current];
+    }
+    return [...current, { sessionFile, deletedAt: Date.now() }];
+  });
 }
 
 async function getProtectedSessionFiles(

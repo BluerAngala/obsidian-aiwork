@@ -242,11 +242,15 @@ export function createImperativeChatAdapter(
       const manager = tabManager;
       if (!manager) return;
       const tab = manager.getTab(tabId);
-      const deletedSessionId = tab?.openSessionId ?? null;
-      const deletedSessionFile = tab?.sessionFile ?? null;
       const force = tab?.state.isStreaming ?? false;
       const closed = await manager.closeTab(tabId, force);
       if (!closed) return;
+
+      // Closing can lazily create the first durable session while saving the
+      // current turn. Read identity from the retained tab object after close so
+      // permanent deletion includes that newly bound session.
+      const deletedSessionId = tab?.openSessionId ?? null;
+      const deletedSessionFile = tab?.sessionFile ?? null;
 
       if (deletedSessionId || deletedSessionFile) {
         // Purge reads persisted bindings as well as live tabs. Commit the removal

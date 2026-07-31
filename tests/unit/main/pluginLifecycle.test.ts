@@ -6,6 +6,7 @@ const mockGetAdapter = jest.fn();
 const mockSetTabManagerState = jest.fn();
 const mockGetDeletedSessionFiles = jest.fn();
 const mockSetDeletedSessionFiles = jest.fn();
+const mockUpdateDeletedSessionFiles = jest.fn();
 const mockListSessions = jest.fn();
 const mockSetupNoteToolbarIntegration = jest.fn();
 const mockCreatePluginServiceGraph = jest.fn();
@@ -25,6 +26,7 @@ jest.mock("@pivi/obsidian-host", () => {
     savePiviSettings: mockSavePiviSettings,
     setTabManagerState: mockSetTabManagerState,
     setDeletedSessionFiles: mockSetDeletedSessionFiles,
+    updateDeletedSessionFiles: mockUpdateDeletedSessionFiles,
     getAdapter: mockGetAdapter,
   })),
   };

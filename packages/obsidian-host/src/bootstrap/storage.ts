@@ -22,6 +22,14 @@ export interface SharedAppStorage {
   setTabManagerState(state: AppTabManagerState): Promise<void>;
   getTabManagerState(): Promise<AppTabManagerState | null>;
   setDeletedSessionFiles(records: DeletedSessionFileRecord[]): Promise<void>;
+  /**
+   * Atomically read-modify-write the deleted-session recovery queue inside one
+   * serialized plugin-data operation so concurrent mark/restore/purge cannot
+   * drop each other's records via separated get + set.
+   */
+  updateDeletedSessionFiles(
+    update: (records: readonly DeletedSessionFileRecord[]) => DeletedSessionFileRecord[],
+  ): Promise<void>;
   getDeletedSessionFiles(): Promise<DeletedSessionFileRecord[]>;
   getAdapter(): FileStore;
 }

@@ -37,26 +37,6 @@ export function appendMcpIcon(container: HTMLElement): void {
   container.appendChild(svg);
 }
 
-export function appendCheckIcon(container: HTMLElement): void {
-  container.empty();
-
-  const svg = createSvgElement(container.ownerDocument, 'svg');
-  svg.setAttribute('width', '12');
-  svg.setAttribute('height', '12');
-  svg.setAttribute('viewBox', '0 0 24 24');
-  svg.setAttribute('fill', 'none');
-  svg.setAttribute('stroke', 'currentColor');
-  svg.setAttribute('stroke-width', '3');
-  svg.setAttribute('stroke-linecap', 'round');
-  svg.setAttribute('stroke-linejoin', 'round');
-
-  const polyline = createSvgElement(container.ownerDocument, 'polyline');
-  polyline.setAttribute('points', '20 6 9 17 4 12');
-  svg.appendChild(polyline);
-
-  container.appendChild(svg);
-}
-
 /** Pi agent / Pivi brand icon. */
 export const PI_CHAT_ICON: ChatIconSvg = {
   kind: 'pivi-brand',

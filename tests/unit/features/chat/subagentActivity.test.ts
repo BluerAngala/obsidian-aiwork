@@ -1,17 +1,9 @@
 import type { SubagentInfo, ToolCallInfo } from '@pivi/pivi-agent-core/foundation';
 import {
-  createAsyncSubagentBlock,
-  finalizeAsyncSubagent,
-  markAsyncSubagentOrphaned,
-  renderStoredAsyncSubagent,
-  updateAsyncSubagentRunning,
-} from '@/ui/chat/rendering/AsyncSubagentRenderer';
-import {
   addSubagentToolCall,
   createSubagentBlock,
   finalizeSubagentBlock,
   mountStoredSubagent,
-  renderStoredSubagent,
   updateStoredSubagent,
 } from '@/ui/chat/rendering/SubagentRenderer';
 import { applySubagentHeaderIcon } from '@/ui/chat/rendering/subagentRendererShared';
@@ -338,14 +330,18 @@ function expectSubagentHeaderShell(
   expect(iconEl?.findByClass('pivi-subagent-indicator-dot')).toBeNull();
 }
 
+function renderStoredSubagentForTest(parentEl: FakeElement, subagent: SubagentInfo): FakeElement {
+  return mountStoredSubagent(
+    parentEl as unknown as HTMLElement,
+    subagent,
+  ).wrapperEl as unknown as FakeElement;
+}
+
 
 describe('subagent activity rendering', () => {
   it('renders stored async subagents as collapsed activity items', () => {
     const parentEl = new FakeElement();
-    const wrapperEl = renderStoredAsyncSubagent(
-      parentEl as unknown as HTMLElement,
-      createRunningAsyncSubagent(),
-    ) as unknown as FakeElement;
+    const wrapperEl = renderStoredSubagentForTest(parentEl, createRunningAsyncSubagent());
 
     expect(wrapperEl.hasClass('pivi-subagent-card')).toBe(true);
     expect(wrapperEl.hasClass('expanded')).toBe(false);
@@ -359,10 +355,7 @@ describe('subagent activity rendering', () => {
 
   it('renders async subagent headers with agent name, task summary, and an animated icon while running', () => {
     const parentEl = new FakeElement();
-    const wrapperEl = renderStoredAsyncSubagent(
-      parentEl as unknown as HTMLElement,
-      createRunningAsyncSubagent(),
-    ) as unknown as FakeElement;
+    const wrapperEl = renderStoredSubagentForTest(parentEl, createRunningAsyncSubagent());
 
     expectSubagentHeaderShell(wrapperEl, {
       agentName: 'Austen',
@@ -374,14 +367,11 @@ describe('subagent activity rendering', () => {
 
   it('shows Queued in header and status while async subagents are pending', () => {
     const parentEl = new FakeElement();
-    const wrapperEl = renderStoredAsyncSubagent(
-      parentEl as unknown as HTMLElement,
-      {
-        ...createRunningAsyncSubagent(),
-        asyncStatus: 'pending',
-        status: 'running',
-      },
-    ) as unknown as FakeElement;
+    const wrapperEl = renderStoredSubagentForTest(parentEl, {
+      ...createRunningAsyncSubagent(),
+      asyncStatus: 'pending',
+      status: 'running',
+    });
 
     expectSubagentHeaderShell(wrapperEl, {
       agentName: 'Austen',
@@ -393,11 +383,13 @@ describe('subagent activity rendering', () => {
 
   it('uses Queued in the initial async subagent header aria-label while pending', () => {
     const parentEl = new FakeElement();
-    const state = createAsyncSubagentBlock(
+    const state = mountStoredSubagent(
       parentEl as unknown as HTMLElement,
-      'task-tool-1',
-      { description: 'Review architecture', prompt: 'Go' },
-      { writerName: 'Austen' },
+      {
+        ...createRunningAsyncSubagent(),
+        id: 'task-tool-1',
+        asyncStatus: 'pending',
+      },
     );
     const wrapperEl = state.wrapperEl as unknown as FakeElement;
     expectSubagentHeaderShell(wrapperEl, {
@@ -431,18 +423,15 @@ describe('subagent activity rendering', () => {
 
   it('renders sync subagent headers with agent name, task summary, and an animated icon while running', () => {
     const parentEl = new FakeElement();
-    const wrapperEl = renderStoredSubagent(
-      parentEl as unknown as HTMLElement,
-      {
-        id: 'task-running',
-        writerName: 'Kafka',
-        description: 'Scan repo',
-        prompt: 'Scan the repository',
-        status: 'running',
-        toolCalls: [],
-        isExpanded: false,
-      },
-    ) as unknown as FakeElement;
+    const wrapperEl = renderStoredSubagentForTest(parentEl, {
+      id: 'task-running',
+      writerName: 'Kafka',
+      description: 'Scan repo',
+      prompt: 'Scan the repository',
+      status: 'running',
+      toolCalls: [],
+      isExpanded: false,
+    });
 
     expectSubagentHeaderShell(wrapperEl, {
       agentName: 'Kafka',
@@ -454,19 +443,16 @@ describe('subagent activity rendering', () => {
 
   it('keeps the profile icon without running animation when a sync subagent finishes', () => {
     const parentEl = new FakeElement();
-    const wrapperEl = renderStoredSubagent(
-      parentEl as unknown as HTMLElement,
-      {
-        id: 'task-done',
-        writerName: 'Borges',
-        description: 'Read long file',
-        prompt: 'Read the file and summarize it',
-        status: 'completed',
-        result: 'Done',
-        toolCalls: [],
-        isExpanded: false,
-      },
-    ) as unknown as FakeElement;
+    const wrapperEl = renderStoredSubagentForTest(parentEl, {
+      id: 'task-done',
+      writerName: 'Borges',
+      description: 'Read long file',
+      prompt: 'Read the file and summarize it',
+      status: 'completed',
+      result: 'Done',
+      toolCalls: [],
+      isExpanded: false,
+    });
 
     expectSubagentHeaderShell(wrapperEl, {
       agentName: 'Borges',
@@ -503,14 +489,21 @@ describe('subagent activity rendering', () => {
 
   it('keeps the async subagent profile icon when a live task completes', () => {
     const parentEl = new FakeElement();
-    const state = createAsyncSubagentBlock(
+    const state = mountStoredSubagent(
       parentEl as unknown as HTMLElement,
-      'task-live-complete',
-      { description: 'Review architecture', prompt: 'Go' },
-      { writerName: 'Austen' },
+      {
+        ...createRunningAsyncSubagent(),
+        id: 'task-live-complete',
+        writerName: 'Austen',
+      },
     );
 
-    finalizeAsyncSubagent(state, 'Done', false);
+    updateStoredSubagent(state, {
+      ...state.info,
+      asyncStatus: 'completed',
+      status: 'completed',
+      result: 'Done',
+    });
 
     const iconEl = (state.wrapperEl as unknown as FakeElement).findByClass('pivi-subagent-icon');
     expect(iconEl?.hasClass('pivi-subagent-profile-icon--rocking-chair')).toBe(true);
@@ -521,13 +514,10 @@ describe('subagent activity rendering', () => {
 
   it('uses the waves running icon for Woolf subagents', () => {
     const parentEl = new FakeElement();
-    const wrapperEl = renderStoredAsyncSubagent(
-      parentEl as unknown as HTMLElement,
-      {
-        ...createRunningAsyncSubagent(),
-        writerName: 'Woolf',
-      },
-    ) as unknown as FakeElement;
+    const wrapperEl = renderStoredSubagentForTest(parentEl, {
+      ...createRunningAsyncSubagent(),
+      writerName: 'Woolf',
+    });
 
     const iconEl = wrapperEl.findByClass('pivi-subagent-icon');
     expect(iconEl?.hasClass('pivi-subagent-running-icon')).toBe(true);
@@ -536,13 +526,10 @@ describe('subagent activity rendering', () => {
 
   it('uses the flame running icon for Baldwin subagents even with a suffix', () => {
     const parentEl = new FakeElement();
-    const wrapperEl = renderStoredAsyncSubagent(
-      parentEl as unknown as HTMLElement,
-      {
-        ...createRunningAsyncSubagent(),
-        writerName: 'Baldwin 2',
-      },
-    ) as unknown as FakeElement;
+    const wrapperEl = renderStoredSubagentForTest(parentEl, {
+      ...createRunningAsyncSubagent(),
+      writerName: 'Baldwin 2',
+    });
 
     const iconEl = wrapperEl.findByClass('pivi-subagent-icon');
     expect(iconEl?.hasClass('pivi-subagent-running-icon')).toBe(true);
@@ -551,13 +538,10 @@ describe('subagent activity rendering', () => {
 
   it('uses the satellite-dish running icon for Le Guin subagents with a suffix', () => {
     const parentEl = new FakeElement();
-    const wrapperEl = renderStoredAsyncSubagent(
-      parentEl as unknown as HTMLElement,
-      {
-        ...createRunningAsyncSubagent(),
-        writerName: 'Le Guin 2',
-      },
-    ) as unknown as FakeElement;
+    const wrapperEl = renderStoredSubagentForTest(parentEl, {
+      ...createRunningAsyncSubagent(),
+      writerName: 'Le Guin 2',
+    });
 
     const iconEl = wrapperEl.findByClass('pivi-subagent-icon');
     expect(iconEl?.hasClass('pivi-subagent-running-icon')).toBe(true);
@@ -571,13 +555,10 @@ describe('subagent activity rendering', () => {
     ['Pamuk', 'snowflake'],
   ])('uses the %s profile icon definition', (writerName, iconName) => {
     const parentEl = new FakeElement();
-    const wrapperEl = renderStoredAsyncSubagent(
-      parentEl as unknown as HTMLElement,
-      {
-        ...createRunningAsyncSubagent(),
-        writerName,
-      },
-    ) as unknown as FakeElement;
+    const wrapperEl = renderStoredSubagentForTest(parentEl, {
+      ...createRunningAsyncSubagent(),
+      writerName,
+    });
 
     const iconEl = wrapperEl.findByClass('pivi-subagent-icon');
     expect(iconEl?.hasClass('pivi-subagent-running-icon')).toBe(true);
@@ -612,10 +593,7 @@ describe('subagent activity rendering', () => {
 
   it('renders a collapsible chevron on the subagent header when collapsed', () => {
     const parentEl = new FakeElement();
-    const wrapperEl = renderStoredAsyncSubagent(
-      parentEl as unknown as HTMLElement,
-      createRunningAsyncSubagent(),
-    ) as unknown as FakeElement;
+    const wrapperEl = renderStoredSubagentForTest(parentEl, createRunningAsyncSubagent());
 
     const headerEl = wrapperEl.findByClass('pivi-subagent-header');
     expect(headerEl?.findByClass('pivi-collapsible-chevron')).not.toBeNull();
@@ -625,19 +603,16 @@ describe('subagent activity rendering', () => {
 
   it('renders stored sync subagents with the same compact activity shell', () => {
     const parentEl = new FakeElement();
-    const wrapperEl = renderStoredSubagent(
-      parentEl as unknown as HTMLElement,
-      {
-        id: 'task-1',
-        writerName: 'Borges',
-        description: 'Read long file',
-        prompt: 'Read the file and summarize it',
-        status: 'completed',
-        result: 'Done',
-        toolCalls: [],
-        isExpanded: false,
-      },
-    ) as unknown as FakeElement;
+    const wrapperEl = renderStoredSubagentForTest(parentEl, {
+      id: 'task-1',
+      writerName: 'Borges',
+      description: 'Read long file',
+      prompt: 'Read the file and summarize it',
+      status: 'completed',
+      result: 'Done',
+      toolCalls: [],
+      isExpanded: false,
+    });
 
     expect(wrapperEl.hasClass('pivi-subagent-card')).toBe(true);
     expect(wrapperEl.findByClass('pivi-subagent-content')?.hasClass('pivi-hidden')).toBe(true);
@@ -646,11 +621,13 @@ describe('subagent activity rendering', () => {
 
   it('does not emit the hidden legacy async progress DOM', () => {
     const parentEl = new FakeElement();
-    const state = createAsyncSubagentBlock(
+    const state = mountStoredSubagent(
       parentEl as unknown as HTMLElement,
-      'task-async-progress',
-      { description: 'Review architecture', prompt: 'Go' },
-      { writerName: 'Austen' },
+      {
+        ...createRunningAsyncSubagent(),
+        id: 'task-async-progress',
+        asyncStatus: 'pending',
+      },
     );
     const wrapperEl = state.wrapperEl as unknown as FakeElement;
 
@@ -664,11 +641,15 @@ describe('subagent activity rendering', () => {
 
   it('moves a live async subagent from static queued to animated running to static completed', () => {
     const parentEl = new FakeElement();
-    const state = createAsyncSubagentBlock(
+    const state = mountStoredSubagent(
       parentEl as unknown as HTMLElement,
-      'task-async-lifecycle',
-      { description: 'Review lifecycle', prompt: 'Go' },
-      { writerName: 'Woolf' },
+      {
+        ...createRunningAsyncSubagent(),
+        id: 'task-async-lifecycle',
+        writerName: 'Woolf',
+        description: 'Review lifecycle',
+        asyncStatus: 'pending',
+      },
     );
     const wrapperEl = state.wrapperEl as unknown as FakeElement;
     const iconEl = wrapperEl.findByClass('pivi-subagent-icon');
@@ -676,12 +657,21 @@ describe('subagent activity rendering', () => {
     expect(wrapperEl.hasClass('queued')).toBe(true);
     expect(iconEl?.hasClass('pivi-subagent-running-icon')).toBe(false);
 
-    updateAsyncSubagentRunning(state, 'agent-1');
+    updateStoredSubagent(state, {
+      ...state.info,
+      agentId: 'agent-1',
+      asyncStatus: 'running',
+    });
     expect(wrapperEl.hasClass('queued')).toBe(false);
     expect(wrapperEl.hasClass('running')).toBe(true);
     expect(iconEl?.hasClass('pivi-subagent-running-icon')).toBe(true);
 
-    finalizeAsyncSubagent(state, 'Done', false);
+    updateStoredSubagent(state, {
+      ...state.info,
+      asyncStatus: 'completed',
+      status: 'completed',
+      result: 'Done',
+    });
     expect(wrapperEl.hasClass('running')).toBe(false);
     expect(wrapperEl.hasClass('queued')).toBe(false);
     expect(wrapperEl.hasClass('waiting')).toBe(false);
@@ -693,29 +683,31 @@ describe('subagent activity rendering', () => {
   it('clears running motion on every live terminal path', () => {
     const cases = [
       {
-        finish: (state: ReturnType<typeof createAsyncSubagentBlock>) => (
-          finalizeAsyncSubagent(state, 'Failed', true)
-        ),
+        info: { asyncStatus: 'error', status: 'error', result: 'Failed' } as const,
         status: 'failed',
       },
       {
-        finish: (state: ReturnType<typeof createAsyncSubagentBlock>) => (
-          markAsyncSubagentOrphaned(state)
-        ),
+        info: { asyncStatus: 'orphaned', status: 'error' } as const,
         status: 'orphaned',
       },
     ] as const;
 
     for (const testCase of cases) {
       const parentEl = new FakeElement();
-      const state = createAsyncSubagentBlock(
+      const state = mountStoredSubagent(
         parentEl as unknown as HTMLElement,
-        `task-${testCase.status}`,
-        { description: 'Review lifecycle', prompt: 'Go' },
-        { writerName: 'Woolf' },
+        {
+          ...createRunningAsyncSubagent(),
+          id: `task-${testCase.status}`,
+          writerName: 'Woolf',
+          description: 'Review lifecycle',
+        },
       );
-      updateAsyncSubagentRunning(state, `agent-${testCase.status}`);
-      testCase.finish(state);
+      updateStoredSubagent(state, {
+        ...state.info,
+        ...testCase.info,
+        agentId: `agent-${testCase.status}`,
+      });
 
       const wrapperEl = state.wrapperEl as unknown as FakeElement;
       const iconEl = wrapperEl.findByClass('pivi-subagent-icon');
@@ -779,21 +771,18 @@ describe('subagent activity rendering', () => {
 
   it('hides agent report protocol blocks from restored async results', () => {
     const parentEl = new FakeElement();
-    const wrapperEl = renderStoredAsyncSubagent(
-      parentEl as unknown as HTMLElement,
-      {
-        ...createRunningAsyncSubagent(),
-        status: 'completed',
-        asyncStatus: 'completed',
-        result: [
-          'Review finished.',
-          '',
-          '```pivi-agent-report',
-          '{"version":1,"objective":"Review","outcome":"completed"}',
-          '```',
-        ].join('\n'),
-      },
-    ) as unknown as FakeElement;
+    const wrapperEl = renderStoredSubagentForTest(parentEl, {
+      ...createRunningAsyncSubagent(),
+      status: 'completed',
+      asyncStatus: 'completed',
+      result: [
+        'Review finished.',
+        '',
+        '```pivi-agent-report',
+        '{"version":1,"objective":"Review","outcome":"completed"}',
+        '```',
+      ].join('\n'),
+    });
 
     (wrapperEl.findByClass('pivi-subagent-header') as FakeElement).click();
     const result = wrapperEl.findByClass('pivi-subagent-result-output')?.textContent;
@@ -912,19 +901,16 @@ describe('subagent activity rendering', () => {
 
   it('renders stored async subagent tool calls as one N steps group after expanding', () => {
     const parentEl = new FakeElement();
-    const wrapperEl = renderStoredAsyncSubagent(
-      parentEl as unknown as HTMLElement,
-      {
-        ...createRunningAsyncSubagent(),
-        status: 'completed',
-        asyncStatus: 'completed',
-        result: 'Done',
-        toolCalls: [
-          createPlainToolCall('read-a', 'a.md'),
-          createPlainToolCall('read-b', 'b.md'),
-        ],
-      },
-    ) as unknown as FakeElement;
+    const wrapperEl = renderStoredSubagentForTest(parentEl, {
+      ...createRunningAsyncSubagent(),
+      status: 'completed',
+      asyncStatus: 'completed',
+      result: 'Done',
+      toolCalls: [
+        createPlainToolCall('read-a', 'a.md'),
+        createPlainToolCall('read-b', 'b.md'),
+      ],
+    });
 
     const headerEl = wrapperEl.findByClass('pivi-subagent-header') as FakeElement;
     expect(wrapperEl.findByClass('pivi-subagent-tools')).toBeNull();
@@ -944,30 +930,27 @@ describe('subagent activity rendering', () => {
 
   it('filters and groups mixed stored async subagent calls after expanding', () => {
     const parentEl = new FakeElement();
-    const wrapperEl = renderStoredAsyncSubagent(
-      parentEl as unknown as HTMLElement,
-      {
-        ...createRunningAsyncSubagent(),
-        status: 'completed',
-        asyncStatus: 'completed',
-        result: 'Done',
-        toolCalls: [
-          createPlainToolCall('read-a', 'a.md'),
-          createToolCall('task-output', 'TaskOutput', { task_id: 'nested-agent' }),
-          createToolCall('custom-output', 'custom_tool_call_output', { output: 'provider event' }),
-          createToolCall('empty-stdin', 'write_stdin', { session_id: 1, chars: '' }),
-          createPlainToolCall('read-b', 'b.md'),
-          createToolCall('todo', 'TodoWrite', {
-            todos: [{ content: 'Inspect tests', status: 'completed' }],
-          }),
-          createToolCall('ask', 'AskUserQuestion', {
-            questions: [{ question: 'Continue?', options: [] }],
-          }),
-          createPlainToolCall('read-c', 'c.md'),
-          createPlainToolCall('read-d', 'd.md'),
-        ],
-      },
-    ) as unknown as FakeElement;
+    const wrapperEl = renderStoredSubagentForTest(parentEl, {
+      ...createRunningAsyncSubagent(),
+      status: 'completed',
+      asyncStatus: 'completed',
+      result: 'Done',
+      toolCalls: [
+        createPlainToolCall('read-a', 'a.md'),
+        createToolCall('task-output', 'TaskOutput', { task_id: 'nested-agent' }),
+        createToolCall('custom-output', 'custom_tool_call_output', { output: 'provider event' }),
+        createToolCall('empty-stdin', 'write_stdin', { session_id: 1, chars: '' }),
+        createPlainToolCall('read-b', 'b.md'),
+        createToolCall('todo', 'TodoWrite', {
+          todos: [{ content: 'Inspect tests', status: 'completed' }],
+        }),
+        createToolCall('ask', 'AskUserQuestion', {
+          questions: [{ question: 'Continue?', options: [] }],
+        }),
+        createPlainToolCall('read-c', 'c.md'),
+        createPlainToolCall('read-d', 'd.md'),
+      ],
+    });
 
     const headerEl = wrapperEl.findByClass('pivi-subagent-header') as FakeElement;
     headerEl.click();
@@ -984,22 +967,19 @@ describe('subagent activity rendering', () => {
 
   it('renders stored sync subagent tool calls as one N steps group', () => {
     const parentEl = new FakeElement();
-    const wrapperEl = renderStoredSubagent(
-      parentEl as unknown as HTMLElement,
-      {
-        id: 'task-stored-tools',
-        writerName: 'Kafka',
-        description: 'Scan repo',
-        prompt: 'Scan the repository',
-        status: 'completed',
-        result: 'Done',
-        toolCalls: [
-          createPlainToolCall('read-a', 'a.md'),
-          createPlainToolCall('read-b', 'b.md'),
-        ],
-        isExpanded: true,
-      },
-    ) as unknown as FakeElement;
+    const wrapperEl = renderStoredSubagentForTest(parentEl, {
+      id: 'task-stored-tools',
+      writerName: 'Kafka',
+      description: 'Scan repo',
+      prompt: 'Scan the repository',
+      status: 'completed',
+      result: 'Done',
+      toolCalls: [
+        createPlainToolCall('read-a', 'a.md'),
+        createPlainToolCall('read-b', 'b.md'),
+      ],
+      isExpanded: true,
+    });
 
     const toolsContainer = wrapperEl.findByClass('pivi-subagent-tools') as FakeElement;
     const groups = toolsContainer.findAllByClass('pivi-tool-step-group');

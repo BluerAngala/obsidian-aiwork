@@ -1,4 +1,4 @@
-import type { SubagentInfo, ToolCallInfo } from '@pivi/pivi-agent-core/foundation';
+import type { ActivityStatus, SubagentInfo, ToolCallInfo } from '@pivi/pivi-agent-core/foundation';
 import {
   isToolPresentationGroupable,
   shouldPresentToolCall,
@@ -171,8 +171,13 @@ function hydrateSyncSubagentStateFromStored(state: SubagentState, subagent: Suba
   state.info.prompt = subagent.prompt;
   state.info.mode = subagent.mode;
   state.info.status = subagent.status;
+  state.info.asyncStatus = subagent.asyncStatus;
   state.info.activityStatus = subagent.activityStatus;
+  state.info.agentId = subagent.agentId;
+  state.info.outputToolId = subagent.outputToolId;
   state.info.result = subagent.result;
+  state.info.startedAt = subagent.startedAt;
+  state.info.completedAt = subagent.completedAt;
 
   state.labelEl.setText(formatSubagentAgentName(state.info.id, state.info.writerName));
 
@@ -379,10 +384,11 @@ export function updateSubagentToolResult(
 export function finalizeSubagentBlock(
   state: SubagentState,
   result: string,
-  isError: boolean
+  isError: boolean,
+  activityStatus: ActivityStatus = isError ? 'failed' : 'completed',
 ): void {
   state.info.status = isError ? 'error' : 'completed';
-  state.info.activityStatus = isError ? 'failed' : 'completed';
+  state.info.activityStatus = activityStatus;
   state.info.result = result;
   state.info.completedAt ??= Date.now();
   updateSyncWrapperStatus(state);
@@ -458,7 +464,12 @@ export function updateStoredSubagent(state: SubagentState, subagent: SubagentInf
   state.info.status = subagent.status;
   if (subagent.status === 'completed' || subagent.status === 'error') {
     const fallback = subagent.status === 'error' ? 'ERROR' : 'DONE';
-    finalizeSubagentBlock(state, subagent.result || fallback, subagent.status === 'error');
+    finalizeSubagentBlock(
+      state,
+      subagent.result || fallback,
+      subagent.status === 'error',
+      getSubagentDisplayStatus(subagent),
+    );
   } else {
     updateSyncWrapperStatus(state);
     updateSyncHeaderAria(state);
@@ -483,18 +494,4 @@ export function mountStoredSubagent(
 
   hydrateSyncSubagentStateFromStored(state, subagent);
   return state;
-}
-
-export function renderStoredSubagent(
-  parentEl: HTMLElement,
-  subagent: SubagentInfo,
-  renderContent?: SubagentRenderContentFn,
-  beginDisclosureResize?: (header: HTMLElement) => void,
-): HTMLElement {
-  return mountStoredSubagent(
-    parentEl,
-    subagent,
-    renderContent,
-    beginDisclosureResize,
-  ).wrapperEl;
 }

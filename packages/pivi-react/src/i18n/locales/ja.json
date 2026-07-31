@@ -160,14 +160,12 @@
       "expand": "タスクリストを展開 — {total} 件中 {completed} 件完了"
     },
     "activity": {
-      "backgroundTask": "バックグラウンドタスク",
       "subagentTask": "サブエージェントタスク",
       "expand": "クリックして展開",
       "collapse": "クリックして折りたたむ",
       "prompt": "指示",
       "result": "結果",
       "noPrompt": "指示がありません",
-      "sessionEnded": "タスク完了前にセッションが終了しました",
       "done": "完了",
       "error": "エラー"
     },
@@ -500,7 +498,10 @@
     },
     "sessionFiles": {
       "heading": "セッションファイル",
-      "retention": { "name": "削除したセッションの保持期間", "desc": "完全に削除するまでの日数。" },
+      "retention": {
+        "name": "削除したセッションの保持期間",
+        "desc": "完全に削除するまでの日数。"
+      },
       "deleteRemoved": {
         "name": "削除済みセッションを完全に削除",
         "desc": "削除操作で削除したセッションを完全に削除します。開いているセッションとアーカイブ済みセッションには影響しません。",
