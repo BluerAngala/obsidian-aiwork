@@ -142,6 +142,7 @@ export async function createPiWorkspaceServices(
   );
   configurePiAiModels({
     credentials: credentialStore ?? undefined,
+    providerFetch: network.providerFetch,
     authContext: new ObsidianAuthContext({
       settings: host.settings,
       getVaultPath: () => getVaultPath(host.app),

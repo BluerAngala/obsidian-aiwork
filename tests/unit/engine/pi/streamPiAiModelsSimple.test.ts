@@ -1,4 +1,5 @@
 import {
+  configurePiAiModels,
   piAiModels,
   streamPiAiModelsSimple,
 } from '../../../../packages/pivi-agent-core/src/engine/pi/piAiModels';
@@ -13,6 +14,7 @@ describe('streamPiAiModelsSimple', () => {
 
   beforeEach(() => {
     streamSimple.mockClear();
+    configurePiAiModels({});
     piAiModels.streamSimple = streamSimple as typeof piAiModels.streamSimple;
   });
 
@@ -31,6 +33,24 @@ describe('streamPiAiModelsSimple', () => {
       expect.objectContaining({ provider: 'openai-codex' }),
       expect.anything(),
       expect.objectContaining({ apiKey: 'token', transport: 'sse' }),
+    );
+  });
+
+  it('passes the configured provider fetch to Pi 0.83 streams', () => {
+    const providerFetch = jest.fn();
+    configurePiAiModels({ providerFetch });
+    piAiModels.streamSimple = streamSimple as typeof piAiModels.streamSimple;
+
+    streamPiAiModelsSimple(
+      { provider: 'openai-codex', id: 'gpt-5.3-codex-spark' } as never,
+      { messages: [] } as never,
+      { apiKey: 'token' },
+    );
+
+    expect(streamSimple).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({ fetch: providerFetch, transport: 'sse' }),
     );
   });
 

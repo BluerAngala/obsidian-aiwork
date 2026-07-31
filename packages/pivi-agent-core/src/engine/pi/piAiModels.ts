@@ -33,6 +33,7 @@ import {
 } from '../../auth/piProviderCredentials';
 import type { CustomProviderConfig } from '../../foundation/customProviders';
 import { PluginLogger } from '../../foundation/pluginLogger';
+import type { FetchCompatible } from '../../ports';
 import { createGrokBuildProvider } from './grokBuildProvider';
 import {
   buildCustomPiProvider,
@@ -47,6 +48,8 @@ import {
 
 const logger = new PluginLogger('PiAiModels');
 
+let providerFetch: FetchCompatible | undefined;
+
 /**
  * pi-ai's codex WebSocket transport builds `new WebSocket(url, { headers })` Node-`ws`-style.
  * Obsidian's browser WebSocket rejects that options object as an invalid subprotocol and cannot
@@ -58,9 +61,13 @@ export function streamPiAiModelsSimple(
   context: Context,
   options?: SimpleStreamOptions,
 ): AssistantMessageEventStream {
-  const pinned = model.provider === 'openai-codex' && options?.transport === undefined
-    ? { ...options, transport: 'sse' as const }
-    : options;
+  const pinned = {
+    ...options,
+    ...(options?.fetch === undefined && providerFetch ? { fetch: providerFetch } : {}),
+    ...(model.provider === 'openai-codex' && options?.transport === undefined
+      ? { transport: 'sse' as const }
+      : {}),
+  };
   return piAiModels.streamSimple(model, context, pinned);
 }
 
@@ -117,10 +124,12 @@ installSupportedProviders(piAiModels);
 export function configurePiAiModels(options: {
   credentials?: CredentialStore;
   authContext?: AuthContext;
+  providerFetch?: FetchCompatible;
   customProviders?: readonly CustomProviderConfig[];
   httpGet?: CustomProviderHttpGet;
   getApiKey?: (providerId: string) => string | undefined;
 }): void {
+  providerFetch = options.providerFetch;
   customProviderRuntime.reset(options);
   piAiModels = createModels({
     credentials: options.credentials,
