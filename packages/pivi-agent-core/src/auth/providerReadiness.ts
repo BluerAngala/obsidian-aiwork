@@ -38,7 +38,9 @@ export interface DeriveProviderReadinessOptions {
 function hasEnvironmentCredential(providerId: string, environmentVariables: string): boolean {
   const env = parseEnvironmentVariables(environmentVariables);
   const names = getProviderEnvVarNames(providerId);
-  return !!env[names.apiKeyVar]?.trim() || !!(names.oauthVar && env[names.oauthVar]?.trim());
+  return !!env[names.apiKeyVar]?.trim()
+    || !!(names.oauthVar && env[names.oauthVar]?.trim())
+    || !!(names.authTokenVar && env[names.authTokenVar]?.trim());
 }
 
 function isExpiredOAuth(credential: ProviderCredential | undefined, now: number): boolean {

@@ -1,5 +1,6 @@
 import type { ChatMessage } from '@pivi/pivi-agent-core/foundation';
 import {
+  measureElement as measureVirtualElement,
   observeElementRect,
   type Rect,
   useVirtualizer,
@@ -28,6 +29,19 @@ const HISTORY_BOUNDARY_ITEM_KEY = 'pivi:older-history-boundary';
 const MESSAGE_ESTIMATED_HEIGHT = 120;
 const MESSAGE_OVERSCAN = 6;
 const SCROLL_END_THRESHOLD = 80;
+
+function measureVirtualRow(
+  element: Element,
+  entry: ResizeObserverEntry | undefined,
+  instance: Virtualizer<HTMLElement, Element>,
+): number {
+  const index = instance.indexFromElement(element);
+  if (!entry) {
+    const key = instance.options.getItemKey(index);
+    return instance.itemSizeCache.get(key) ?? instance.options.estimateSize(index);
+  }
+  return measureVirtualElement(element, entry, instance);
+}
 
 export interface MessageListProps {
   readonly store: ChatProjectionStore;
@@ -167,6 +181,7 @@ export function MessageList({
       width: Math.max(1, scrollElement.clientWidth),
       height: Math.max(600, scrollElement.clientHeight),
     },
+    measureElement: measureVirtualRow,
     onChange: (instance, sync) => {
       if (
         sync
@@ -174,7 +189,7 @@ export function MessageList({
         && !instance.isAtEnd(SCROLL_END_THRESHOLD)
       ) {
         streamingFollowRef.current = false;
-      } else if (!sync && isStreaming && streamingFollowRef.current) {
+      } else if (isStreaming && streamingFollowRef.current) {
         scheduleStreamingFollow(instance);
       }
       if (

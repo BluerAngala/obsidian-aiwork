@@ -60,6 +60,8 @@ import {
   type WebSearchCredentialStore,
 } from "@pivi/pivi-agent-core/tools";
 
+import { requestOAuthManualCode } from "@/app/oauthManualCodePrompt";
+
 import {
   type ChatRuntimeServiceFactories,
   createChatRuntimeServiceFactories,
@@ -156,6 +158,7 @@ export async function createPiWorkspaceServices(
     credentialStore,
     {
       openAuthUrl: (url) => systemExternalOpener.openExternalUrl(url),
+      requestManualCode: (message, signal) => requestOAuthManualCode(host.app, message, signal),
     },
     createFileProviderLegacyAuthStore(vaultPath ? `${vaultPath}/.pivi/auth.json` : null),
   );

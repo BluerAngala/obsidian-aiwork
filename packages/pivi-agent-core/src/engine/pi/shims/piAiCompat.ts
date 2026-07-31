@@ -31,8 +31,8 @@ function withEnvApiKey(options: SimpleStreamOptions | undefined, provider: strin
   const explicitApiKey = typeof options?.apiKey === 'string' && options.apiKey.trim().length > 0;
   if (explicitApiKey) return options;
 
-  const apiKey = getEnvApiKey(provider);
-  return apiKey ? { ...options, apiKey } : options;
+  const apiKey = getEnvApiKey(provider, options?.env);
+  return apiKey && apiKey !== '<authenticated>' ? { ...options, apiKey } : options;
 }
 
 function resolveRegisteredApiProvider(api: Api): ApiProvider | undefined {

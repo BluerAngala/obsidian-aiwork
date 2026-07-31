@@ -9,7 +9,10 @@ import { derivePiModelReadinessStatus } from '@/app/workspace/modelReadiness';
 import { testModelReadiness } from '@/app/workspace/providerReadiness';
 
 
-const mockOAuthFlowHost = { openAuthUrl: jest.fn().mockResolvedValue(undefined) };
+const mockOAuthFlowHost = {
+  openAuthUrl: jest.fn().mockResolvedValue(undefined),
+  requestManualCode: jest.fn().mockResolvedValue(null),
+};
 const requestUrlMock = requestUrl as jest.MockedFunction<typeof requestUrl>;
 
 function settingsBag(overrides: Parameters<typeof updatePiAgentSettings>[1] = {}): Record<string, unknown> {

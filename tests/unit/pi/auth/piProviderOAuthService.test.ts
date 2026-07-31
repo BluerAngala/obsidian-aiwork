@@ -25,6 +25,7 @@ import { createMockApp } from '../../../helpers/mockApp';
 function createMockOAuthFlowHost(): OAuthFlowHost & { openAuthUrl: jest.Mock } {
   return {
     openAuthUrl: jest.fn().mockResolvedValue(undefined),
+    requestManualCode: jest.fn().mockResolvedValue(null),
   };
 }
 

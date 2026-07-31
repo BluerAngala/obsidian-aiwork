@@ -1,4 +1,7 @@
 import {
+  ANTHROPIC_API_KEY_ENV,
+  ANTHROPIC_AUTH_TOKEN_ENV,
+  ANTHROPIC_OAUTH_TOKEN_ENV,
   configurePiAiEnvironmentHost,
   findEnvKeys,
   getEnvApiKey,
@@ -26,6 +29,27 @@ describe('piAiEnvApiKeys host seams', () => {
 
     expect(findEnvKeys('deepseek')).toEqual(['DEEPSEEK_API_KEY']);
     expect(getEnvApiKey('deepseek')).toBe('deepseek-key');
+  });
+
+  it('prefers scoped provider environment values over the host environment', () => {
+    configureEnv({ DEEPSEEK_API_KEY: 'host-key' });
+
+    expect(getEnvApiKey('deepseek', { DEEPSEEK_API_KEY: 'scoped-key' })).toBe('scoped-key');
+  });
+
+  it('reports Anthropic bearer auth but only returns OAuth or API keys', () => {
+    configureEnv({
+      [ANTHROPIC_AUTH_TOKEN_ENV]: 'bearer-token',
+      [ANTHROPIC_OAUTH_TOKEN_ENV]: 'oauth-token',
+      [ANTHROPIC_API_KEY_ENV]: 'api-key',
+    });
+
+    expect(findEnvKeys('anthropic')).toEqual([
+      ANTHROPIC_AUTH_TOKEN_ENV,
+      ANTHROPIC_OAUTH_TOKEN_ENV,
+      ANTHROPIC_API_KEY_ENV,
+    ]);
+    expect(getEnvApiKey('anthropic')).toBe('oauth-token');
   });
 
   it('reads Bun process-environ fallback text when the host enables it', () => {

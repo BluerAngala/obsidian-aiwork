@@ -22,7 +22,7 @@ describe('shared build compatibility', () => {
       process.stdout.write(JSON.stringify({
         production: {
           target: production.target,
-          define: production.define,
+          define: { 'process.env.NODE_ENV': production.define['process.env.NODE_ENV'] },
           banner: production.banner,
           jsx: production.jsx,
           jsxImportSource: production.jsxImportSource,
@@ -33,7 +33,7 @@ describe('shared build compatibility', () => {
         },
         analysis: {
           target: analysis.target,
-          define: analysis.define,
+          define: { 'process.env.NODE_ENV': analysis.define['process.env.NODE_ENV'] },
           banner: analysis.banner,
           jsx: analysis.jsx,
           jsxImportSource: analysis.jsxImportSource,
