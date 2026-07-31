@@ -13,6 +13,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
 
       - name: Use Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -92,11 +94,20 @@ jobs:
 
           if ! grep -q '[^[:space:]]' "$notes_file"; then
             if [ "$IS_PRERELEASE" = "true" ]; then
-              printf 'Pivi Obsidian plugin v%s\n' "$RELEASE_TAG_RESOLVED" > "$notes_file"
+              previous_tag="$(git describe --tags --abbrev=0 "${RELEASE_TAG_RESOLVED}^")"
+              node scripts/generate-beta-release-notes.js \
+                "$previous_tag" \
+                "$RELEASE_TAG_RESOLVED" \
+                "$GITHUB_REPOSITORY" > "$notes_file"
             else
               echo "CHANGELOG.md has no non-empty section for $RELEASE_TAG_RESOLVED."
               exit 1
             fi
+          fi
+
+          if ! grep -q '[^[:space:]]' "$notes_file"; then
+            echo "Release notes are empty for $RELEASE_TAG_RESOLVED."
+            exit 1
           fi
 
           echo "RELEASE_NOTES_FILE=${notes_file}" >> "$GITHUB_ENV"

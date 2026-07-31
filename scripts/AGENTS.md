@@ -15,6 +15,7 @@ flowchart LR
   Jest["run-jest.js"] -- "sets localStorage file" --> Tests["Jest unit project (includes integration)<br/>+ pivi-react project"]
   Version["sync-version.js"] -- "stable only" --> Manifest["manifest.json + versions.json + README badge"]
   BetaVersion["prepare-beta-release.js"] -- "package.json only" --> NextBranch["next / beta branch"]
+  BetaNotes["generate-beta-release-notes.js"] -- "previous beta tag -> current tag" --> GitHubPrerelease["categorized beta release notes"]
   ReleaseManifest["write-release-manifest.js"] -- "prerelease tags" --> ReleaseAsset["published manifest.json"]
   Fixtures["generate-perf-sessions.mjs"] --> Sessions["Vault .pivi/sessions<br/>deterministic perf fixtures"]
   Provenance["generate-pivi-070-session-fixture.mjs"] --> Frozen["Frozen tag-generated<br/>0.7.0 JSONL"]
@@ -32,6 +33,7 @@ flowchart LR
 - `sync-version.js` — Syncs **stable** `package.json` versions into `manifest.json`, `versions.json`, and the root README version badge. Skips those files for semver prerelease versions so the community-plugin channel stays on the last stable release.
 - `versionMetadata.js` — Shared stable/prerelease version helpers used by the sync and release scripts.
 - `prepare-beta-release.js` — Bumps `package.json` on `next` or `beta`, prints commit/tag commands, and never mutates root `manifest.json`. Entry point for `npm run version:beta`.
+- `generate-beta-release-notes.js` — Generates categorized beta GitHub release notes from conventional commits between the previous reachable tag and the current prerelease tag. It excludes release-preparation commits and always appends the exact compare link. Stable changelog generation remains owned by release-please from the previous stable manifest version.
 - `write-release-manifest.js` — Writes a release asset `manifest.json` from the stable root template plus `package.json.version`. Used by `release.yaml` for prerelease tags.
 - `postinstall.mjs` — Creates `.env.local` from example outside CI when missing.
 - `generate-perf-sessions.mjs` — Writes four deterministic, Pi-compatible JSONL sessions (1K messages, 5K messages, one 100KB Markdown response, and 20 completed subagents) under a supplied vault's `.pivi/sessions/`. It only overwrites its fixed `perf-00*-*.jsonl` fixture names. Run with `node scripts/generate-perf-sessions.mjs <vault>`.

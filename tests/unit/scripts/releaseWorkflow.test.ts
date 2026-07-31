@@ -49,11 +49,19 @@ describe('release provenance workflow', () => {
     expect(workflow).not.toContain('gh attestation verify');
   });
 
-  it('requires complete changelog notes for stable releases and supports prerelease fallbacks', () => {
+  it('requires cumulative stable changelogs and generates incremental beta notes', () => {
     expect(workflow).toContain(
       'CHANGELOG.md has no non-empty section for $RELEASE_TAG_RESOLVED.',
     );
-    expect(workflow).toContain('Pivi Obsidian plugin v%s');
+    expect(workflow).toContain('fetch-depth: 0');
+    expect(workflow).toContain(
+      'git describe --tags --abbrev=0 "${RELEASE_TAG_RESOLVED}^"',
+    );
+    expect(workflow).toContain('node scripts/generate-beta-release-notes.js');
+    expect(workflow).toContain('"$previous_tag"');
+    expect(workflow).toContain('"$GITHUB_REPOSITORY"');
+    expect(workflow).toContain('Release notes are empty for $RELEASE_TAG_RESOLVED.');
+    expect(workflow).not.toContain('Pivi Obsidian plugin v%s');
     expect(workflow).toContain('IS_PRERELEASE=true');
     expect(workflow).toContain('--prerelease');
     expect(workflow).toContain('node scripts/write-release-manifest.js');
