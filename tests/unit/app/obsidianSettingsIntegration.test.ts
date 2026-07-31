@@ -28,20 +28,24 @@ describe('Obsidian settings integration adapter', () => {
     }, false);
 
     expect(rows.find((row) => row.name === TOOL_OBSIDIAN_READ)).toMatchObject({
+      group: 'workspace-api',
       enabled: false,
       available: true,
     });
     expect(rows.find((row) => row.name === TOOL_OBSIDIAN_TASKS)).toMatchObject({
+      group: 'host-cli',
       enabled: false,
       available: false,
     });
     expect(rows.find((row) => row.name === TOOL_OBSIDIAN_BASH)).toMatchObject({
+      group: 'additional',
       enabled: true,
       available: true,
     });
     expect(rows.find((row) => row.name === TOOL_PIVI_SESSIONS)).toMatchObject({
       label: 'Pivi Sessions',
       description: 'Read durable sessions, list recoverable deleted sessions, or restore one in a visible Pivi tab.',
+      group: 'pivi',
       enabled: true,
       available: true,
     });

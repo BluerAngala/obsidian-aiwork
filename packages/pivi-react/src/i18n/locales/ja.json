@@ -532,6 +532,12 @@
         "mcp": "MCP サーバー"
       },
       "heading": "ツールの切り替え",
+      "groups": {
+        "workspace": "{workspaceName}",
+        "hostCli": "{hostName} CLI",
+        "pivi": "Pivi",
+        "additional": "追加アクセス"
+      },
       "intro": "エージェントに公開する {hostName} ツールの有効/無効。変更はプロンプト更新後の新しいターンで反映されます。",
       "unavailableOfficialCli": "公式の Obsidian CLI が必要です。",
       "unavailableExternalRead": "外部読み取り権限と許可ディレクトリが少なくとも 1 つ必要です。",

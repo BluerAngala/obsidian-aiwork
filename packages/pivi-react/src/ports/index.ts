@@ -195,6 +195,7 @@ export interface SettingsToolRow {
   readonly name: string;
   readonly label: string;
   readonly description: string;
+  readonly group: 'workspace-api' | 'host-cli' | 'pivi' | 'additional';
   readonly enabled: boolean;
   readonly available: boolean;
 }

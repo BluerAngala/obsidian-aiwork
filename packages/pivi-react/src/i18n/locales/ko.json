@@ -532,6 +532,12 @@
         "mcp": "MCP 서버"
       },
       "heading": "도구 토글",
+      "groups": {
+        "workspace": "{workspaceName}",
+        "hostCli": "{hostName} CLI",
+        "pivi": "Pivi",
+        "additional": "추가 액세스"
+      },
       "intro": "에이전트에 노출되는 {hostName} 도구를 켜거나 끕니다. 변경은 프롬프트 갱신 후 새 턴에 적용됩니다.",
       "unavailableOfficialCli": "공식 Obsidian CLI가 필요합니다.",
       "unavailableExternalRead": "외부 읽기 권한과 허용된 디렉터리가 하나 이상 필요합니다.",

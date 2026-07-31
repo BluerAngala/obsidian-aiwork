@@ -532,6 +532,12 @@
         "mcp": "MCP 伺服器"
       },
       "heading": "工具開關",
+      "groups": {
+        "workspace": "{workspaceName}",
+        "hostCli": "{hostName} CLI",
+        "pivi": "Pivi",
+        "additional": "附加存取"
+      },
       "intro": "啟用或停用向代理開放的 {hostName} 工具。變更會在提示重新整理後的新回合生效。",
       "unavailableOfficialCli": "需要官方 Obsidian CLI。",
       "unavailableExternalRead": "需要外部讀取權限且至少有一個允許的目錄。",

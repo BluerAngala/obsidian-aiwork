@@ -532,6 +532,12 @@
         "mcp": "Серверы MCP"
       },
       "heading": "Переключатели инструментов",
+      "groups": {
+        "workspace": "{workspaceName}",
+        "hostCli": "CLI {hostName}",
+        "pivi": "Pivi",
+        "additional": "Дополнительный доступ"
+      },
       "intro": "Включайте или отключайте инструменты {hostName} для агента. Изменения действуют в новых ходах после обновления промпта.",
       "unavailableOfficialCli": "Требуется официальный CLI Obsidian.",
       "unavailableExternalRead": "Нужен внешний доступ на чтение и хотя бы один разрешённый каталог.",

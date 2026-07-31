@@ -81,6 +81,13 @@ export function createObsidianToolRows(
 ): readonly SettingsToolRow[] {
   const officialCliEnabled = isOfficialObsidianCliEnabled();
   return TOOL_DESCRIPTORS.map(([name, labelKey, descriptionKey, requirement]) => {
+    const group = name === TOOL_PIVI_SESSIONS
+      ? 'pivi'
+      : requirement === 'cli'
+        ? 'host-cli'
+        : requirement === 'external' || requirement === 'codex' || name === TOOL_OBSIDIAN_BASH
+          ? 'additional'
+          : 'workspace-api';
     const available = requirement === 'cli'
       ? officialCliEnabled
       : requirement === 'external'
@@ -97,6 +104,7 @@ export function createObsidianToolRows(
       name,
       label: t(labelKey),
       description: available ? t(descriptionKey) : `${t(descriptionKey)} ${t(unavailableKey)}`,
+      group,
       enabled: available && (name === TOOL_OBSIDIAN_BASH
         ? settings.allowBash
         : !(settings.disabledTools ?? []).includes(name)),

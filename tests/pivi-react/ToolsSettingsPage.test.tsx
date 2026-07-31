@@ -17,7 +17,7 @@ function createPorts(overrides: Partial<SettingsPorts['complex']['tools']> = {})
     feedback: { notify: jest.fn() },
     actions: { saveGeneral: async () => undefined, saveSubagents: async () => undefined, saveEditorSelectionToolbar: async () => undefined, purgeDeletedSessionFiles: async () => 0 },
     complex: {
-      tools: { getSettings: () => settings, listToolRows: () => [{ name: 'host_tool', label: 'Host tool', description: 'Host capability', enabled: false, available: true }], setToolEnabled: async () => undefined, chooseExternalDirectory: async () => null, validateExternalDirectory: async () => ({ valid: true }), saveSettings: async (patch: Parameters<SettingsPorts['complex']['tools']['saveSettings']>[0]) => { Object.assign(settings, patch); }, ...overrides },
+      tools: { getSettings: () => settings, listToolRows: () => [{ name: 'host_tool', label: 'Host tool', description: 'Host capability', group: 'workspace-api', enabled: false, available: true }], setToolEnabled: async () => undefined, chooseExternalDirectory: async () => null, validateExternalDirectory: async () => ({ valid: true }), saveSettings: async (patch: Parameters<SettingsPorts['complex']['tools']['saveSettings']>[0]) => { Object.assign(settings, patch); }, ...overrides },
       webSearch: {
         getSettings: () => ({ providerOrder: ['brave', 'tavily', 'exa', 'anysearch'], disabledProviders: [] }),
         listProviders: () => [
@@ -89,6 +89,27 @@ describe('React tools settings', () => {
     expect(setToolEnabled).toHaveBeenCalledWith('host_tool', true);
   });
 
+  it('groups tool toggles by implementation and ownership', () => {
+    renderTools(createPorts({
+      listToolRows: () => [
+        { name: 'api_tool', label: 'API tool', description: 'API capability', group: 'workspace-api', enabled: true, available: true },
+        { name: 'cli_tool', label: 'CLI tool', description: 'CLI capability', group: 'host-cli', enabled: true, available: true },
+        { name: 'pivi_tool', label: 'Pivi tool', description: 'Pivi capability', group: 'pivi', enabled: true, available: true },
+        { name: 'extra_tool', label: 'Extra tool', description: 'Additional capability', group: 'additional', enabled: true, available: true },
+      ],
+    }));
+
+    expect(screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent)).toEqual([
+      'External filesystem access',
+      'Bash access',
+      'Tool toggles',
+      'workspace',
+      'Test host CLI',
+      'Pivi',
+      'Additional access',
+    ]);
+  });
+
   it('adds, deduplicates, and removes Bash command badges', async () => {
     const saveSettings = jest.fn(async () => undefined);
     renderTools(createPorts({ saveSettings }));
@@ -107,7 +128,7 @@ describe('React tools settings', () => {
   });
 
   it('keeps unavailable tools disabled and reports invalid external paths', async () => {
-    renderTools(createPorts({ listToolRows: () => [{ name: 'unavailable', label: 'Unavailable host tool', description: 'Requires host support', enabled: false, available: false }] }));
+    renderTools(createPorts({ listToolRows: () => [{ name: 'unavailable', label: 'Unavailable host tool', description: 'Requires host support', group: 'additional', enabled: false, available: false }] }));
     expect(screen.getByRole('checkbox', { name: 'Unavailable host tool' })).toBeDisabled();
     const input = screen.getByRole('textbox', { name: 'Add an allowed external directory' });
     fireEvent.change(input, { target: { value: 'relative/path' } });

@@ -532,6 +532,12 @@
         "mcp": "Servidores MCP"
       },
       "heading": "Alternâncias de ferramentas",
+      "groups": {
+        "workspace": "{workspaceName}",
+        "hostCli": "CLI do {hostName}",
+        "pivi": "Pivi",
+        "additional": "Acesso adicional"
+      },
       "intro": "Ative ou desative ferramentas {hostName} expostas ao agente. As alterações valem em novos turnos após o prompt atualizar.",
       "unavailableOfficialCli": "Requer a CLI oficial do Obsidian.",
       "unavailableExternalRead": "Requer leitura externa e pelo menos um diretório permitido.",

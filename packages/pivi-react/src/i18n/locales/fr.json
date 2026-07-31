@@ -532,6 +532,12 @@
         "mcp": "Serveurs MCP"
       },
       "heading": "Bascules d’outils",
+      "groups": {
+        "workspace": "{workspaceName}",
+        "hostCli": "CLI {hostName}",
+        "pivi": "Pivi",
+        "additional": "Accès supplémentaire"
+      },
       "intro": "Activez ou désactivez les outils {hostName} exposés à l’agent. Les changements s’appliquent aux nouveaux tours après rafraîchissement du prompt.",
       "unavailableOfficialCli": "Nécessite la CLI officielle Obsidian.",
       "unavailableExternalRead": "Nécessite l’accès en lecture externe et au moins un répertoire autorisé.",

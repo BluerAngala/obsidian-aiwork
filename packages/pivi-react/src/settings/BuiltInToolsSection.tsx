@@ -5,6 +5,13 @@ import { useHostTerminology } from '../platform';
 import type { SettingsFeedbackMessage, SettingsPorts } from '../ports';
 import { BadgeListInput, SettingRow, SettingsPageDescription, SettingsSection, Toggle } from './controls';
 
+const TOOL_GROUPS = [
+  ['workspace-api', 'settings.tools.groups.workspace'],
+  ['host-cli', 'settings.tools.groups.hostCli'],
+  ['pivi', 'settings.tools.groups.pivi'],
+  ['additional', 'settings.tools.groups.additional'],
+] as const;
+
 function parseDirectories(inputs: readonly string[]): { directories: string[]; error?: string } {
   const directories: string[] = [];
   for (const input of inputs) {
@@ -26,13 +33,14 @@ function parseDirectories(inputs: readonly string[]): { directories: string[]; e
 
 export function BuiltInToolsSection({ ports }: { readonly ports: SettingsPorts }) {
   const t = useT();
-  const { hostName } = useHostTerminology();
+  const { hostName, workspaceName } = useHostTerminology();
   const settings = ports.complex.tools.getSettings();
   const [directories, setDirectories] = useState<readonly string[]>(settings.externalReadDirectories);
   const [bashAllowlist, setBashAllowlist] = useState<readonly string[]>(settings.bashAllowlist);
   const [pending, setPending] = useState(false);
   const [directoryFeedback, setDirectoryFeedback] = useState<SettingsFeedbackMessage | null>(null);
   const operation = useRef(false);
+  const toolRows = ports.complex.tools.listToolRows();
 
   const persist = async (patch: Parameters<SettingsPorts['complex']['tools']['saveSettings']>[0]): Promise<boolean> => {
     try {
@@ -175,20 +183,28 @@ export function BuiltInToolsSection({ ports }: { readonly ports: SettingsPorts }
         </div>
       </SettingsSection>
       <SettingsSection title={t('settings.tools.heading')} headingLevel={3}>
-        {ports.complex.tools.listToolRows().map((row) => (
-          <SettingRow key={row.name} name={`${row.label} (${row.name})`} description={row.description}>
-            <Toggle
-              checked={row.enabled}
-              disabled={pending || !row.available}
-              label={row.label}
-              onChange={(enabled) => {
-                void ports.complex.tools.setToolEnabled(row.name, enabled).catch(() => {
-                  ports.feedback.notify(t('common.error'));
-                });
-              }}
-            />
-          </SettingRow>
-        ))}
+        {TOOL_GROUPS.map(([group, titleKey]) => {
+          const rows = toolRows.filter(row => row.group === group);
+          if (rows.length === 0) return null;
+          return (
+            <SettingsSection key={group} title={t(titleKey, { hostName, workspaceName })} headingLevel={3}>
+              {rows.map((row) => (
+                <SettingRow key={row.name} name={`${row.label} (${row.name})`} description={row.description}>
+                  <Toggle
+                    checked={row.enabled}
+                    disabled={pending || !row.available}
+                    label={row.label}
+                    onChange={(enabled) => {
+                      void ports.complex.tools.setToolEnabled(row.name, enabled).catch(() => {
+                        ports.feedback.notify(t('common.error'));
+                      });
+                    }}
+                  />
+                </SettingRow>
+              ))}
+            </SettingsSection>
+          );
+        })}
       </SettingsSection>
     </>
   );

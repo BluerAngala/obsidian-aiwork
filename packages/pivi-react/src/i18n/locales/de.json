@@ -532,6 +532,12 @@
         "mcp": "MCP-Server"
       },
       "heading": "Tool-Schalter",
+      "groups": {
+        "workspace": "{workspaceName}",
+        "hostCli": "{hostName}-CLI",
+        "pivi": "Pivi",
+        "additional": "Zusätzlicher Zugriff"
+      },
       "intro": "{hostName}-Tools für den Agenten ein- oder ausschalten. Änderungen gelten für neue Turns nach Prompt-Aktualisierung.",
       "unavailableOfficialCli": "Erfordert die offizielle Obsidian-CLI.",
       "unavailableExternalRead": "Erfordert externen Lesezugriff und mindestens ein erlaubtes Verzeichnis.",
