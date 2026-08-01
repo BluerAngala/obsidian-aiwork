@@ -72,6 +72,7 @@ function createHandle(): PiviChatViewHandle {
       refreshRuntimePrompt: jest.fn(async () => undefined),
       reloadMcpServers: jest.fn(async () => undefined),
       refreshVaultSkills: jest.fn(async () => undefined),
+      refreshPiviManagement: jest.fn(async () => []),
       invalidateSlashCatalog: jest.fn(),
       warmSlashCatalog: jest.fn(),
       syncExternalReadDirectories: jest.fn(),

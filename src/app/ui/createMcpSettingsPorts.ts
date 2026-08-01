@@ -58,11 +58,18 @@ export function createMcpSettingsPort(
   host: PiviSettingsHost,
   workspace: PiviPluginWorkspace,
 ): SettingsMcpPort {
+  let loadedRevision: string | null = null;
   return {
-    load: () => workspace.mcpStorage.load(),
+    async load() {
+      const snapshot = await workspace.mcpManagement.loadSettingsSnapshot();
+      loadedRevision = snapshot.revision;
+      return snapshot.servers;
+    },
     listTools: serverName => Promise.resolve(workspace.mcpToolProvider.getCachedTools(serverName)),
     async save(servers) {
-      await workspace.mcpStorage.save([...servers]);
+      const expectedRevision = loadedRevision ?? await workspace.mcpManagement.getRevision();
+      const committed = await workspace.mcpManagement.replaceAll(servers, expectedRevision);
+      loadedRevision = committed.revision;
       regrantMcpPrivateOrigins(servers);
       await reloadMcpAcrossViews(host, workspace);
     },

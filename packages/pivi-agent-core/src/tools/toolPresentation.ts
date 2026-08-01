@@ -25,7 +25,10 @@ import {
   TOOL_OBSIDIAN_TAGS,
   TOOL_OBSIDIAN_TASKS,
   TOOL_OBSIDIAN_WRITE,
+  TOOL_PIVI_COMMANDS,
+  TOOL_PIVI_MCP,
   TOOL_PIVI_SESSIONS,
+  TOOL_PIVI_SKILLS,
 } from './obsidianToolNames';
 import {
   TOOL_AGENT_OUTPUT,
@@ -125,6 +128,9 @@ export type ToolPresentationTranslationKey =
   | 'tools.display.readExternal'
   | 'tools.display.search'
   | 'tools.display.sessions'
+  | 'tools.display.piviMcp'
+  | 'tools.display.piviSkills'
+  | 'tools.display.piviCommands'
   | 'tools.display.tags'
   | 'tools.display.tasks'
   | 'tools.display.write'
@@ -316,6 +322,21 @@ export const TOOL_PRESENTATION_DESCRIPTORS: Readonly<Record<string, ToolPresenta
   [TOOL_OBSIDIAN_TAGS]: obsidian('tag', 'tools.display.tags', summarizeObsidianTags),
   [TOOL_OBSIDIAN_BASE]: obsidian('database', 'tools.display.base', summarizeObsidianBase),
   [TOOL_PIVI_SESSIONS]: obsidian('history', 'tools.display.sessions', summarizeObsidianActionTarget),
+  [TOOL_PIVI_MCP]: entry(MCP_ICON_MARKER, {
+    kind: 'mcp',
+    labelKey: 'tools.display.piviMcp',
+    summarize: summarizeObsidianActionTarget,
+  }),
+  [TOOL_PIVI_SKILLS]: entry('sparkles', {
+    kind: 'skill',
+    labelKey: 'tools.display.piviSkills',
+    summarize: summarizeObsidianActionTarget,
+  }),
+  [TOOL_PIVI_COMMANDS]: entry('terminal', {
+    kind: 'obsidian',
+    labelKey: 'tools.display.piviCommands',
+    summarize: summarizeObsidianActionTarget,
+  }),
 };
 
 function resolveTodoProgress(input: Record<string, unknown>) {

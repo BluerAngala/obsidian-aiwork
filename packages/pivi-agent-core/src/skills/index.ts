@@ -14,5 +14,6 @@ export * from './vault/loadVaultSkills';
 export * from './vault/notifyVaultSkillsChanged';
 export * from './vault/resolvePinnedSkillsCli';
 export * from './vault/skillsCliConstants';
+export * from './vault/skillsManagementCoordinator';
 export * from './vault/skillStagePublish';
 export * from './vault/vaultSkillsService';

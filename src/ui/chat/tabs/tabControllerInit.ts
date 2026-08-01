@@ -150,6 +150,7 @@ export function initializeTabControllers(
       dismissPendingInlinePrompts: () => tab.controllers.inputController?.dismissPendingInlinePrompts(),
       clearCapabilitySessionGrants: () => tab.capabilityApproval?.clearSessionGrants(),
       ensureServiceForSession: (openSession) => {
+        tab.piviManagementApproval?.cancelPending();
         tab.capabilityApproval?.clearSessionGrants();
         tab.openSessionId = openSession?.id ?? null;
         tab.sessionFile = openSession?.sessionFile ?? null;
@@ -181,6 +182,7 @@ export function initializeTabControllers(
     },
     {
       onNewSession: () => {
+        tab.piviManagementApproval?.cancelPending();
         tab.capabilityApproval?.clearSessionGrants();
         cleanupTabRuntime(tab);
         tab.lifecycleState = 'blank';
@@ -195,6 +197,7 @@ export function initializeTabControllers(
       },
       onSessionLoaded: () => ui.slashCommandDropdown?.resetRuntimeSkillsCache(),
       onSessionSwitched: () => {
+        tab.piviManagementApproval?.cancelPending();
         tab.capabilityApproval?.clearSessionGrants();
         ui.slashCommandDropdown?.resetRuntimeSkillsCache();
       },
@@ -277,6 +280,7 @@ export function initializeTabControllers(
 
   if (tab.controllers.inputController && tab.capabilityApproval) {
     tab.capabilityApproval.bindInputController(tab.controllers.inputController);
+    tab.piviManagementApproval?.bindInputController(tab.controllers.inputController);
   }
 
   tab.controllers.navigationController = new NavigationController({

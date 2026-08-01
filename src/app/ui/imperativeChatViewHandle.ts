@@ -201,6 +201,41 @@ export function createImperativeChatViewHandle(
           await service.syncSystemPrompt?.();
         });
       },
+      async refreshPiviManagement(domain) {
+        const failures: Array<{ target: string; message: string }> = [];
+        const manager = getTabManager();
+        if (!manager) return failures;
+
+        const tabs = manager.getAllTabs();
+        const initialized = tabs.filter((tab) => tab.serviceInitialized && tab.service);
+
+        // Always invalidate/warm slash caches for management domains that affect catalogs.
+        manager.invalidateSlashCommandCaches();
+
+        for (let index = 0; index < initialized.length; index++) {
+          const tab = initialized[index]!;
+          const service = tab.service!;
+          const target = `tab:${tab.id || String(index + 1)}`;
+          try {
+            if (domain === 'mcp') {
+              await service.reloadMcpServers();
+            } else if (domain === 'skills') {
+              if (service.syncSystemPrompt) await service.syncSystemPrompt();
+              else await service.ensureReady({ force: true });
+            }
+            // commands: cache invalidation/warm only — no per-tab runtime call.
+          } catch (error) {
+            imperativeChatLogger.warn(
+              `Pivi management ${domain} refresh failed for ${target}`,
+              error,
+            );
+            failures.push({ target, message: 'Runtime refresh failed.' });
+          }
+        }
+
+        failures.push(...await manager.refreshSlashCommandCachesStrict());
+        return failures;
+      },
       invalidateSlashCatalog() {
         getTabManager()?.invalidateSlashCommandCaches();
       },

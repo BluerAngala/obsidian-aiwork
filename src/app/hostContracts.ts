@@ -17,6 +17,7 @@ import type {
   AppModelReadinessProvider,
 } from "@pivi/pivi-agent-core/foundation/modelReadiness";
 import type { EnvironmentScope, WebProviderId } from "@pivi/pivi-agent-core/foundation/settings";
+import type { McpManagementCoordinator } from "@pivi/pivi-agent-core/mcp/mcpManagementCoordinator";
 import type {
   AppMcpDiagnostics,
   AppMcpOAuth,
@@ -30,6 +31,7 @@ import type { HttpClient, ProcessRunner } from "@pivi/pivi-agent-core/ports";
 import type { SlashCommandCatalog } from "@pivi/pivi-agent-core/skills/commands/slashCommandCatalog";
 import type { SlashCatalogEntry } from "@pivi/pivi-agent-core/skills/commands/slashCommandEntry";
 import type { AppSkillProvider } from "@pivi/pivi-agent-core/skills/skillProvider";
+import type { SkillsManagementCoordinator } from "@pivi/pivi-agent-core/skills/vault/skillsManagementCoordinator";
 import type {
   App,
   Editor,
@@ -73,6 +75,12 @@ export interface PiviChatViewCommands {
   getActiveExternalContexts(): string[];
 }
 
+/** Bounded, sanitized per-target failure from a management refresh pass. */
+export interface PiviManagementRefreshFailure {
+  readonly target: string;
+  readonly message: string;
+}
+
 /** App-owned maintenance operations over all tabs in one mounted view. */
 export interface PiviChatViewMaintenance {
   persistState(): Promise<void>;
@@ -85,6 +93,12 @@ export interface PiviChatViewMaintenance {
   refreshRuntimePrompt(): Promise<void>;
   reloadMcpServers(): Promise<void>;
   refreshVaultSkills(): Promise<void>;
+  /**
+   * Strict same-turn refresh after a durable Agent management commit.
+   * Iterates initialized tabs directly and returns sanitized per-target failures
+   * instead of swallowing them via best-effort broadcast.
+   */
+  refreshPiviManagement(domain: 'mcp' | 'skills' | 'commands'): Promise<readonly PiviManagementRefreshFailure[]>;
   invalidateSlashCatalog(): void;
   warmSlashCatalog(): void;
   syncExternalReadDirectories(paths: readonly string[]): void;
@@ -206,6 +220,7 @@ export interface PiviUiFacades {
 /** Workspace services exposed to chat/settings UI by the Obsidian plugin shell. */
 export interface PiviPluginWorkspace {
   mcpStorage: AppMcpStorage;
+  mcpManagement: McpManagementCoordinator;
   mcpServerManager: PiviMcpServerManager;
   mcpToolProvider: AppMcpToolProvider;
   mcpDiagnostics: AppMcpDiagnostics;
@@ -213,6 +228,7 @@ export interface PiviPluginWorkspace {
   mcpServerTester: AppMcpServerTester;
   modelReadinessProvider: AppModelReadinessProvider;
   skillProvider: AppSkillProvider;
+  skillsManagement: SkillsManagementCoordinator;
   mcpOAuth: AppMcpOAuth | null;
   providerOAuth?: PiviProviderOAuth;
   credentialStore?: PiviProviderCredentialStore | null;

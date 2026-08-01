@@ -38,7 +38,11 @@ import type {
   PreparedChatTurn,
 } from '../../runtime/types';
 import { TOOL_SPAWN_AGENT } from '../../tools';
-import { buildPiToolRegistry, type PiBaseToolProvider } from './buildPiToolRegistryCore';
+import {
+  buildPiToolRegistry,
+  type PiBaseToolProvider,
+  type PiMainOnlyToolProvider,
+} from './buildPiToolRegistryCore';
 import { PiAgentEventAdapter, type PiChatErrorContext } from './piAgentEventAdapter';
 import {
   refreshCustomPiProviderModels,
@@ -136,6 +140,11 @@ export class PiChatRuntime implements PiChatService {
     private readonly baseToolProvider: PiBaseToolProvider | null = null,
     private readonly subagentConcurrencyLimiter?: SubagentConcurrencyLimiter,
     capabilityApproval: CapabilityApprovalPort | null = null,
+    /**
+     * Main-Agent-only tools (e.g. pivi management). Optional; absent by default.
+     * Never requested by {@link buildSubagentTools} — structural exclusion, not filtering.
+     */
+    private readonly mainOnlyToolProvider: PiMainOnlyToolProvider | null = null,
   ) {
     this.capabilityApproval = capabilityApproval;
     this.mcpManager = mcpManager;
@@ -552,6 +561,7 @@ export class PiChatRuntime implements PiChatService {
         vaultPath: '',
         mcpBridge: this.mcpBridge,
         baseToolProvider: this.baseToolProvider,
+        mainOnlyToolProvider: this.mainOnlyToolProvider,
         externalContextPaths: this.externalContextPaths,
         subagentQueryRunner: this.subagentRunner,
         resolveReadMaxChars,
@@ -563,6 +573,7 @@ export class PiChatRuntime implements PiChatService {
       vaultPath,
       mcpBridge: this.mcpBridge,
       baseToolProvider: this.baseToolProvider,
+      mainOnlyToolProvider: this.mainOnlyToolProvider,
       externalContextPaths: this.externalContextPaths,
       subagentQueryRunner: this.subagentRunner,
       resolveReadMaxChars,
@@ -574,6 +585,8 @@ export class PiChatRuntime implements PiChatService {
     resolveReadMaxChars: (requestedMaxChars?: number) => ReadAllowanceReservation,
   ): AgentTool[] {
     const vaultPath = this.getVaultPath();
+    // Intentionally uses only baseToolProvider (+ MCP). mainOnlyToolProvider is
+    // never requested here so management tools cannot appear in subagent inventory.
     if (!vaultPath || !this.baseToolProvider) {
       return [];
     }

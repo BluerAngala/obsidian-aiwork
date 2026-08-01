@@ -38,6 +38,11 @@ interface ServerConnection {
   client: Client;
   transport: Transport;
   tools: McpTool[];
+  activeCalls: number;
+  retired: boolean;
+  closePromise?: Promise<void>;
+  drainPromise?: Promise<void>;
+  resolveDrain?: () => void;
 }
 
 interface PendingConnection {
@@ -173,6 +178,7 @@ export class PiMcpConnectionPool {
   private readonly connections = new Map<string, ServerConnection>();
   private readonly connectPromises = new Map<string, PendingConnection>();
   private readonly pendingConnections = new Set<Promise<ServerConnection>>();
+  private readonly retiredDrains = new Set<Promise<void>>();
   private readonly serverGenerations = new Map<string, number>();
   private generation = 0;
   private disposed = false;
@@ -181,8 +187,12 @@ export class PiMcpConnectionPool {
     server: ManagedMcpServer,
     signal?: AbortSignal,
   ): Promise<McpTool[]> {
-    const connection = await this.connect(server, signal);
-    return connection.tools;
+    const connection = await this.acquire(server, signal);
+    try {
+      return connection.tools;
+    } finally {
+      await this.release(connection);
+    }
   }
 
   async callTool(
@@ -191,41 +201,55 @@ export class PiMcpConnectionPool {
     args: Record<string, unknown>,
     signal?: AbortSignal,
   ): Promise<string> {
-    const connection = await this.connect(server, signal);
-    const result = await connection.client.callTool(
-      { name: toolName, arguments: args },
-      undefined,
-      { signal },
-    );
+    const connection = await this.acquire(server, signal);
+    try {
+      const result = await connection.client.callTool(
+        { name: toolName, arguments: args },
+        undefined,
+        { signal },
+      );
 
-    const parts: string[] = [];
-    const content = Array.isArray(result.content) ? result.content : [];
-    for (const block of content) {
-      if (block && typeof block === "object" && "type" in block) {
-        const typed = block as {
-          type: string;
-          text?: string;
-          resource?: unknown;
-        };
-        if (typed.type === "text" && typeof typed.text === "string") {
-          parts.push(typed.text);
-        } else if (typed.type === "resource") {
-          parts.push(JSON.stringify(typed.resource));
-        } else {
-          parts.push(JSON.stringify(block));
+      const parts: string[] = [];
+      const content = Array.isArray(result.content) ? result.content : [];
+      for (const block of content) {
+        if (block && typeof block === "object" && "type" in block) {
+          const typed = block as {
+            type: string;
+            text?: string;
+            resource?: unknown;
+          };
+          if (typed.type === "text" && typeof typed.text === "string") {
+            parts.push(typed.text);
+          } else if (typed.type === "resource") {
+            parts.push(JSON.stringify(typed.resource));
+          } else {
+            parts.push(JSON.stringify(block));
+          }
         }
       }
-    }
 
-    if (result.isError) {
-      throw new Error(parts.join("\n") || `MCP tool "${toolName}" failed`);
-    }
+      if (result.isError) {
+        throw new Error(parts.join("\n") || `MCP tool "${toolName}" failed`);
+      }
 
-    return parts.join("\n") || "(empty result)";
+      return parts.join("\n") || "(empty result)";
+    } finally {
+      await this.release(connection);
+    }
   }
 
+  /**
+   * One-shot non-authenticating inventory connect (headers/bearer only).
+   * Does not attach an OAuth client provider and does not persist tokens.
+   */
   async probe(server: ManagedMcpServer): Promise<McpTool[]> {
-    const result = await testPiMcpServer(server, this.fetch, this.processEnv);
+    const result = await testPiMcpServer(
+      server,
+      this.fetch,
+      this.processEnv,
+      this.secretStorage,
+      this.stdioCwd,
+    );
     if (!result.success) {
       throw new Error(
         result.error ?? `Failed to reach MCP server "${server.name}"`,
@@ -240,7 +264,7 @@ export class PiMcpConnectionPool {
     const connection = this.connections.get(serverName);
     this.connections.delete(serverName);
     if (connection) {
-      await this.closeConnection(connection);
+      this.trackRetirement(connection);
     }
   }
 
@@ -249,7 +273,7 @@ export class PiMcpConnectionPool {
     const connections = [...this.connections.values()];
     this.connections.clear();
     this.connectPromises.clear();
-    await Promise.all(connections.map((connection) => this.closeConnection(connection)));
+    connections.forEach(connection => this.trackRetirement(connection));
   }
 
   async dispose(): Promise<void> {
@@ -259,6 +283,7 @@ export class PiMcpConnectionPool {
     this.disposed = true;
     await this.closeAll();
     await Promise.allSettled([...this.pendingConnections]);
+    await Promise.allSettled([...this.retiredDrains]);
   }
 
   private async connect(
@@ -299,6 +324,44 @@ export class PiMcpConnectionPool {
     }
   }
 
+  private async acquire(
+    server: ManagedMcpServer,
+    signal?: AbortSignal,
+  ): Promise<ServerConnection> {
+    const connection = await this.connect(server, signal);
+    if (connection.retired) {
+      return this.acquire(server, signal);
+    }
+    connection.activeCalls += 1;
+    return connection;
+  }
+
+  private async release(connection: ServerConnection): Promise<void> {
+    connection.activeCalls = Math.max(0, connection.activeCalls - 1);
+    if (connection.retired && connection.activeCalls === 0) {
+      await this.closeConnection(connection);
+      connection.resolveDrain?.();
+    }
+  }
+
+  private async retire(connection: ServerConnection): Promise<void> {
+    connection.retired = true;
+    if (connection.activeCalls === 0) {
+      await this.closeConnection(connection);
+      return;
+    }
+    connection.drainPromise ??= new Promise<void>((resolve) => {
+      connection.resolveDrain = resolve;
+    });
+    await connection.drainPromise;
+  }
+
+  private trackRetirement(connection: ServerConnection): void {
+    const drain = this.retire(connection);
+    this.retiredDrains.add(drain);
+    void drain.finally(() => this.retiredDrains.delete(drain));
+  }
+
   private async acceptConnection(
     serverName: string,
     generation: number,
@@ -322,6 +385,14 @@ export class PiMcpConnectionPool {
   }
 
   private async closeConnection(connection: ServerConnection): Promise<void> {
+    if (connection.closePromise) {
+      return connection.closePromise;
+    }
+    connection.closePromise = this.closeConnectionOnce(connection);
+    return connection.closePromise;
+  }
+
+  private async closeConnectionOnce(connection: ServerConnection): Promise<void> {
     const results = await Promise.allSettled([
       connection.client.close(),
       connection.transport.close?.() ?? Promise.resolve(),
@@ -369,6 +440,6 @@ export class PiMcpConnectionPool {
     const disabled = new Set(server.disabledTools ?? []);
     tools = tools.filter((tool) => !disabled.has(tool.name));
 
-    return { client, transport, tools };
+    return { client, transport, tools, activeCalls: 0, retired: false };
   }
 }

@@ -5,6 +5,7 @@ import type { ManagedMcpServer } from '@pivi/pivi-agent-core/mcp/types';
 import { PiMcpDiagnostics, PiMcpToolProvider } from '@/app/workspace/workspaceServiceProviders';
 
 const listTools = jest.fn();
+const probe = jest.fn();
 const close = jest.fn(async () => {});
 const closeAll = jest.fn(async () => {});
 const dispose = jest.fn(async () => {});
@@ -12,6 +13,7 @@ const dispose = jest.fn(async () => {});
 jest.mock('@pivi/pivi-agent-core/mcp/piMcpConnectionPool', () => ({
   PiMcpConnectionPool: class MockPiMcpConnectionPool {
     listTools = listTools;
+    probe = probe;
     close = close;
     closeAll = closeAll;
     dispose = dispose;
@@ -62,6 +64,7 @@ function createProvider(servers: ManagedMcpServer[]): PiMcpToolProvider {
 describe('PiMcpToolProvider', () => {
   beforeEach(() => {
     listTools.mockReset();
+    probe.mockReset();
     close.mockClear();
     closeAll.mockClear();
     dispose.mockClear();
@@ -92,7 +95,7 @@ describe('PiMcpToolProvider', () => {
   });
 
   it('prefetches enabled remote servers without spawning stdio servers', async () => {
-    listTools.mockResolvedValue([]);
+    probe.mockResolvedValue([]);
     const provider = createProvider([
       createServer('remote'),
       createStdioServer(),
@@ -101,8 +104,33 @@ describe('PiMcpToolProvider', () => {
 
     await provider.prefetchEnabledServers();
 
+    expect(probe).toHaveBeenCalledTimes(1);
+    expect(probe).toHaveBeenCalledWith(expect.objectContaining({ name: 'remote' }));
+    expect(listTools).not.toHaveBeenCalled();
+  });
+
+  it('uses the non-authenticating probe path for inventory and the OAuth pool for runtime listTools', async () => {
+    probe.mockResolvedValue([{ name: 'search' }]);
+    listTools.mockResolvedValue([{ name: 'search' }]);
+    const provider = createProvider([createServer('remote')]);
+
+    await expect(provider.listInventoryTools('remote')).resolves.toEqual([{ name: 'search' }]);
+    expect(probe).toHaveBeenCalledTimes(1);
+    expect(listTools).not.toHaveBeenCalled();
+    expect(provider.getCachedTools('remote')).toEqual([{ name: 'search' }]);
+
+    provider.invalidate('remote');
+    await expect(provider.listTools('remote')).resolves.toEqual([{ name: 'search' }]);
     expect(listTools).toHaveBeenCalledTimes(1);
-    expect(listTools).toHaveBeenCalledWith(expect.objectContaining({ name: 'remote' }));
+    expect(probe).toHaveBeenCalledTimes(1);
+  });
+
+  it('inventory never starts stdio servers', async () => {
+    const provider = createProvider([createStdioServer('local')]);
+
+    await expect(provider.listInventoryTools('local')).resolves.toEqual([]);
+    expect(probe).not.toHaveBeenCalled();
+    expect(listTools).not.toHaveBeenCalled();
   });
 
   it('does not let an older request overwrite an explicitly imported inventory', async () => {

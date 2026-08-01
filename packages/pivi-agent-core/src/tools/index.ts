@@ -1,6 +1,7 @@
 export * from './bashArgv';
 export * from './diff';
 export * from './obsidianToolNames';
+export * from './piviManagement';
 export * from './taskTypes';
 export * from './todo';
 export * from './toolInput';

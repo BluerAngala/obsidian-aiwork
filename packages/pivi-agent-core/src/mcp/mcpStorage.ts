@@ -50,6 +50,18 @@ export interface McpLoadResult {
   corruptPath?: string;
 }
 
+export interface McpSaveResult {
+  revision: string;
+  cleanupFailures: Array<{ target: string; message: string }>;
+}
+
+export class McpStorageStateChangedError extends Error {
+  constructor() {
+    super('MCP configuration changed before publication.');
+    this.name = 'McpStorageStateChangedError';
+  }
+}
+
 export class McpConfigLoadError extends Error {
   constructor(
     message: string,
@@ -89,6 +101,14 @@ function listMcpSecretIds(serverName: string, kind: McpSecretKind): readonly str
     directMcpSecretId(serverName, kind),
     digestMcpSecretId(serverName, kind),
   );
+}
+
+/** Canonical direct/digested SecretStorage IDs owned by one MCP server field. */
+export function listMcpServerSecretIds(
+  serverName: string,
+  kind: McpSecretKind,
+): readonly string[] {
+  return listMcpSecretIds(serverName, kind);
 }
 
 function getMcpSecretId(serverName: string, kind: McpSecretKind): string {
@@ -140,6 +160,8 @@ function needsStructuredMigration(config: McpServerConfig): boolean {
 }
 
 export class McpStorage {
+  private transactionSecretStorage: SyncSecretStore | undefined;
+
   constructor(
     private readonly adapter: FileStore,
     private readonly secretStorage?: SyncSecretStore,
@@ -183,11 +205,104 @@ export class McpStorage {
     return result.servers;
   }
 
-  async save(servers: ManagedMcpServer[]): Promise<void> {
-    await runSerializedSave(PIVI_MCP_CONFIG_PATH, () => this.saveInternal(servers));
+  /** Read authoritative persisted configuration without migration, secret hydration, or writes. */
+  async loadSnapshot(): Promise<ManagedMcpServer[]> {
+    return (await this.loadRevisionedSnapshot()).servers;
   }
 
-  private async saveInternal(servers: ManagedMcpServer[]): Promise<void> {
+  async loadRevisionedSnapshot(): Promise<{ servers: ManagedMcpServer[]; revision: string }> {
+    const content = await this.readConfigContent();
+    if (content === null) {
+      return { servers: [], revision: this.revisionOfContent(null) };
+    }
+    const parsed = parseJsonObjectWithDiagnostics(PIVI_MCP_CONFIG_PATH, content);
+    if (!parsed.ok) {
+      throw new McpConfigLoadError(
+        parsed.diagnostics.map((item) => item.message).join(' '),
+        parsed.diagnostics,
+      );
+    }
+    return {
+      servers: this.parseServers(parsed.value as unknown as ManagedMcpConfigFile),
+      revision: this.revisionOfContent(content),
+    };
+  }
+
+  static revisionOfServers(servers: readonly ManagedMcpServer[]): string {
+    return stableProviderIdDigest(JSON.stringify(servers));
+  }
+
+  async saveIfRevision(servers: ManagedMcpServer[], expectedRevision: string): Promise<McpSaveResult> {
+    return runSerializedSave(PIVI_MCP_CONFIG_PATH, async () => {
+      const authoritative = await this.readConfigContent();
+      if (this.revisionOfContent(authoritative) !== expectedRevision) {
+        throw new McpStorageStateChangedError();
+      }
+      return this.saveTransaction(servers);
+    });
+  }
+
+  async save(servers: ManagedMcpServer[]): Promise<void> {
+    await runSerializedSave(PIVI_MCP_CONFIG_PATH, async () => {
+      await this.saveTransaction(servers);
+    });
+  }
+
+  private async saveTransaction(servers: ManagedMcpServer[]): Promise<McpSaveResult> {
+    const transaction = this.createSecretTransaction();
+    this.transactionSecretStorage = transaction?.storage;
+    // Rollback staged secrets only before mcp.json publication. After publish the
+    // durable config references those secrets, so undoing them would desync storage.
+    let published = false;
+    try {
+      return await this.saveInternal(servers, () => {
+        published = true;
+      });
+    } catch (error) {
+      if (!published) {
+        transaction?.rollback();
+      }
+      throw error;
+    } finally {
+      this.transactionSecretStorage = undefined;
+    }
+  }
+
+  private revisionOfContent(content: string | null): string {
+    return stableProviderIdDigest(content === null ? '<absent>' : content);
+  }
+
+  private createSecretTransaction(): { storage: SyncSecretStore; rollback(): void } | null {
+    const underlying = this.secretStorage;
+    if (!isSecretStorageAvailable(underlying)) return null;
+    const undo = new Map<string, { previous: string | null | undefined; staged: string }>();
+    const storage: SyncSecretStore = {
+      getSecret: id => underlying.getSecret(id),
+      listSecrets: prefix => underlying.listSecrets(prefix),
+      setSecret: (id, value) => {
+        if (!undo.has(id)) undo.set(id, { previous: underlying.getSecret(id), staged: value });
+        else undo.get(id)!.staged = value;
+        underlying.setSecret(id, value);
+      },
+      ...(underlying.deleteSecret ? { deleteSecret: id => underlying.deleteSecret!(id) } : {}),
+    };
+    return {
+      storage,
+      rollback: () => {
+        for (const [id, entry] of undo) {
+          // A concurrent OAuth writer wins over this transaction's undo.
+          if (underlying.getSecret(id) !== entry.staged) continue;
+          if (entry.previous === undefined && underlying.deleteSecret) underlying.deleteSecret(id);
+          else underlying.setSecret(id, entry.previous ?? '');
+        }
+      },
+    };
+  }
+
+  private async saveInternal(
+    servers: ManagedMcpServer[],
+    onPublished?: () => void,
+  ): Promise<McpSaveResult> {
     let existing: Record<string, unknown> | null = null;
     if (await this.adapter.exists(PIVI_MCP_CONFIG_PATH)) {
       const content = await this.readConfigContent();
@@ -225,6 +340,14 @@ export class McpStorage {
     for (const server of servers) {
       const normalizedName = assertValidMcpServerName(server.name);
       const previousConfig = existingServers.get(normalizedName);
+      if (
+        previousConfig
+        && getMcpServerType(previousConfig) !== getMcpServerType(server.config)
+      ) {
+        // A channel switch cannot reuse any value from the old channel. Retire
+        // all of its secret IDs only after the replacement config is published.
+        obsoleteSecretIds.push(...this.listValueSecretIds(normalizedName, previousConfig));
+      }
       const prepared = this.prepareServerConfig(
         normalizedName,
         server.config,
@@ -296,23 +419,41 @@ export class McpStorage {
       delete file._pivi;
     }
 
+    // Authoritative CAS revision is the digest of the exact bytes we publish.
+    // Do not re-read the file afterward — a post-publication read fault must not
+    // undo staged secrets that the durable config now references.
+    const publishedContent = `${JSON.stringify(file, null, 2)}\n`;
     await this.adapter.ensureFolder('.pivi');
     await writeFileAtomically(
       this.adapter,
       PIVI_MCP_CONFIG_PATH,
-      `${JSON.stringify(file, null, 2)}\n`,
+      publishedContent,
     );
+    onPublished?.();
+    const revision = this.revisionOfContent(publishedContent);
 
+    const cleanupFailures: McpSaveResult['cleanupFailures'] = [];
     if (isSecretStorageAvailable(this.secretStorage)) {
       const uniqueObsolete = [...new Set(obsoleteSecretIds)];
       for (const secretId of uniqueObsolete) {
-        if (this.secretStorage.deleteSecret) {
-          this.secretStorage.deleteSecret(secretId);
-        } else {
-          this.secretStorage.setSecret(secretId, '');
+        try {
+          if (this.secretStorage.deleteSecret) {
+            this.secretStorage.deleteSecret(secretId);
+          } else {
+            this.secretStorage.setSecret(secretId, '');
+          }
+        } catch (cause) {
+          cleanupFailures.push({
+            target: secretId,
+            message: cause instanceof Error ? cause.message : 'Secret cleanup failed',
+          });
         }
       }
     }
+    return {
+      revision,
+      cleanupFailures: cleanupFailures.slice(0, 20),
+    };
   }
 
   private parseExistingConfigs(
@@ -336,7 +477,8 @@ export class McpStorage {
     config: McpServerConfig,
     previousConfig: McpServerConfig | undefined,
   ): { config: McpServerConfig; obsoleteSecretIds: string[] } {
-    if (!isSecretStorageAvailable(this.secretStorage)) {
+    const secretStorage = this.transactionSecretStorage ?? this.secretStorage;
+    if (!isSecretStorageAvailable(secretStorage)) {
       return {
         config: normalizeManagedServerConfig(config),
         obsoleteSecretIds: [],
@@ -352,7 +494,7 @@ export class McpStorage {
         'env',
       );
       const staged = stageMcpValueSecrets(
-        this.secretStorage,
+        secretStorage,
         serverName,
         'env',
         envDrafts,
@@ -375,7 +517,7 @@ export class McpStorage {
       'header',
     );
     const staged = stageMcpValueSecrets(
-      this.secretStorage,
+      secretStorage,
       serverName,
       'header',
       headerDrafts,
@@ -454,7 +596,8 @@ export class McpStorage {
     kind: McpSecretKind,
     value: string,
   ): void {
-    if (!isSecretStorageAvailable(this.secretStorage)) {
+    const secretStorage = this.transactionSecretStorage ?? this.secretStorage;
+    if (!isSecretStorageAvailable(secretStorage)) {
       throw new Error('MCP secrets require Obsidian keychain storage.');
     }
     const trimmed = value.trim();
@@ -462,7 +605,7 @@ export class McpStorage {
       this.clearStoredSecret(serverName, kind);
       return;
     }
-    this.secretStorage.setSecret(getMcpSecretId(serverName, kind), trimmed);
+    secretStorage.setSecret(getMcpSecretId(serverName, kind), trimmed);
   }
 
   private clearStoredSecret(serverName: string, kind: McpSecretKind): void {

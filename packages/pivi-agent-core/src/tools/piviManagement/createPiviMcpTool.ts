@@ -1,0 +1,28 @@
+import { TOOL_PIVI_MCP } from '../obsidianToolNames';
+import { textResult } from '../toolResult';
+import type { ToolSpec } from '../toolSpec';
+import type { PiviManagementPort } from './port';
+import { PIVI_MCP_PARAMETERS } from './schemas';
+import { parsePiviMcpInput } from './validate';
+
+export function createPiviMcpTool(port: PiviManagementPort): ToolSpec {
+  return {
+    name: TOOL_PIVI_MCP,
+    label: 'Pivi MCP',
+    description: [
+      'Query and manage vault-local MCP servers (.pivi/mcp.json).',
+      'Actions: list, test, upsert, set_enabled, remove.',
+      'Never pass raw bearer tokens, OAuth client secrets, or secret header/env values;',
+      'use structured value sources (plain, systemEnvironment, clear) only.',
+      'Mutations require one sidebar confirmation and return a sanitized effective state.',
+    ].join(' '),
+    parameters: PIVI_MCP_PARAMETERS,
+    executionMode: 'sequential',
+    metadata: { displayKind: 'mcp' },
+    async execute(_id, params, signal) {
+      const input = parsePiviMcpInput(params);
+      const result = await port.executeMcp(input, signal);
+      return textResult(JSON.stringify(result, null, 2), { action: input.action });
+    },
+  };
+}

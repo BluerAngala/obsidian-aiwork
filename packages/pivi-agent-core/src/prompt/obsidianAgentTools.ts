@@ -26,7 +26,10 @@ import {
   TOOL_OBSIDIAN_TAGS,
   TOOL_OBSIDIAN_TASKS,
   TOOL_OBSIDIAN_WRITE,
+  TOOL_PIVI_COMMANDS,
+  TOOL_PIVI_MCP,
   TOOL_PIVI_SESSIONS,
+  TOOL_PIVI_SKILLS,
 } from '../tools';
 import { TOOL_SKILL, TOOL_SPAWN_AGENT } from '../tools';
 import {
@@ -367,6 +370,12 @@ function describeObsidianTool(name: string, context: ObsidianToolPromptContext):
         : 'List .base files and inspect configured views through the vault API; query is unavailable without Obsidian CLI';
     case TOOL_PIVI_SESSIONS:
       return 'Read a referenced durable Pivi session by exact sessionFile, list recoverable deleted sessions, or restore one';
+    case TOOL_PIVI_MCP:
+      return 'Query and manage vault-local MCP servers; list/test are non-mutating; upsert/set_enabled/remove require confirmation; never pass raw secrets';
+    case TOOL_PIVI_SKILLS:
+      return 'Query and manage vault Skills only through the pinned skills package; never supply Skill bodies, files, SKILL.md, source trees, or destinations';
+    case TOOL_PIVI_COMMANDS:
+      return 'Query and manage vault-local Pivi slash Commands; list omits prompt bodies; get returns one command; move requires catalogRevision';
     case TOOL_OBSIDIAN_BASH:
       return 'Lowest-priority host diagnostic only: run a single-line shell command through the user login shell when no registered tool can do the job; prefer pre-approved allowlist commands, but when the user explicitly requests a specific command you may call this tool even if it is not allowlisted (Pivi asks the user in the sidebar first); never use Bash to read, search, list, or modify vault files; use sub-agents for multi-file vault work; do not retry Bash after the user denies or validation rejects it';
     case TOOL_OBSIDIAN_COMMAND:
@@ -440,6 +449,12 @@ function describeObsidianToolParameters(name: string, context: ObsidianToolPromp
         : '`action` required list|views (do not use query without CLI), `file?` base name or `path?` .base vault path required for views; `view?` and `format?` are query-only and unavailable without CLI.';
     case TOOL_PIVI_SESSIONS:
       return '`action` required read|list_deleted|restore, `sessionFile` required for read/restore.';
+    case TOOL_PIVI_MCP:
+      return '`action` required list|test|upsert|set_enabled|remove; `name` required except list; `server` required for upsert (typed remote/stdio config with structured value sources only); `enabled` required for set_enabled.';
+    case TOOL_PIVI_SKILLS:
+      return '`action` required list|list_remote|install|set_enabled|update|update_all|remove; `source` required for list_remote/install; `skillNames?` optional install filter; `name` required for set_enabled/update/remove; `enabled` required for set_enabled.';
+    case TOOL_PIVI_COMMANDS:
+      return '`action` required list|get|upsert|remove|move; `id` required except list; `content` required for upsert; optional upsert `name`/`description`/`argumentHint`/`icon`; move requires `catalogRevision` and exactly one of `beforeId`/`afterId`.';
     case TOOL_OBSIDIAN_BASH:
       return '`command` required single-line shell command (pre-approved allowlist entry, or user-explicit command pending sidebar approval), `cwd?` optional working directory.';
     case TOOL_OBSIDIAN_COMMAND:

@@ -4,6 +4,7 @@ import type { ChatPerfRecorder } from '@pivi/pivi-react/store';
 
 import type { PiviChatHost } from "@/app/hostContracts";
 
+import { TabPiviManagementApprovalBridge } from '../composer/TabPiviManagementApprovalBridge';
 import { SubagentManager } from "../services/SubagentManager";
 import { ChatState } from '../state/ChatState';
 import {
@@ -147,6 +148,7 @@ export function createTab(options: TabCreateOptions): TabData {
     dom,
     renderer: null,
     capabilityApproval: null,
+    piviManagementApproval: new TabPiviManagementApprovalBridge(),
   };
 
   state.needsAttention = options.needsAttention ?? false;
@@ -248,6 +250,7 @@ export function destroyTab(tab: TabData): Promise<void> {
 
 
   tab.controllers.inputController?.dismissPendingInlinePrompts();
+  tab.piviManagementApproval?.dispose();
   tab.capabilityApproval?.dispose();
   tab.capabilityApproval = null;
 

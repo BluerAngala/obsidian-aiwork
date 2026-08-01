@@ -1,3 +1,4 @@
+import { requireAgentVaultMutationPath } from '@pivi/obsidian-host/path';
 import {
   textResult,
   TOOL_OBSIDIAN_HISTORY,
@@ -43,7 +44,7 @@ function requireVersion(input: Record<string, unknown>): number {
 }
 
 export function createHistoryTool(deps: ObsidianToolDeps): ToolSpec {
-  const { cli, vaultName } = deps;
+  const { cli, vaultName, vaultPath } = deps;
   return {
     name: TOOL_OBSIDIAN_HISTORY,
     label: 'History',
@@ -92,8 +93,15 @@ export function createHistoryTool(deps: ObsidianToolDeps): ToolSpec {
         return textResult(output, { action, path, version });
       }
 
-      await cli.run({ vaultName, args: ['history:restore', `path=${path}`, `version=${version}`] });
-      return textResult(`Restored ${path} from history version ${version}.`, { action, path, version });
+      const mutationPath = requireAgentVaultMutationPath(path, vaultPath);
+      await cli.run({
+        vaultName,
+        args: ['history:restore', `path=${mutationPath}`, `version=${version}`],
+      });
+      return textResult(
+        `Restored ${mutationPath} from history version ${version}.`,
+        { action, path: mutationPath, version },
+      );
     },
   };
 }

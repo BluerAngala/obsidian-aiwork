@@ -51,6 +51,7 @@ import {
 } from './inlineEditSurfaceField';
 import { resolveEditorFromEditorView } from './resolveInlineEditEditor';
 import type {
+  InlineEditComposerDefaults,
   InlineEditDiffReviewKind,
   InlineEditSurfaceComposerState,
   InlineEditSurfaceSendPayload,
@@ -61,20 +62,11 @@ import type {
 
 let nextInlineEditSurfaceSessionId = 1;
 
-interface ComposerDefaults {
-  model: string;
-  thinkingLevel: string;
-  modelOptions: ComposerOptionSnapshot[];
-  thinkingOptions: ComposerOptionSnapshot[];
-  adaptiveReasoning: boolean;
-  defaultReasoningValue: string;
-}
-
 export interface InlineEditSurfaceSessionDeps {
   plugin: PiviPluginHost;
   i18n: MountInlineEditSurfaceChromeOptions['i18n'];
   platform: MountInlineEditSurfaceChromeOptions['platform'];
-  composerDefaults: ComposerDefaults;
+  composerDefaults: InlineEditComposerDefaults;
   getWorkspace: () => Promise<PiviPluginWorkspace>;
 }
 
@@ -480,7 +472,10 @@ export class InlineEditSurfaceSession implements InlineEditSurfaceSessionContrac
       getContextSavingServers: () => workspace.mcpServerManager.getContextSavingServers(),
     };
     const mcpToolProvider: DropdownMcpToolProvider = {
-      listTools: (serverName) => workspace.mcpToolProvider.listTools(serverName),
+      listTools: (serverName) => (
+        workspace.mcpToolProvider.listInventoryTools?.(serverName)
+        ?? workspace.mcpToolProvider.listTools(serverName)
+      ),
     };
 
     this.mentionDropdown = new MentionDropdownController(

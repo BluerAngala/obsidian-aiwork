@@ -1,10 +1,12 @@
 import type { CapabilityApprovalRequest, CapabilityApprovalResult } from '@pivi/pivi-agent-core/ports';
+import type { PiviManagementApprovalDecision, PiviManagementApprovalRequest } from '@pivi/pivi-agent-core/tools/piviManagement';
 
 import type { StreamController } from '../controllers/StreamController';
 import { type InlineAskQuestionConfig, InlineAskUserQuestion } from '../rendering/InlineAskUserQuestion';
 import type { MessageRenderer } from '../rendering/MessageRenderer';
 import type { ChatState } from '../state/ChatState';
 import { showCapabilityApprovalPrompt } from './capabilityApprovalPrompt';
+import { buildPiviManagementApprovalPrompt, parsePiviManagementDecision } from './piviManagementApprovalPrompt';
 
 function toError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
@@ -52,6 +54,21 @@ export class ComposerInlinePrompts {
       (el) => this.hideInputContainer(el),
       (el) => this.restoreInputContainer(el),
     );
+  }
+
+  async handlePiviManagementApproval(
+    request: PiviManagementApprovalRequest,
+    signal?: AbortSignal,
+  ): Promise<PiviManagementApprovalDecision> {
+    const inputContainerEl = this.deps.getInputContainerEl();
+    const parentEl = inputContainerEl.parentElement;
+    if (!parentEl) return 'cancel';
+    const { input, config } = buildPiviManagementApprovalPrompt(request);
+    const result = await this.showInlineQuestion(
+      parentEl, inputContainerEl, input,
+      (inline) => { this.pendingAskInline = inline; }, signal, config,
+    );
+    return parsePiviManagementDecision(result);
   }
 
   dismissPendingInlinePrompts(): void {

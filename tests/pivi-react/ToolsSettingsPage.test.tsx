@@ -110,6 +110,30 @@ describe('React tools settings', () => {
     ]);
   });
 
+  it('allows main-Agent management tools to be toggled', async () => {
+    const setToolEnabled = jest.fn(async () => undefined);
+    renderTools(createPorts({
+      setToolEnabled,
+      listToolRows: () => [
+        { name: 'pivi_mcp', label: 'Pivi MCP', description: 'Manage MCP.',
+          group: 'pivi', enabled: true, available: true },
+        { name: 'pivi_skills', label: 'Pivi Skills', description: 'Manage Skills.',
+          group: 'pivi', enabled: true, available: true },
+        { name: 'pivi_commands', label: 'Pivi Commands', description: 'Manage Commands.',
+          group: 'pivi', enabled: true, available: true },
+      ],
+    }));
+
+    for (const label of ['Pivi MCP', 'Pivi Skills', 'Pivi Commands']) {
+      const toggle = screen.getByRole('checkbox', { name: label });
+      expect(toggle).toBeChecked();
+      expect(toggle).toBeEnabled();
+    }
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Pivi MCP' }));
+    await act(async () => undefined);
+    expect(setToolEnabled).toHaveBeenCalledWith('pivi_mcp', false);
+  });
+
   it('adds, deduplicates, and removes Bash command badges', async () => {
     const saveSettings = jest.fn(async () => undefined);
     renderTools(createPorts({ saveSettings }));

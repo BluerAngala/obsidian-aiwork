@@ -2,6 +2,7 @@ import type {
   Agent,
   AgentEvent,
   AgentMessage,
+  AgentTool,
 } from '@earendil-works/pi-agent-core';
 import {
   type AssistantMessage,
@@ -311,5 +312,117 @@ describe('streamPiChatTurn retry lifecycle', () => {
       thinkingLevel: 'high',
     });
     expect(state.model).toBe(selectedModel);
+  });
+
+  it('overlays live tools and system prompt onto the next tool-result continuation', async () => {
+    const listeners = new Set<(event: AgentEvent) => void>();
+    const originalTools = [{ name: 'legacy_tool' }] as unknown as AgentTool[];
+    const refreshedTools = [
+      { name: 'pivi_mcp' },
+      { name: 'pivi_skills' },
+    ] as unknown as AgentTool[];
+    const stalePrompt = 'stale system prompt';
+    const livePrompt = 'refreshed system prompt after management commit';
+    const state = {
+      messages: [] as AgentMessage[],
+      model: model(),
+      systemPrompt: stalePrompt,
+      tools: originalTools as unknown[],
+      thinkingLevel: 'medium' as const,
+    };
+    const toolAssistant = {
+      ...assistant('stop'),
+      content: [{ type: 'toolCall', id: 'call-mgmt', name: 'pivi_mcp', arguments: {} }],
+    } as AssistantMessage;
+    const toolResult = {
+      role: 'toolResult',
+      toolCallId: 'call-mgmt',
+      toolName: 'pivi_mcp',
+      content: [{ type: 'text', text: 'saved' }],
+      isError: false,
+    } as AgentMessage;
+    let nextTurnUpdate: Awaited<ReturnType<NonNullable<Agent['prepareNextTurnWithContext']>>>;
+    const agent = {
+      state,
+      prompt: jest.fn(async () => {
+        // Simulate a management tool hot-sync during the tool call.
+        state.systemPrompt = livePrompt;
+        state.tools = refreshedTools;
+        nextTurnUpdate = await agent.prepareNextTurnWithContext?.({
+          context: {
+            messages: [toolAssistant, toolResult],
+            systemPrompt: stalePrompt,
+            tools: originalTools,
+          },
+          message: toolAssistant,
+          newMessages: [toolAssistant, toolResult],
+          toolResults: [toolResult as never],
+        });
+        state.messages = [toolAssistant, toolResult, assistant('stop')];
+        for (const listener of listeners) {
+          listener({ type: 'message_end', message: toolAssistant });
+          listener({ type: 'message_end', message: toolResult });
+          listener({ type: 'message_end', message: assistant('stop') });
+          listener({ type: 'agent_end', messages: state.messages });
+        }
+      }),
+      continue: jest.fn(),
+      subscribe: (listener: (event: AgentEvent) => void) => {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+      prepareNextTurnWithContext: undefined,
+    } as unknown as Agent;
+    const activeTurn = createActiveTurn();
+    const compaction: PiChatCompactionDeps = {
+      plugin: {} as PiRuntimeHost,
+      sessionTree: null,
+      agent,
+      compactionState: {
+        autoCompactionInFlight: false,
+        failedAutoFingerprint: null,
+        foregroundController: null,
+        generation: 0,
+        prefire: null,
+      },
+      resolveModel: () => state.model,
+      onLeafIdChanged: jest.fn(),
+      onAssistantMessageId: jest.fn(),
+    };
+    const turn = {
+      request: { text: 'Manage MCP', images: [] },
+      prompt: 'Manage MCP',
+      persistedContent: 'Manage MCP',
+      displayContent: 'Manage MCP',
+      isCompact: false,
+      mcpMentions: new Set<string>(),
+    } satisfies PreparedChatTurn;
+
+    for await (const _chunk of streamPiChatTurn({
+      activeTurn,
+      agent,
+      compaction,
+      eventAdapter: new PiAgentEventAdapter(),
+      sessionTree: null,
+      resolveModel: () => state.model,
+      resolveThinkingLevel: () => 'medium',
+      authorizeAndSyncAgentModelSelection: async (nextModel) => nextModel,
+      refreshModelMetadata: async () => false,
+      syncSessionMessages: jest.fn(),
+      onUserMessagePersisted: jest.fn(),
+    }, turn)) {
+      // Drain.
+    }
+
+    expect(nextTurnUpdate).toMatchObject({
+      context: {
+        systemPrompt: livePrompt,
+        tools: refreshedTools,
+        messages: [toolAssistant, toolResult],
+      },
+    });
+    // Sibling tool execution already emitted keeps the original registry; only
+    // the next continuation context is overlaid.
+    expect(nextTurnUpdate?.context?.messages).toBeDefined();
   });
 });

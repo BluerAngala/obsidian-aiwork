@@ -110,8 +110,8 @@ describe('VaultSkillsService sync', () => {
     fs.rmSync(vaultPath, { recursive: true, force: true });
   });
 
-  function writeCliSkill(folderName: string, skillName = folderName): void {
-    const skillDir = path.join(vaultPath, '.agents', 'skills', folderName);
+  function writeCliSkill(folderName: string, skillName = folderName, cwd = vaultPath): void {
+    const skillDir = path.join(cwd, '.agents', 'skills', folderName);
     fs.mkdirSync(skillDir, { recursive: true });
     fs.writeFileSync(
       path.join(skillDir, 'SKILL.md'),
@@ -139,6 +139,116 @@ describe('VaultSkillsService sync', () => {
     expect(request?.args?.slice(1)).toEqual(cliArgs);
     expect(request?.shell).toEqual({ mode: 'forbidden' });
   }
+
+  function snapshotManagedSkillsArtifacts(): Map<string, Buffer> {
+    const snapshot = new Map<string, Buffer>();
+    const visit = (absolutePath: string, relativePath: string): void => {
+      if (!fs.existsSync(absolutePath)) return;
+      const stat = fs.statSync(absolutePath);
+      if (stat.isDirectory()) {
+        for (const entry of fs.readdirSync(absolutePath).sort()) {
+          visit(path.join(absolutePath, entry), path.join(relativePath, entry));
+        }
+      } else {
+        snapshot.set(relativePath, fs.readFileSync(absolutePath));
+      }
+    };
+    visit(path.join(vaultPath, '.pivi', 'skills'), 'skills');
+    visit(path.join(vaultPath, '.pivi', 'skills-lock.json'), 'skills-lock.json');
+    visit(path.join(vaultPath, '.pivi', '.skills.json'), '.skills.json');
+    return snapshot;
+  }
+
+  async function expectRenameFailureRollback(failurePhase: 'backup' | 'publication'): Promise<void> {
+    const { processEnv, skillsCliPackageRoot } = pinnedSkillsOptions();
+    const existing = path.join(vaultPath, '.pivi', 'skills', 'existing');
+    fs.mkdirSync(existing, { recursive: true });
+    fs.writeFileSync(path.join(existing, 'SKILL.md'), Buffer.from([0, 1, 2, 255]));
+    fs.writeFileSync(path.join(vaultPath, '.pivi', 'skills-lock.json'), '{"old":true}\n');
+    fs.writeFileSync(path.join(vaultPath, '.pivi', '.skills.json'), '{"old":"metadata"}\n');
+    const before = snapshotManagedSkillsArtifacts();
+    const processRunner: ProcessRunner = {
+      run: jest.fn(async (request) => {
+        writeCliSkill('existing', 'new', request.cwd);
+        fs.writeFileSync(path.join(request.cwd!, 'skills-lock.json'), '{"new":true}\n');
+        fs.writeFileSync(path.join(request.cwd!, '.skills.json'), '{"new":"metadata"}\n');
+        return {
+          termination: 'exit' as const, exitCode: 0, signal: null, stdout: '', stderr: '',
+          stdoutTruncated: false, stderrTruncated: false,
+        };
+      }),
+    };
+    let injected = false;
+    const publicationRenameSync: typeof fs.renameSync = (oldPath, newPath) => {
+      const oldName = oldPath.toString();
+      const newName = newPath.toString();
+      const shouldFail = failurePhase === 'backup'
+        ? newName.includes(`${path.sep}previous${path.sep}skills-lock.json`)
+        : oldName.includes(`${path.sep}next${path.sep}skills-lock.json`);
+      if (shouldFail && !injected) {
+        injected = true;
+        throw new Error(`injected ${failurePhase} rename failure`);
+      }
+      fs.renameSync(oldPath, newPath);
+    };
+
+    const service = new VaultSkillsService(vaultPath, {
+      processRunner, processEnv, skillsCliPackageRoot, publicationRenameSync,
+    });
+    await expect(service.updateAll()).rejects.toThrow(/injected .* rename failure/);
+    expect(snapshotManagedSkillsArtifacts()).toEqual(before);
+    expect(fs.readdirSync(path.join(vaultPath, '.pivi')).some(name => name.startsWith('.skills-transaction-'))).toBe(false);
+  }
+
+  it('preserves every managed artifact when a backup rename fails', async () => {
+    expect.assertions(3);
+    await expectRenameFailureRollback('backup');
+  });
+
+  it('preserves every managed artifact when a publication rename fails', async () => {
+    expect.assertions(3);
+    await expectRenameFailureRollback('publication');
+  });
+
+  it('discovers a backup created before manifest progress was recorded', () => {
+    const transaction = path.join(vaultPath, '.pivi', '.skills-transaction-crash');
+    const previous = path.join(transaction, 'previous');
+    const liveSkills = path.join(vaultPath, '.pivi', 'skills');
+    fs.mkdirSync(path.join(previous, 'skills'), { recursive: true });
+    fs.mkdirSync(liveSkills, { recursive: true });
+    fs.writeFileSync(path.join(previous, 'skills', 'SKILL.md'), 'old');
+    fs.writeFileSync(path.join(liveSkills, 'SKILL.md'), 'new');
+    fs.writeFileSync(path.join(transaction, 'manifest.json'), JSON.stringify({
+      phase: 'mutating', originalArtifacts: ['skills'], backedUpArtifacts: [],
+      publishedArtifacts: [],
+    }));
+
+    new VaultSkillsService(vaultPath).prepareWorkspace();
+
+    expect(fs.readFileSync(path.join(liveSkills, 'SKILL.md'), 'utf8')).toBe('old');
+    expect(fs.existsSync(transaction)).toBe(false);
+  });
+
+  it('does not delete an artifact restored before a later rollback failure', () => {
+    const transaction = path.join(vaultPath, '.pivi', '.skills-transaction-retry');
+    const previous = path.join(transaction, 'previous');
+    const liveSkills = path.join(vaultPath, '.pivi', 'skills');
+    fs.mkdirSync(previous, { recursive: true });
+    fs.mkdirSync(liveSkills, { recursive: true });
+    fs.writeFileSync(path.join(liveSkills, 'SKILL.md'), 'already restored');
+    fs.writeFileSync(path.join(previous, 'skills-lock.json'), 'old lock');
+    fs.writeFileSync(path.join(vaultPath, '.pivi', 'skills-lock.json'), 'new lock');
+    fs.writeFileSync(path.join(transaction, 'manifest.json'), JSON.stringify({
+      phase: 'restore-incomplete', originalArtifacts: ['skills', 'skills-lock.json'],
+      backedUpArtifacts: ['skills-lock.json'], publishedArtifacts: ['skills', 'skills-lock.json'],
+    }));
+
+    new VaultSkillsService(vaultPath).prepareWorkspace();
+
+    expect(fs.readFileSync(path.join(liveSkills, 'SKILL.md'), 'utf8')).toBe('already restored');
+    expect(fs.readFileSync(path.join(vaultPath, '.pivi', 'skills-lock.json'), 'utf8')).toBe('old lock');
+    expect(fs.existsSync(transaction)).toBe(false);
+  });
 
   it('lists skills from loadVaultSkills', () => {
     const skillMd = path.join(vaultPath, '.pivi', 'skills', 'demo-skill', 'SKILL.md');
@@ -195,11 +305,29 @@ describe('VaultSkillsService sync', () => {
     expect(fs.existsSync(skillDir)).toBe(false);
   });
 
+  it('restores a removed skill when durable metadata publication fails', async () => {
+    const skillDir = path.join(vaultPath, '.pivi', 'skills', 'to-remove');
+    fs.mkdirSync(skillDir, { recursive: true });
+    fs.writeFileSync(path.join(skillDir, 'SKILL.md'), '---\nname: x\ndescription: y\n---\n', 'utf-8');
+    const service = new VaultSkillsService(vaultPath);
+
+    await expect(service.removeTransactional('to-remove', {
+      afterPublish: () => { throw new Error('metadata failed'); },
+    })).rejects.toThrow('metadata failed');
+
+    expect(fs.readFileSync(path.join(skillDir, 'SKILL.md'), 'utf8')).toContain('name: x');
+    expect(fs.readdirSync(path.join(vaultPath, '.pivi')).some(
+      name => name.startsWith('.skills-transaction-'))).toBe(false);
+  });
+
   it('migrates root skills CLI metadata into .pivi work dir', () => {
     const rootLock = path.join(vaultPath, 'skills-lock.json');
     fs.writeFileSync(rootLock, '{"version":1}', 'utf-8');
 
-    new VaultSkillsService(vaultPath);
+    const service = new VaultSkillsService(vaultPath);
+
+    expect(fs.existsSync(rootLock)).toBe(true);
+    service.prepareWorkspace();
 
     expect(fs.existsSync(rootLock)).toBe(false);
     expect(fs.existsSync(path.join(vaultPath, '.pivi', 'skills-lock.json'))).toBe(true);
@@ -211,7 +339,10 @@ describe('VaultSkillsService sync', () => {
     fs.writeFileSync(rootLock, '{"version":1}', 'utf-8');
     fs.writeFileSync(piviLock, '{"version":1}', 'utf-8');
 
-    new VaultSkillsService(vaultPath);
+    const service = new VaultSkillsService(vaultPath);
+
+    expect(fs.existsSync(rootLock)).toBe(true);
+    service.prepareWorkspace();
 
     expect(fs.existsSync(rootLock)).toBe(false);
     expect(fs.readFileSync(piviLock, 'utf-8')).toBe('{"version":1}');
@@ -348,7 +479,8 @@ describe('VaultSkillsService sync', () => {
     ]);
 
     expectPinnedSkillsInvocation(calls[0], ['add', 'owner/repo', '--list']);
-    expect(calls[0]?.cwd).toBe(path.join(vaultPath, '.pivi'));
+    expect(calls[0]?.cwd).toContain(path.join(os.tmpdir(), 'pivi-skills-list-'));
+    expect(calls[0]?.cwdPolicy).toEqual({ mode: 'approved-root', root: calls[0]?.cwd });
     expect(calls[0]?.timeoutMs).toBe(120_000);
   });
 
@@ -425,7 +557,7 @@ describe('VaultSkillsService sync', () => {
     const processRunner: ProcessRunner = {
       run: jest.fn(async (request) => {
         calls.push(request);
-        writeCliSkill('selected-skill', 'selected');
+        writeCliSkill('selected-skill', 'selected', request.cwd);
         return {
           termination: 'exit' as const,
           exitCode: 0,
@@ -451,7 +583,7 @@ describe('VaultSkillsService sync', () => {
       '--skill',
       'selected',
     ]);
-    expect(calls[0]?.cwd).toBe(path.join(vaultPath, '.pivi'));
+    expect(calls[0]?.cwd).toContain(path.join(vaultPath, '.pivi', 'skills-install-'));
   });
 
   it('installs a normalized slug without selected skill flags', async () => {
@@ -460,7 +592,7 @@ describe('VaultSkillsService sync', () => {
     const processRunner: ProcessRunner = {
       run: jest.fn(async (request) => {
         calls.push(request);
-        writeCliSkill('all-skills', 'all');
+        writeCliSkill('all-skills', 'all', request.cwd);
         return {
           termination: 'exit' as const,
           exitCode: 0,
@@ -495,7 +627,7 @@ describe('VaultSkillsService sync', () => {
     const processRunner: ProcessRunner = {
       run: jest.fn(async (request) => {
         calls.push(request);
-        writeCliSkill('existing', 'new');
+        writeCliSkill('existing', 'new', request.cwd);
         return {
           termination: 'exit' as const,
           exitCode: 0,
@@ -526,7 +658,7 @@ describe('VaultSkillsService sync', () => {
     const processRunner: ProcessRunner = {
       run: jest.fn(async (request) => {
         calls.push(request);
-        writeCliSkill('target-folder', 'target');
+        writeCliSkill('target-folder', 'target', request.cwd);
         return {
           termination: 'exit' as const,
           exitCode: 0,
@@ -557,8 +689,8 @@ describe('VaultSkillsService sync', () => {
     const processRunner: ProcessRunner = {
       run: jest.fn(async (request) => {
         calls.push(request);
-        writeCliSkill('obsidian-markdown', 'markdown');
-        writeCliSkill('json-canvas', 'canvas');
+        writeCliSkill('obsidian-markdown', 'markdown', request.cwd);
+        writeCliSkill('json-canvas', 'canvas', request.cwd);
         return {
           termination: 'exit' as const,
           exitCode: 0,
@@ -573,8 +705,8 @@ describe('VaultSkillsService sync', () => {
 
     const service = new VaultSkillsService(vaultPath, { processRunner, processEnv, skillsCliPackageRoot });
     await expect(service.upgradeDefaultBundle(new Set(['obsidian-cli']))).resolves.toEqual([
-      'obsidian-markdown',
       'json-canvas',
+      'obsidian-markdown',
     ]);
 
     expect(calls[0]?.executable.toLowerCase()).toContain('node');
@@ -615,7 +747,7 @@ describe('VaultSkillsService sync', () => {
     const processRunner: ProcessRunner = {
       run: jest.fn(async (request) => {
         calls.push(request);
-        writeCliSkill('existing', 'new');
+        writeCliSkill('existing', 'new', request.cwd);
         return {
           termination: 'exit' as const,
           exitCode: 0,

@@ -83,7 +83,10 @@ export function createMentionEditorPort(
           workspace.mcpServerManager.getContextSavingServers(),
       };
       const mcpToolProvider: DropdownMcpToolProvider = {
-        listTools: (serverName) => workspace.mcpToolProvider.listTools(serverName),
+        listTools: (serverName) => (
+          workspace.mcpToolProvider.listInventoryTools?.(serverName)
+          ?? workspace.mcpToolProvider.listTools(serverName)
+        ),
       };
 
       const mentionDropdown = new MentionDropdownController(

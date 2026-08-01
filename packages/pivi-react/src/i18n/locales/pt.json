@@ -60,6 +60,11 @@
       "stopTitle": "Parar",
       "sendEmptyTitle": "Digite uma mensagem para enviar"
     },
+    "piviManagementApproval": {
+      "title": "Confirmar alteração do Pivi",
+      "confirm": "Confirmar",
+      "deny": "Recusar"
+    },
     "capabilityApproval": {
       "title": "Permissão necessária",
       "scopeQuestion": "Por quanto tempo o Pivi deve permitir isto?",
@@ -939,6 +944,12 @@
       "search": "Buscar",
       "sessions": "Pivi Sessions",
       "sessionsDesc": "Ler sessões persistentes, listar sessões excluídas recuperáveis ou restaurar uma em uma aba visível do Pivi.",
+      "piviMcp": "Pivi MCP",
+      "piviMcpDesc": "Gerencia servidores MCP salvos com confirmação do agente principal.",
+      "piviSkills": "Pivi Skills",
+      "piviSkillsDesc": "Instala, atualiza, ativa, desativa e remove Skills gerenciadas com confirmação do agente principal.",
+      "piviCommands": "Pivi Commands",
+      "piviCommandsDesc": "Gerencia comandos do espaço de trabalho com confirmação do agente principal.",
       "searchDesc": "Buscar texto o etiquetas de notas, o listar arquivos markdown en carpetas.",
       "noteInfo": "Info de nota",
       "noteInfoDesc": "Leer metadatos, etiquetas, enlaces salientes e frontmatter.",

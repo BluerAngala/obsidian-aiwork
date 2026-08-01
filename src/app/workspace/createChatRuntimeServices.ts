@@ -1,4 +1,7 @@
-import type { PiBaseToolProvider } from "@pivi/pivi-agent-core/engine/pi/buildPiToolRegistryCore";
+import type {
+  PiBaseToolProvider,
+  PiMainOnlyToolProvider,
+} from "@pivi/pivi-agent-core/engine/pi/buildPiToolRegistryCore";
 import { createPiAuxQueryRunner } from "@pivi/pivi-agent-core/engine/pi/piAuxQueryRunner";
 import { PiChatRuntime } from "@pivi/pivi-agent-core/engine/pi/piChatRuntime";
 import type { PiRuntimeHost } from "@pivi/pivi-agent-core/engine/pi/piRuntimeHost";
@@ -7,6 +10,7 @@ import type { McpOAuthService, McpServerManager } from "@pivi/pivi-agent-core/mc
 import type { CapabilityApprovalPort, FetchCompatible, HttpClient, SyncSecretStore } from "@pivi/pivi-agent-core/ports";
 import type { AuxQueryRunner } from "@pivi/pivi-agent-core/runtime/auxQueryRunner";
 import type { PiChatService } from "@pivi/pivi-agent-core/runtime/piChatService";
+import type { PiviManagementApprovalPort } from '@pivi/pivi-agent-core/tools/piviManagement';
 
 /**
  * App-layer factories that construct concrete Pi engine services.
@@ -14,6 +18,8 @@ import type { PiChatService } from "@pivi/pivi-agent-core/runtime/piChatService"
  */
 export interface CreateChatServiceOptions {
   capabilityApproval?: CapabilityApprovalPort | null;
+  /** Invoking tab's one-shot approval seam for management tools. */
+  piviManagementApproval?: PiviManagementApprovalPort | null;
 }
 
 export interface ChatRuntimeServiceFactories {
@@ -25,16 +31,32 @@ export interface ChatRuntimeServiceFactories {
   createAuxQueryRunner(host: PiRuntimeHost): AuxQueryRunner;
 }
 
+/** Builds a main-only tool provider bound to one chat's management approval port. */
+export type MainOnlyToolProviderFactory = (
+  approval: PiviManagementApprovalPort | null,
+) => PiMainOnlyToolProvider | null;
+
 export function createChatRuntimeServiceFactories(deps: {
   mcpServerManager: McpServerManager | null;
   mcpOAuth: McpOAuthService | null;
   baseToolProvider: PiBaseToolProvider | null;
+  /**
+   * Per-chat main-only tools from the invoking tab's approval port.
+   * Prefer this over a static provider so management mutations fail closed
+   * when approval is unavailable while queries remain usable.
+   */
+  mainOnlyToolProviderFactory?: MainOnlyToolProviderFactory | null;
+  /** Static fallback when no per-chat factory is supplied. */
+  mainOnlyToolProvider?: PiMainOnlyToolProvider | null;
   subagentConcurrencyLimiter: SubagentConcurrencyLimiter;
   mcpSecretStorage?: SyncSecretStore;
   mcpFetch: FetchCompatible;
 }): ChatRuntimeServiceFactories {
   return {
     createChatService(host, httpClient, options) {
+      const mainOnly = deps.mainOnlyToolProviderFactory
+        ? deps.mainOnlyToolProviderFactory(options?.piviManagementApproval ?? null)
+        : (deps.mainOnlyToolProvider ?? null);
       return new PiChatRuntime(
         host,
         {
@@ -48,6 +70,7 @@ export function createChatRuntimeServiceFactories(deps: {
         deps.baseToolProvider,
         deps.subagentConcurrencyLimiter,
         options?.capabilityApproval ?? null,
+        mainOnly,
       );
     },
     createAuxQueryRunner(host) {

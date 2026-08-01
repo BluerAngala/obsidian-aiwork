@@ -96,6 +96,7 @@ describe('UI port adapters', () => {
     const chatService = { id: 'chat-service' };
     const auxRunner = { id: 'aux-runner' };
     const listTools = jest.fn(async () => [{ name: 'search' }]);
+    const listInventoryTools = jest.fn(async () => [{ name: 'inventory' }]);
     const getDropdownConfig = jest.fn(() => ({
       triggerChars: ['/'],
       builtInPrefix: '',
@@ -107,7 +108,7 @@ describe('UI port adapters', () => {
         getServers: () => [],
         getContextSavingServers: () => [],
       },
-      mcpToolProvider: { listTools, dispose: jest.fn() },
+      mcpToolProvider: { listTools, listInventoryTools, dispose: jest.fn() },
       skillProvider: { listSkills: () => [] },
       slashCommandCatalog: {
         listDropdownEntries: async () => [],
@@ -176,6 +177,9 @@ describe('UI port adapters', () => {
     expect(openRecentSessionMessages).toHaveBeenCalledWith('open-session', 100);
     expect(readOlderSessionMessages).toHaveBeenCalledWith('open-session', 'message-50', 100);
     await expect(ports.catalog.listMcpTools('server')).resolves.toEqual([{ name: 'search' }]);
+    await expect(ports.catalog.listMcpInventoryTools?.('server')).resolves.toEqual([{ name: 'inventory' }]);
+    expect(listInventoryTools).toHaveBeenCalledWith('server');
+    expect(listTools).toHaveBeenCalledWith('server');
     expect(ports.catalog.getSlashDropdownConfig()).toEqual({
       triggerChars: ['/'],
       builtInPrefix: '',
@@ -246,7 +250,7 @@ describe('UI port adapters', () => {
         isInitialized: () => false,
       }),
     } as unknown as PiviSettingsHost;
-    const loadMcp = jest.fn(async () => []);
+    const loadMcp = jest.fn(async () => ({ servers: [], revision: 'revision-1' }));
     const getCachedMcpTools = jest.fn(() => [{ name: 'search' }]);
     const refreshCommands = jest.fn(async () => undefined);
     const readProviderCredential = jest.fn(() => ({ type: 'api_key', key: 'secret' }));
@@ -254,7 +258,7 @@ describe('UI port adapters', () => {
     const workspace = {
       credentialStore: { readSync: readProviderCredential },
       webSearchCredentialStore: { readSync: readWebCredential },
-      mcpStorage: { load: loadMcp },
+      mcpManagement: { loadSettingsSnapshot: loadMcp },
       mcpToolProvider: { getCachedTools: getCachedMcpTools },
       slashCommandCatalog: { refresh: refreshCommands },
     };
@@ -335,9 +339,9 @@ describe('UI port adapters', () => {
     };
     const ports = createSettingsUiPorts(host, workspace as never);
 
-    await ports.complex.commands.saveWorkspaceEntry(savedEntry);
+    await ports.complex.commands.saveWorkspaceEntry(savedEntry, 42);
 
-    expect(saveWorkspaceEntry).toHaveBeenCalledWith(savedEntry);
+    expect(saveWorkspaceEntry).toHaveBeenCalledWith(savedEntry, 42);
     expect(host.settings.editorSelectionToolbar.shortcuts[0]).toMatchObject({
       label: '/translate-zh',
       icon: 'languages',
@@ -445,7 +449,10 @@ describe('UI port adapters', () => {
   });
 
   it('installs official skills and records successful bundle metadata', async () => {
-    jest.spyOn(VaultSkillsService.prototype, 'installFromSource').mockResolvedValue(['obsidian-cli']);
+    jest.spyOn(VaultSkillsService.prototype, 'installFromSource').mockImplementation(async (_source, options) => {
+      await options?.afterPublish?.();
+      return ['obsidian-cli'];
+    });
     jest.spyOn(defaultSkillsRemote, 'fetchDefaultVaultSkillsRemoteSha').mockResolvedValue('remote-sha');
     const saveSettings = jest.fn(async () => undefined);
     const refreshVaultSkills = jest.fn(async () => undefined);
@@ -517,7 +524,11 @@ describe('UI port adapters', () => {
   });
 
   it('updates official skills without restoring intentionally removed folders', async () => {
-    const upgrade = jest.spyOn(VaultSkillsService.prototype, 'upgradeDefaultBundle').mockResolvedValue(['obsidian-cli']);
+    const upgrade = jest.spyOn(VaultSkillsService.prototype, 'upgradeDefaultBundle')
+      .mockImplementation(async (_folders, hooks) => {
+        await hooks?.afterPublish?.();
+        return ['obsidian-cli'];
+      });
     jest.spyOn(defaultSkillsRemote, 'fetchDefaultVaultSkillsRemoteSha').mockResolvedValue('next-sha');
     const saveSettings = jest.fn(async () => undefined);
     const refreshVaultSkills = jest.fn(async () => undefined);
@@ -544,7 +555,9 @@ describe('UI port adapters', () => {
 
     await ports.complex.skills.featuredBundle.update();
 
-    expect(upgrade).toHaveBeenCalledWith(new Set(['defuddle']));
+    expect(upgrade).toHaveBeenCalledWith(new Set(['defuddle']), expect.objectContaining({
+      afterPublish: expect.any(Function),
+    }));
     expect(host.settings.defaultVaultSkillsRemovedFolders).toEqual(['defuddle']);
     expect(host.settings.defaultVaultSkillsCommitSha).toBe('next-sha');
     expect(saveSettings).toHaveBeenCalledTimes(1);
@@ -553,6 +566,12 @@ describe('UI port adapters', () => {
 
   it('records only removed official skill folders', async () => {
     jest.spyOn(VaultSkillsService.prototype, 'remove').mockImplementation(() => undefined);
+    jest.spyOn(VaultSkillsService.prototype, 'list').mockReturnValue([
+      { name: 'obsidian-cli', folderName: 'obsidian-cli', description: '', disabled: false },
+      { name: 'custom-skill', folderName: 'custom-skill', description: '', disabled: false },
+    ]);
+    jest.spyOn(VaultSkillsService.prototype, 'removeTransactional')
+      .mockImplementation(async (_folderName, hooks) => { await hooks?.afterPublish?.(); });
     const saveSettings = jest.fn(async () => undefined);
     const vaultPath = createTempVault();
     const host = {

@@ -60,6 +60,11 @@
       "stopTitle": "停止",
       "sendEmptyTitle": "メッセージを入力"
     },
+    "piviManagementApproval": {
+      "title": "Pivi の変更を確認",
+      "confirm": "確認",
+      "deny": "拒否"
+    },
     "capabilityApproval": {
       "title": "権限が必要です",
       "scopeQuestion": "どのくらいの期間許可しますか？",
@@ -939,6 +944,12 @@
       "search": "検索",
       "sessions": "Pivi Sessions",
       "sessionsDesc": "永続セッションを読み取り、復元可能な削除済みセッションを一覧表示するか、表示中の Pivi タブに復元します。",
+      "piviMcp": "Pivi MCP",
+      "piviMcpDesc": "メインエージェントの確認を通じて、保存済み MCP サーバーを管理します。",
+      "piviSkills": "Pivi Skills",
+      "piviSkillsDesc": "メインエージェントの確認を通じて、管理対象の Skills をインストール、更新、有効化、無効化、削除します。",
+      "piviCommands": "Pivi Commands",
+      "piviCommandsDesc": "メインエージェントの確認を通じて、ワークスペースの Commands を管理します。",
       "searchDesc": "ノート本文・タグを検索するか、フォルダー内の Markdown ファイルを一覧します。",
       "noteInfo": "ノート情報",
       "noteInfoDesc": "メタデータ、タグ、出リンク、frontmatter を読み取ります。",

@@ -55,6 +55,8 @@ flowchart TD
 
 ## Subdirectory map
 
+Pivi management confirmation is a dedicated per-tab, one-shot bridge under `composer/`. Session switches, cancellation, and disposal settle it as cancel; it never exposes capability session/always grants.
+
 | Directory | Responsibility | Local guidance |
 |---|---|---|
 | `src/ui/chat/tabs/` | Per-tab construction, activation, archive/close/reorder behavior, persisted restoration, session opening, lazy runtime creation, fork/redo, portal slot scaffolding, and wiring of controllers/context. Cross-boundary reorder changes archive membership and preserves an open active fallback. | — |

@@ -334,6 +334,77 @@ describe('SlashCommandDropdown controller', () => {
     dropdown.destroy();
   });
 
+  it('surfaces cache failures during strict management prefetch', async () => {
+    const dropdown = new SlashCommandDropdown(
+      new FakeElement() as unknown as HTMLElement,
+      new FakeInput() as unknown as HTMLTextAreaElement,
+      { onSelect: jest.fn() },
+      { getCatalogEntries: async () => { throw new Error('private catalog detail'); } },
+    );
+
+    await expect(dropdown.prefetchCachesStrict()).rejects.toThrow('private catalog detail');
+    await expect(dropdown.prefetchCaches()).resolves.toBeUndefined();
+    dropdown.destroy();
+  });
+
+  it('strict prefetch populates caches with one catalog fetch and no second probe', async () => {
+    const getCatalogEntries = jest.fn(async () => [catalogEntry('explain')]);
+    const listTools = jest.fn(async () => [{ name: 'search' }]);
+    const container = new FakeElement();
+    const input = new FakeInput();
+    const dropdown = new SlashCommandDropdown(
+      container as unknown as HTMLElement,
+      input as unknown as HTMLTextAreaElement,
+      { onSelect: jest.fn() },
+      {
+        getCatalogEntries,
+        getMcpManager: () => ({
+          getServers: () => [
+            { name: 'remote', enabled: true, type: 'http' as const },
+            { name: 'local', enabled: true, type: 'stdio' as const },
+          ],
+        }),
+        getMcpToolProvider: () => ({ listTools }),
+      },
+    );
+
+    await dropdown.prefetchCachesStrict();
+    expect(getCatalogEntries).toHaveBeenCalledTimes(1);
+    expect(listTools).toHaveBeenCalledTimes(1);
+    expect(listTools).toHaveBeenCalledWith('remote');
+    expect(listTools).not.toHaveBeenCalledWith('local');
+
+    setInput(input, '/');
+    dropdown.handleInputChange();
+    await flushAsyncDropdown();
+    expect(getCatalogEntries).toHaveBeenCalledTimes(1);
+    expect(listTools).toHaveBeenCalledTimes(1);
+    expect(container.querySelectorAll('.pivi-slash-icon--mcp').length).toBeGreaterThan(0);
+    dropdown.destroy();
+  });
+
+  it('strict prefetch propagates MCP failure without a second swallowing load reporting success', async () => {
+    const listTools = jest.fn(async () => {
+      throw new Error('remote unavailable');
+    });
+    const dropdown = new SlashCommandDropdown(
+      new FakeElement() as unknown as HTMLElement,
+      new FakeInput() as unknown as HTMLTextAreaElement,
+      { onSelect: jest.fn() },
+      {
+        getCatalogEntries: async () => [catalogEntry('explain')],
+        getMcpManager: () => ({
+          getServers: () => [{ name: 'remote', enabled: true, type: 'http' as const }],
+        }),
+        getMcpToolProvider: () => ({ listTools }),
+      },
+    );
+
+    await expect(dropdown.prefetchCachesStrict()).rejects.toThrow('remote unavailable');
+    expect(listTools).toHaveBeenCalledTimes(1);
+    dropdown.destroy();
+  });
+
   it('does not reopen after the trigger is removed while a request is pending', async () => {
     const catalog = deferred<SlashCatalogEntry[]>();
     const container = new FakeElement();

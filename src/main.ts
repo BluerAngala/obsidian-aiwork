@@ -27,6 +27,7 @@ import type { CapabilityApprovalPort } from "@pivi/pivi-agent-core/ports";
 import type { SessionMessagePage, SessionStore } from "@pivi/pivi-agent-core/session";
 import { OpenSessionManager } from "@pivi/pivi-agent-core/session/openSessionManager";
 import type { SlashCatalogEntry } from "@pivi/pivi-agent-core/skills/commands/slashCommandEntry";
+import type { PiviManagementApprovalPort } from '@pivi/pivi-agent-core/tools/piviManagement';
 import type { ChatPerfRecorder } from "@pivi/pivi-react/store";
 import type { Editor, MarkdownView } from "obsidian";
 import { apiVersion, getIcon, Notice, Plugin } from "obsidian";
@@ -77,7 +78,7 @@ import {
 } from "@/app/settings/environmentVariables";
 import { measureStartupPhase } from "@/app/startupPerformance";
 import { showDefaultVaultSkillsInstallPrompt } from "@/app/ui/defaultVaultSkillsPrompt";
-import { findAllPiviViews } from "@/app/viewAccess";
+import { findAllPiviViews, refreshPiviManagementViews } from "@/app/viewAccess";
 import { createPiUiFacades } from "@/app/workspace/piUiFacades";
 import type { PiWorkspaceServices } from "@/app/workspace/PiWorkspaceServices";
 import {
@@ -387,6 +388,7 @@ export default class PiviPlugin extends Plugin implements PiviPluginHost {
 
   createChatService(options?: {
     capabilityApproval?: CapabilityApprovalPort | null;
+    piviManagementApproval?: PiviManagementApprovalPort | null;
   }) {
     const workspace = this.piWorkspace;
     if (!workspace) {
@@ -603,6 +605,16 @@ export default class PiviPlugin extends Plugin implements PiviPluginHost {
     for (const view of this.getAllViews()) {
       await view.getChatHandle()?.maintenance.refreshVaultSkills();
     }
+  }
+
+  /**
+   * Same-turn refresh after a durable Agent management commit.
+   * Aggregates strict per-target failures from every view; never throws for partial refresh.
+   */
+  async refreshPiviManagement(
+    domain: 'mcp' | 'skills' | 'commands',
+  ): Promise<readonly { readonly target: string; readonly message: string }[]> {
+    return refreshPiviManagementViews(this.getAllViews(), domain);
   }
 
   ensureWorkspaceServices(): Promise<PiWorkspaceServices> {

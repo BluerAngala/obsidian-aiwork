@@ -33,6 +33,7 @@ import {
   parseEnvironmentVariables,
   WEB_PROVIDER_IDS,
 } from "@pivi/pivi-agent-core/foundation";
+import { McpManagementCoordinator } from "@pivi/pivi-agent-core/mcp/mcpManagementCoordinator";
 import { McpServerManager } from "@pivi/pivi-agent-core/mcp/mcpServerManager";
 import { McpStorage } from "@pivi/pivi-agent-core/mcp/mcpStorage";
 import { McpOAuthService } from "@pivi/pivi-agent-core/mcp/oauth/mcpOAuthService";
@@ -51,6 +52,12 @@ import { ensureDefaultWorkspaceCommands } from "@pivi/pivi-agent-core/skills/com
 import type { SlashCommandCatalog } from "@pivi/pivi-agent-core/skills/commands/slashCommandCatalog";
 import type { AppSkillProvider } from "@pivi/pivi-agent-core/skills/skillProvider";
 import {
+  DEFAULT_VAULT_SKILLS_SLUG,
+  isDefaultVaultSkillFolder,
+} from "@pivi/pivi-agent-core/skills/vault/defaultVaultSkills";
+import { SkillsManagementCoordinator } from "@pivi/pivi-agent-core/skills/vault/skillsManagementCoordinator";
+import { VaultSkillsService } from "@pivi/pivi-agent-core/skills/vault/vaultSkillsService";
+import {
   createWebFetchTool,
   createWebSearchCredentialStore,
   createWebSearchTool,
@@ -68,6 +75,7 @@ import {
 } from "./createChatRuntimeServices";
 import { createCustomProviderHttpRequest } from "./obsidianHttpRequest";
 import { PiSlashCommandCatalog } from "./PiSlashCommandCatalog";
+import { createPiviManagementMainOnlyToolProviderFactory } from "./PiviManagementService";
 import type { PiviWorkspaceHost, WorkspaceInitContext } from "./serviceContracts";
 import {
   PiMcpDiagnostics,
@@ -80,6 +88,7 @@ import {
 
 export interface PiWorkspaceServices extends ChatRuntimeServiceFactories {
   mcpStorage: AppMcpStorage;
+  mcpManagement: McpManagementCoordinator;
   mcpServerManager: McpServerManager;
   mcpToolProvider: AppMcpToolProvider;
   mcpDiagnostics: AppMcpDiagnostics;
@@ -87,6 +96,7 @@ export interface PiWorkspaceServices extends ChatRuntimeServiceFactories {
   mcpServerTester: AppMcpServerTester;
   modelReadinessProvider: AppModelReadinessProvider;
   skillProvider: AppSkillProvider;
+  skillsManagement: SkillsManagementCoordinator;
   mcpOAuth: McpOAuthService;
   credentialStore: ObsidianCredentialStore | null;
   webSearchCredentialStore: WebSearchCredentialStore | null;
@@ -182,11 +192,110 @@ export async function createPiWorkspaceServices(
     host.app.secretStorage,
     vaultPath ?? undefined,
   );
+  const mcpManagement = new McpManagementCoordinator({
+    storage: mcpStorage,
+    toolProvider: mcpToolProvider,
+    tester: mcpServerTester,
+    diagnostics: mcpDiagnostics,
+    secretStorage: host.app.secretStorage,
+    removeOAuthArtifacts: serverName => mcpOAuth.logout(serverName),
+    publish: async (servers, changedName) => {
+      await mcpServerManager.loadServers();
+      if (changedName === '*') mcpToolProvider.invalidateAll();
+      else mcpToolProvider.invalidate(changedName);
+      // Match Settings: re-grant purpose 'mcp' so Agent-added private origins work without reload.
+      network.grants.revokeByPurpose('mcp');
+      grantPrivateOrigins(
+        network.grants,
+        servers.map((server) => getMcpServerUrl(server.config)),
+        'mcp',
+      );
+    },
+  });
   const modelReadinessProvider = new PiModelReadinessProvider(
     credentialStore,
     providerOAuth,
   );
   const skillProvider = new PiSkillProvider(vaultPath, systemProcessRunner);
+  const vaultSkillsService = new VaultSkillsService(vaultPath ?? "", {
+    processRunner: systemProcessRunner,
+  });
+  const skillsManagement = new SkillsManagementCoordinator({
+    service: vaultSkillsService,
+    vaultPath: vaultPath ?? "",
+    metadata: {
+      async mutationPublished(mutation, metadataContext) {
+        if (metadataContext?.defaultBundleUpdate) {
+          const previousSeeded = host.settings.defaultVaultSkillsSeeded;
+          const previousSha = host.settings.defaultVaultSkillsCommitSha;
+          host.settings.defaultVaultSkillsSeeded = true;
+          if (metadataContext.defaultBundleCommitSha) {
+            host.settings.defaultVaultSkillsCommitSha = metadataContext.defaultBundleCommitSha;
+          }
+          try {
+            await host.saveSettings();
+          } catch (error) {
+            host.settings.defaultVaultSkillsSeeded = previousSeeded;
+            if (previousSha !== undefined) host.settings.defaultVaultSkillsCommitSha = previousSha;
+            else delete host.settings.defaultVaultSkillsCommitSha;
+            throw error;
+          }
+          return;
+        }
+        if (mutation.action === "remove" && isDefaultVaultSkillFolder(mutation.name)) {
+          const previous = host.settings.defaultVaultSkillsRemovedFolders;
+          host.settings.defaultVaultSkillsRemovedFolders = [
+            ...new Set([...(host.settings.defaultVaultSkillsRemovedFolders ?? []), mutation.name]),
+          ];
+          try {
+            await host.saveSettings();
+          } catch (error) {
+            if (previous !== undefined) host.settings.defaultVaultSkillsRemovedFolders = previous;
+            else delete host.settings.defaultVaultSkillsRemovedFolders;
+            throw error;
+          }
+          return;
+        }
+        if (mutation.action === "install" && mutation.source === DEFAULT_VAULT_SKILLS_SLUG) {
+          // Runs inside filesystem publication afterPublish: throw rolls skill tree back.
+          const previous = {
+            seeded: host.settings.defaultVaultSkillsSeeded,
+            dismissed: host.settings.defaultVaultSkillsPromptDismissed,
+            removed: host.settings.defaultVaultSkillsRemovedFolders,
+            commitSha: host.settings.defaultVaultSkillsCommitSha,
+          };
+          host.settings.defaultVaultSkillsSeeded = true;
+          delete host.settings.defaultVaultSkillsPromptDismissed;
+          delete host.settings.defaultVaultSkillsRemovedFolders;
+          if (metadataContext?.defaultBundleCommitSha) {
+            host.settings.defaultVaultSkillsCommitSha = metadataContext.defaultBundleCommitSha;
+          }
+          try {
+            await host.saveSettings();
+          } catch (error) {
+            host.settings.defaultVaultSkillsSeeded = previous.seeded;
+            if (previous.dismissed !== undefined) {
+              host.settings.defaultVaultSkillsPromptDismissed = previous.dismissed;
+            } else {
+              delete host.settings.defaultVaultSkillsPromptDismissed;
+            }
+            if (previous.removed !== undefined) {
+              host.settings.defaultVaultSkillsRemovedFolders = previous.removed;
+            } else {
+              delete host.settings.defaultVaultSkillsRemovedFolders;
+            }
+            if (previous.commitSha !== undefined) {
+              host.settings.defaultVaultSkillsCommitSha = previous.commitSha;
+            } else {
+              delete host.settings.defaultVaultSkillsCommitSha;
+            }
+            throw error;
+          }
+        }
+      },
+    },
+  });
+  if (vaultPath) skillsManagement.prepareWorkspace();
   await ensureDefaultWorkspaceCommands(
     vaultAdapter,
     host.settings,
@@ -205,19 +314,33 @@ export async function createPiWorkspaceServices(
       ),
     },
   );
+  await slashCommandCatalog.prepareWorkspace();
   const baseToolProvider = createObsidianBaseToolProvider(host, providerOAuth, webSearchCredentialStore, network);
   const subagentConcurrencyLimiter = new SubagentConcurrencyLimiter(
     () => getSubagentRuntimeSettingsFromBag(host.settings).maxConcurrentSubagents,
   );
+  const mainOnlyToolProviderFactory = createPiviManagementMainOnlyToolProviderFactory({
+    mcp: mcpManagement,
+    skills: skillsManagement,
+    commands: slashCommandCatalog,
+    refresh: {
+      refreshPiviManagement: async (domain) => {
+        if (!host.refreshPiviManagement) {
+          throw new Error("Pivi management refresh host is unavailable.");
+        }
+        return host.refreshPiviManagement(domain);
+      },
+    },
+  }, () => getObsidianToolsSettingsFromBag(host.settings).disabledTools ?? []);
   const chatRuntimeFactories = createChatRuntimeServiceFactories({
     mcpServerManager,
     mcpOAuth,
     baseToolProvider,
+    mainOnlyToolProviderFactory,
     subagentConcurrencyLimiter,
     mcpSecretStorage: host.app.secretStorage,
     mcpFetch: network.mcpFetch,
   });
-  await slashCommandCatalog.refresh();
   await mcpServerManager.loadServers();
   grantPrivateOrigins(
     network.grants,
@@ -233,6 +356,7 @@ export async function createPiWorkspaceServices(
 
   return {
     mcpStorage,
+    mcpManagement,
     mcpServerManager,
     mcpToolProvider,
     mcpDiagnostics,
@@ -240,6 +364,7 @@ export async function createPiWorkspaceServices(
     mcpServerTester,
     modelReadinessProvider,
     skillProvider,
+    skillsManagement,
     mcpOAuth,
     credentialStore,
     webSearchCredentialStore,

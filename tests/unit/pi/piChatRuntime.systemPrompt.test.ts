@@ -296,7 +296,10 @@ import {
   type PiCachedModel,
   PI_AI_MODELS_CACHE,
 } from '@pivi/pivi-agent-core/engine/pi/piModelRegistry';
-import type { PiBaseToolProvider } from '@pivi/pivi-agent-core/engine/pi/buildPiToolRegistryCore';
+import type {
+  PiBaseToolProvider,
+  PiMainOnlyToolProvider,
+} from '@pivi/pivi-agent-core/engine/pi/buildPiToolRegistryCore';
 import { SessionTreeStore } from '@pivi/pivi-agent-core/engine/pi/session/sessionTreeStore';
 import { PIVI_MESSAGE_UI } from '@pivi/pivi-agent-core/session';
 import { TOOL_OBSIDIAN_READ_EXTERNAL, TOOL_SPAWN_AGENT, type ToolSpec } from '@pivi/pivi-agent-core/tools';
@@ -463,6 +466,83 @@ describe('PiChatRuntime system prompt', () => {
 
     const childTools = mockCapturedSubagentToolProvider?.(() => ({ maxChars: 12_345, settle: () => {} })) ?? [];
     expect(childTools.map((tool) => (tool as { name: string }).name)).toEqual(['obsidian_read']);
+  });
+
+  it('never requests mainOnlyToolProvider when building subagent inventory', async () => {
+    const plugin = createMockPlugin();
+    const baseProvider: PiBaseToolProvider = () => ({
+      toolSpecs: [
+        {
+          name: 'obsidian_read',
+          description: 'Allowed base tool',
+          parameters: { type: 'object', properties: {}, additionalProperties: false },
+          async execute() {
+            return { content: [{ type: 'text', text: 'ok' }], details: {} };
+          },
+        } satisfies ToolSpec,
+      ],
+      registeredToolSummary: {
+        obsidianTools: ['obsidian_read'],
+        obsidianCliAvailable: true,
+        includeMcp: false,
+        includeSkill: false,
+        includeSubagent: false,
+        includeWebSearch: false,
+      },
+    });
+    const mainOnlyProvider = jest.fn<
+      ReturnType<PiMainOnlyToolProvider>,
+      Parameters<PiMainOnlyToolProvider>
+    >(() => ({
+      toolSpecs: [
+        {
+          name: 'fixture_main_only',
+          description: 'Must stay off subagent inventory',
+          parameters: { type: 'object', properties: {}, additionalProperties: false },
+          executionMode: 'sequential',
+          async execute() {
+            return { content: [{ type: 'text', text: 'main-only' }], details: {} };
+          },
+        } satisfies ToolSpec,
+      ],
+      registeredToolSummary: {
+        obsidianTools: [],
+        obsidianCliAvailable: true,
+        includeMcp: false,
+        includeSkill: false,
+        includeSubagent: false,
+        includeWebSearch: false,
+      },
+    }));
+
+    const runtime = new PiChatRuntime(
+      plugin,
+      testNetwork,
+      null,
+      null,
+      baseProvider,
+      undefined,
+      null,
+      mainOnlyProvider,
+    );
+
+    await runtime.ensureReady();
+    expectDefined(mockAgentInstances[0]);
+    const mainNames = (mockAgentInstances[0].state.tools ?? []).map(
+      (tool) => (tool as { name?: string }).name,
+    );
+    expect(mainNames).toContain('fixture_main_only');
+    expect(mainNames).toContain('obsidian_read');
+    expect(mainOnlyProvider).toHaveBeenCalled();
+
+    mainOnlyProvider.mockClear();
+    const childTools = mockCapturedSubagentToolProvider?.(
+      () => ({ maxChars: 12_345, settle: () => {} }),
+    ) ?? [];
+    expect(mainOnlyProvider).not.toHaveBeenCalled();
+    expect(childTools.map((tool) => (tool as { name: string }).name)).toEqual(['obsidian_read']);
+    expect(childTools.map((tool) => (tool as { name: string }).name))
+      .not.toContain('fixture_main_only');
   });
 
 

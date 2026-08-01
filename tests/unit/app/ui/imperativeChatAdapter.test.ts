@@ -114,6 +114,7 @@ type TestManager = {
   broadcastToAllTabs: jest.Mock<Promise<void>, [(service: TestService) => Promise<void>]>;
   invalidateSlashCommandCaches: jest.Mock<void, []>;
   prefetchSlashCommandCaches: jest.Mock<void, []>;
+  refreshSlashCommandCachesStrict: jest.Mock<Promise<readonly { target: string; message: string }[]>, []>;
   syncPinnedExternalContextPaths: jest.Mock<void, [string[]]>;
 };
 
@@ -167,6 +168,7 @@ function createManager(): TestManager {
     ) => undefined),
     invalidateSlashCommandCaches: jest.fn(),
     prefetchSlashCommandCaches: jest.fn(),
+    refreshSlashCommandCachesStrict: jest.fn(async () => []),
     syncPinnedExternalContextPaths: jest.fn(),
   };
 }
@@ -1342,6 +1344,62 @@ describe('imperative chat semantic view handle', () => {
     expect(manager.invalidateSlashCommandCaches).toHaveBeenCalledTimes(1);
     expect(first.syncSystemPrompt).toHaveBeenCalledTimes(2);
     expect(second.syncSystemPrompt).toBeUndefined();
+  });
+
+  it('strict management refresh surfaces one tab failure while refreshing siblings', async () => {
+    const { handle, manager, mount } = createHarness();
+    await mount();
+
+    const ok = createService({
+      reloadMcpServers: jest.fn(async () => undefined),
+      syncSystemPrompt: jest.fn(async () => undefined),
+    });
+    const bad = createService({
+      reloadMcpServers: jest.fn(async () => {
+        throw new Error('secret path /Users/me/.pivi/broken');
+      }),
+      syncSystemPrompt: jest.fn(async () => undefined),
+    });
+    manager.getAllTabs.mockReturnValue([
+      createTab({ id: 'ok-tab', service: ok, serviceInitialized: true }),
+      createTab({ id: 'bad-tab', service: bad, serviceInitialized: true }),
+      createTab({ id: 'cold-tab', service: null, serviceInitialized: false }),
+    ]);
+
+    const failures = await handle.maintenance.refreshPiviManagement('mcp');
+
+    expect(ok.reloadMcpServers).toHaveBeenCalledTimes(1);
+    expect(bad.reloadMcpServers).toHaveBeenCalledTimes(1);
+    expect(manager.invalidateSlashCommandCaches).toHaveBeenCalled();
+    expect(manager.refreshSlashCommandCachesStrict).toHaveBeenCalled();
+    expect(failures).toEqual([
+      { target: 'tab:bad-tab', message: 'Runtime refresh failed.' },
+    ]);
+    expect(JSON.stringify(failures)).not.toContain('/Users/me');
+    expect(JSON.stringify(failures)).not.toContain('secret');
+
+    // Skills path uses syncSystemPrompt / ensureReady fallback; commands only warm caches.
+    ok.syncSystemPrompt!.mockClear();
+    bad.syncSystemPrompt = jest.fn(async () => {
+      throw new Error('skills boom');
+    });
+    const skillFailures = await handle.maintenance.refreshPiviManagement('skills');
+    expect(ok.syncSystemPrompt).toHaveBeenCalledTimes(1);
+    expect(skillFailures).toEqual([
+      { target: 'tab:bad-tab', message: 'Runtime refresh failed.' },
+    ]);
+
+    ok.reloadMcpServers.mockClear();
+    bad.reloadMcpServers.mockClear();
+    manager.refreshSlashCommandCachesStrict.mockResolvedValueOnce([
+      { target: 'tab:ok-tab', message: 'Cache refresh failed.' },
+    ]);
+    const commandFailures = await handle.maintenance.refreshPiviManagement('commands');
+    expect(ok.reloadMcpServers).not.toHaveBeenCalled();
+    expect(bad.reloadMcpServers).not.toHaveBeenCalled();
+    expect(commandFailures).toEqual([
+      { target: 'tab:ok-tab', message: 'Cache refresh failed.' },
+    ]);
   });
 
   it('resets model-changed runtimes and force-readies other environment changes', async () => {

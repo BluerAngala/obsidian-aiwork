@@ -26,6 +26,20 @@ export const TOOL_OBSIDIAN_GRAPH = 'obsidian_graph' as const;
 export const TOOL_OBSIDIAN_TAGS = 'obsidian_tags' as const;
 export const TOOL_OBSIDIAN_BASE = 'obsidian_base' as const;
 export const TOOL_PIVI_SESSIONS = 'pivi_sessions' as const;
+/** Main-Agent-only capability management (spec 040); not part of OBSIDIAN_AGENT_TOOLS. */
+export const TOOL_PIVI_MCP = 'pivi_mcp' as const;
+export const TOOL_PIVI_SKILLS = 'pivi_skills' as const;
+export const TOOL_PIVI_COMMANDS = 'pivi_commands' as const;
+
+export const PIVI_MANAGEMENT_TOOLS = [
+  TOOL_PIVI_MCP,
+  TOOL_PIVI_SKILLS,
+  TOOL_PIVI_COMMANDS,
+] as const;
+
+export function isPiviManagementTool(name: string): boolean {
+  return (PIVI_MANAGEMENT_TOOLS as readonly string[]).includes(name);
+}
 
 export const OBSIDIAN_AGENT_TOOLS = [
   TOOL_OBSIDIAN_READ,

@@ -12,7 +12,12 @@ import {
 } from 'obsidian';
 
 import { captureFileRecoverySnapshot } from './fileRecoverySnapshot';
-import { getVaultPath, normalizePathForVault, requireVaultRelativeMutationPath } from './path';
+import {
+  type AgentManagedPathMutationMode,
+  getVaultPath,
+  normalizePathForVault,
+  requireAgentVaultMutationPath,
+} from './path';
 
 function asciiDoubleQuotesToCurly(text: string): string {
   let useOpen = true;
@@ -144,8 +149,24 @@ export class ObsidianVaultApi {
     return getVaultPath(this.app);
   }
 
-  private requireMutationPath(rawPath: string): string {
-    return requireVaultRelativeMutationPath(rawPath, this.vaultPath());
+  /**
+   * Canonical vault-relative mutation path with containment + managed-namespace
+   * policy (spec 040). Used by Agent-facing vault tools; Settings/coordinators
+   * persist through FileStore adapters and do not call these mutation methods.
+   */
+  private requireMutationPath(
+    rawPath: string,
+    options: { mode?: AgentManagedPathMutationMode } = {},
+  ): string {
+    return requireAgentVaultMutationPath(rawPath, this.vaultPath(), options);
+  }
+
+  /** Apply managed-path policy to an already-resolved Obsidian vault path (e.g. file= alias). */
+  private assertResolvedMutationPath(
+    vaultRelativePath: string,
+    options: { mode?: AgentManagedPathMutationMode } = {},
+  ): void {
+    this.requireMutationPath(vaultRelativePath, options);
   }
 
   private asFile(abstract: TAbstractFile | null): TFile | null {
@@ -164,8 +185,11 @@ export class ObsidianVaultApi {
     return this.app.vault.getAbstractFileByPath(normalized);
   }
 
-  private requireMutationAbstract(path: string): TAbstractFile {
-    const normalized = this.requireMutationPath(path.trim());
+  private requireMutationAbstract(
+    path: string,
+    options: { mode?: AgentManagedPathMutationMode } = {},
+  ): TAbstractFile {
+    const normalized = this.requireMutationPath(path.trim(), options);
     const resolved = this.app.vault.getAbstractFileByPath(normalized);
     if (!resolved) {
       throw new Error(`Vault path not found: ${path}`);
@@ -181,9 +205,13 @@ export class ObsidianVaultApi {
     return resolved;
   }
 
-  private resolveMutationFile(file?: string, path?: string): TFile {
+  private resolveMutationFile(
+    file?: string,
+    path?: string,
+    options: { mode?: AgentManagedPathMutationMode } = {},
+  ): TFile {
     if (path?.trim()) {
-      const normalized = this.requireMutationPath(path);
+      const normalized = this.requireMutationPath(path, options);
       const resolved = this.asFile(this.app.vault.getAbstractFileByPath(normalized));
       if (!resolved) {
         throw new Error(`Vault path not found: ${path}`);
@@ -194,6 +222,8 @@ export class ObsidianVaultApi {
     if (!resolved) {
       throw new Error('Note not found. Provide file= (wikilink name) or path= (vault-relative).');
     }
+    // file= aliases resolve outside requireMutationPath; enforce policy on the real path.
+    this.assertResolvedMutationPath(resolved.path, options);
     return resolved;
   }
 
@@ -341,11 +371,13 @@ export class ObsidianVaultApi {
   }
 
   async trashPath(params: { file?: string; path?: string }): Promise<VaultDeleteResult> {
+    // Delete is recursive for folders; protect managed descendants and ancestors.
+    const recursive = { mode: 'recursive' as const };
     let target: TAbstractFile | null = null;
     if (params.path?.trim()) {
-      target = this.requireMutationAbstract(params.path);
+      target = this.requireMutationAbstract(params.path, recursive);
     } else if (params.file?.trim()) {
-      target = this.resolveMutationFile(params.file, undefined);
+      target = this.resolveMutationFile(params.file, undefined, recursive);
     }
 
     if (!target) {
@@ -360,14 +392,16 @@ export class ObsidianVaultApi {
   }
 
   async movePath(params: { path: string; newPath: string }): Promise<{ path: string; newPath: string }> {
-    const target = this.requireMutationAbstract(params.path);
-    const normalizedNewPath = this.requireMutationPath(params.newPath.trim());
+    // Source move can recurse into managed trees; destination is a direct write target.
+    const target = this.requireMutationAbstract(params.path, { mode: 'recursive' });
+    const normalizedNewPath = this.requireMutationPath(params.newPath.trim(), { mode: 'direct' });
     await this.app.fileManager.renameFile(target, normalizedNewPath);
     return { path: target.path, newPath: normalizedNewPath };
   }
 
   async createFolder(path: string): Promise<{ path: string }> {
-    const normalized = this.requireMutationPath(path.trim());
+    // Creating a parent of a managed root would own that namespace via recursion semantics.
+    const normalized = this.requireMutationPath(path.trim(), { mode: 'recursive' });
     await this.app.vault.createFolder(normalized);
     return { path: normalized };
   }

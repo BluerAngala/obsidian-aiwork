@@ -60,6 +60,11 @@
       "stopTitle": "停止",
       "sendEmptyTitle": "請輸入訊息"
     },
+    "piviManagementApproval": {
+      "title": "確認 Pivi 變更",
+      "confirm": "確認",
+      "deny": "拒絕"
+    },
     "capabilityApproval": {
       "title": "需要權限",
       "scopeQuestion": "允許多長時間？",
@@ -939,6 +944,12 @@
       "search": "搜尋",
       "sessions": "Pivi Sessions",
       "sessionsDesc": "讀取持久化工作階段、列出可復原的已刪除工作階段，或將其復原到可見的 Pivi 分頁。",
+      "piviMcp": "Pivi MCP",
+      "piviMcpDesc": "經主 Agent 確認後管理已儲存的 MCP 伺服器。",
+      "piviSkills": "Pivi Skills",
+      "piviSkillsDesc": "經主 Agent 確認後安裝、更新、啟用、停用或移除託管 Skills。",
+      "piviCommands": "Pivi Commands",
+      "piviCommandsDesc": "經主 Agent 確認後管理工作區 Commands。",
       "searchDesc": "搜尋筆記文字、標籤，或列出資料夾中的 Markdown 檔案。",
       "noteInfo": "筆記資訊",
       "noteInfoDesc": "讀取中繼資料、標籤、出鏈和 frontmatter。",

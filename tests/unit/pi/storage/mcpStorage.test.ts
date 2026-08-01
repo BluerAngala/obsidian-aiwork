@@ -5,6 +5,7 @@ import {
   McpConfigLoadError,
   McpStorage,
   PIVI_MCP_CONFIG_PATH,
+  listMcpServerSecretIds,
 } from "@pivi/pivi-agent-core/mcp/mcpStorage";
 import { getMcpValueSecretId } from "@pivi/pivi-agent-core/mcp/mcpValueSources";
 import type { FileStore } from "@pivi/pivi-agent-core/ports";
@@ -385,6 +386,122 @@ describe("McpStorage", () => {
     expect(loaded.find(server => server.name === "oauth")?.oauth).toMatchObject({
       clientSecret: "client-secret",
     });
+  });
+
+  it.each([
+    {
+      label: "remote headers to stdio env",
+      initial: remoteServer({
+        config: {
+          type: "http",
+          url: "https://mcp.example.com",
+          headers: { Authorization: { kind: "secret" } },
+        },
+      }),
+      next: remoteServer({
+        config: { command: "node", env: { API_KEY: { kind: "secret" } } },
+      }),
+      oldId: getMcpValueSecretId("remote", "header", "Authorization"),
+      oldValue: "old-header",
+      nextId: getMcpValueSecretId("remote", "env", "API_KEY"),
+    },
+    {
+      label: "stdio env to remote headers",
+      initial: remoteServer({
+        config: { command: "node", env: { API_KEY: { kind: "secret" } } },
+      }),
+      next: remoteServer({
+        config: {
+          type: "http",
+          url: "https://mcp.example.com",
+          headers: { Authorization: { kind: "secret" } },
+        },
+      }),
+      oldId: getMcpValueSecretId("remote", "env", "API_KEY"),
+      oldValue: "old-env",
+      nextId: getMcpValueSecretId("remote", "header", "Authorization"),
+    },
+  ])("cleans every old channel secret after publishing $label", async ({ initial, next, oldId, oldValue, nextId }) => {
+    const adapter = new MemoryVaultAdapter();
+    const secretStorage = new SecretStorage();
+    const storage = new McpStorage(adapter as unknown as FileStore, secretStorage);
+    secretStorage.setSecret(oldId, oldValue);
+    await storage.save([initial]);
+    secretStorage.setSecret(nextId, "new-secret");
+
+    await storage.save([next]);
+
+    expect(secretStorage.getSecret(oldId)).toBeNull();
+  });
+
+  it("preserves a concurrent OAuth secret write when config publication fails", async () => {
+    const adapter = new MemoryVaultAdapter();
+    const secretStorage = new SecretStorage();
+    const secretId = listMcpServerSecretIds("remote", "bearer-token")[0]!;
+    secretStorage.setSecret(secretId, "previous-token");
+    const failingAdapter = Object.assign(adapter, {
+      write: jest.fn(async () => {
+        // Simulate an OAuth callback updating the same key after this save staged it.
+        secretStorage.setSecret(secretId, "concurrent-oauth-token");
+        throw new Error("disk full");
+      }),
+    }) as unknown as FileStore;
+    const storage = new McpStorage(failingAdapter, secretStorage);
+
+    await expect(storage.save([
+      remoteServer({ auth: "bearer", bearerToken: "transaction-token" }),
+    ])).rejects.toThrow("disk full");
+
+    expect(secretStorage.getSecret(secretId)).toBe("concurrent-oauth-token");
+  });
+
+  it("keeps staged secrets when a post-publication config read fails", async () => {
+    const adapter = new MemoryVaultAdapter();
+    const secretStorage = new SecretStorage();
+    const secretId = listMcpServerSecretIds("remote", "bearer-token")[0]!;
+    const baseRead = adapter.read.bind(adapter);
+    const baseRename = adapter.rename.bind(adapter);
+    adapter.rename = async (oldPath, newPath) => {
+      await baseRename(oldPath, newPath);
+      if (newPath === PIVI_MCP_CONFIG_PATH) {
+        // After durable mcp.json lands, any async re-read of the config fails.
+        adapter.read = async (path) => {
+          if (path === PIVI_MCP_CONFIG_PATH) {
+            throw new Error("post-publish read failed");
+          }
+          return baseRead(path);
+        };
+      }
+    };
+    const storage = new McpStorage(adapter as unknown as FileStore, secretStorage);
+
+    await expect(storage.save([
+      remoteServer({ auth: "bearer", bearerToken: "bearer-secret" }),
+    ])).resolves.toBeUndefined();
+
+    expect(secretStorage.getSecret(secretId)).toBe("bearer-secret");
+    const raw = adapter.readSync(PIVI_MCP_CONFIG_PATH);
+    expect(raw.length).toBeGreaterThan(0);
+    expect(raw).not.toContain("bearer-secret");
+  });
+
+  it("returns the CAS revision from exact published bytes", async () => {
+    const adapter = new MemoryVaultAdapter();
+    const secretStorage = new SecretStorage();
+    const storage = new McpStorage(adapter as unknown as FileStore, secretStorage);
+    const before = await storage.loadRevisionedSnapshot();
+
+    const saved = await storage.saveIfRevision([
+      remoteServer({ auth: "bearer", bearerToken: "bearer-secret" }),
+    ], before.revision);
+
+    const published = adapter.readSync(PIVI_MCP_CONFIG_PATH);
+    expect(published).not.toContain("bearer-secret");
+    // Re-open with a clean storage so revision is derived only from on-disk bytes.
+    const verifier = new McpStorage(adapter as unknown as FileStore, secretStorage);
+    const after = await verifier.loadRevisionedSnapshot();
+    expect(saved.revision).toBe(after.revision);
+    expect(saved.revision).not.toBe(before.revision);
   });
 
   it("serializes concurrent saves", async () => {

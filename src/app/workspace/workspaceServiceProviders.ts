@@ -28,6 +28,7 @@ import { ensureAddedProviderAuths } from "./providerReadiness";
 export class PiMcpToolProvider implements AppMcpToolProvider {
   private readonly pool: PiMcpConnectionPool;
   private readonly cache = new Map<string, AppMcpToolSummary[]>();
+  /** Keyed by `${mode}:${serverName}` so inventory never joins an OAuth runtime flight. */
   private readonly inFlight = new Map<
     string,
     { generation: number; promise: Promise<AppMcpToolSummary[]> }
@@ -49,7 +50,7 @@ export class PiMcpToolProvider implements AppMcpToolProvider {
     if (serverName) {
       void this.pool.close(serverName);
       this.cache.delete(serverName);
-      this.inFlight.delete(serverName);
+      this.clearInFlight(serverName);
       this.serverGenerations.set(serverName, this.getServerGeneration(serverName) + 1);
       return;
     }
@@ -75,17 +76,44 @@ export class PiMcpToolProvider implements AppMcpToolProvider {
     const servers = this.mcpServerManager
       .getServers()
       .filter((server) => server.enabled && getMcpServerUrl(server.config));
-    await Promise.all(servers.map((server) => this.listTools(server.name)));
+    await Promise.all(servers.map((server) => this.listInventoryTools(server.name)));
   }
 
+  /** Runtime/agent path: may use the normal OAuth-capable connection pool. */
   async listTools(serverName: string): Promise<AppMcpToolSummary[]> {
+    return this.loadToolsCached(serverName, 'runtime');
+  }
+
+  /**
+   * Automatic slash/settings inventory: remote-only, non-authenticating probe.
+   * Never starts stdio and never creates/refreshes/persists OAuth material.
+   */
+  async listInventoryTools(serverName: string): Promise<AppMcpToolSummary[]> {
+    return this.loadToolsCached(serverName, 'inventory');
+  }
+
+  getCachedTools(serverName: string): AppMcpToolSummary[] {
+    return this.cache.get(serverName)?.map((tool) => ({ ...tool })) ?? [];
+  }
+
+  cacheTools(serverName: string, tools: readonly AppMcpToolSummary[]): void {
+    this.serverGenerations.set(serverName, this.getServerGeneration(serverName) + 1);
+    this.cache.set(serverName, tools.map((tool) => ({ ...tool })));
+    this.clearInFlight(serverName);
+  }
+
+  private async loadToolsCached(
+    serverName: string,
+    mode: 'runtime' | 'inventory',
+  ): Promise<AppMcpToolSummary[]> {
     const cached = this.cache.get(serverName);
     if (cached) {
       return cached;
     }
 
     const generation = this.getRequestGeneration(serverName);
-    const existing = this.inFlight.get(serverName);
+    const flightKey = `${mode}:${serverName}`;
+    const existing = this.inFlight.get(flightKey);
     if (existing?.generation === generation) {
       return existing.promise;
     }
@@ -97,29 +125,30 @@ export class PiMcpToolProvider implements AppMcpToolProvider {
       return [];
     }
 
-    const promise = Promise.resolve().then(() => this.loadTools(serverName, server, generation));
-    this.inFlight.set(serverName, { generation, promise });
+    // Automatic inventory never spawns local processes.
+    if (mode === 'inventory' && !getMcpServerUrl(server.config)) {
+      return [];
+    }
+
+    const promise = Promise.resolve().then(() => this.loadTools(serverName, server, generation, mode));
+    this.inFlight.set(flightKey, { generation, promise });
     return promise;
-  }
-
-  getCachedTools(serverName: string): AppMcpToolSummary[] {
-    return this.cache.get(serverName)?.map((tool) => ({ ...tool })) ?? [];
-  }
-
-  cacheTools(serverName: string, tools: readonly AppMcpToolSummary[]): void {
-    this.serverGenerations.set(serverName, this.getServerGeneration(serverName) + 1);
-    this.cache.set(serverName, tools.map((tool) => ({ ...tool })));
-    this.inFlight.delete(serverName);
   }
 
   private async loadTools(
     serverName: string,
     server: ReturnType<McpServerManager["getServers"]>[number],
     generation: number,
+    mode: 'runtime' | 'inventory',
   ): Promise<AppMcpToolSummary[]> {
+    const flightKey = `${mode}:${serverName}`;
     try {
       const disabled = new Set(server.disabledTools ?? []);
-      const tools = (await this.pool.listTools(server))
+      // Inventory uses pool.probe → testPiMcpServer (no OAuth provider / no token persist).
+      const listed = mode === 'inventory'
+        ? await this.pool.probe(server)
+        : await this.pool.listTools(server);
+      const tools = listed
         .filter((tool) => !disabled.has(tool.name))
         .map((tool) => ({ name: tool.name, description: tool.description }));
       if (this.getRequestGeneration(serverName) === generation) {
@@ -127,9 +156,21 @@ export class PiMcpToolProvider implements AppMcpToolProvider {
       }
       return tools;
     } finally {
-      const active = this.inFlight.get(serverName);
+      const active = this.inFlight.get(flightKey);
       if (active?.generation === generation) {
-        this.inFlight.delete(serverName);
+        this.inFlight.delete(flightKey);
+      }
+    }
+  }
+
+  private clearInFlight(serverName?: string): void {
+    if (!serverName) {
+      this.inFlight.clear();
+      return;
+    }
+    for (const key of [...this.inFlight.keys()]) {
+      if (key.endsWith(`:${serverName}`)) {
+        this.inFlight.delete(key);
       }
     }
   }
@@ -155,10 +196,13 @@ export class PiMcpDiagnostics implements AppMcpDiagnostics {
     this.pool = new PiMcpConnectionPool(mcpOAuth, mcpFetch, process.env, secretStorage, stdioCwd);
   }
 
-  async testConnection(server: Parameters<AppMcpDiagnostics["testConnection"]>[0]) {
+  async testConnection(server: Parameters<AppMcpDiagnostics["testConnection"]>[0], signal?: AbortSignal) {
     try {
       await this.pool.close(server.name);
-      const tools = await this.pool.listTools({ ...server, disabledTools: undefined });
+      const target = { ...server, disabledTools: undefined };
+      const tools = signal
+        ? await this.pool.listTools(target, signal)
+        : await this.pool.listTools(target);
       return { success: true, tools };
     } catch (cause) {
       return {
@@ -181,8 +225,8 @@ export class PiMcpServerTester implements AppMcpServerTester {
     private readonly stdioCwd?: string,
   ) {}
 
-  async testServer(server: Parameters<AppMcpServerTester["testServer"]>[0]) {
-    return testPiMcpServer(server, this.mcpFetch, process.env, this.secretStorage, this.stdioCwd);
+  async testServer(server: Parameters<AppMcpServerTester["testServer"]>[0], signal?: AbortSignal) {
+    return testPiMcpServer(server, this.mcpFetch, process.env, this.secretStorage, this.stdioCwd, signal);
   }
 }
 

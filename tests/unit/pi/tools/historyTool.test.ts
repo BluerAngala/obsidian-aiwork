@@ -116,6 +116,18 @@ describe('createHistoryTool', () => {
     expect(getDetails(result)).toEqual({ action: 'restore', path: 'deleted/a.md', version: 3 });
   });
 
+  it('rejects restoring Pivi-managed paths before invoking the CLI', async () => {
+    const { deps, cliRun } = makeDeps();
+
+    await expect(createHistoryTool(deps).execute('call-1', {
+      action: 'restore',
+      path: '.pivi/mcp.json',
+      version: 1,
+    })).rejects.toThrow(/pivi_mcp/);
+
+    expect(cliRun).not.toHaveBeenCalled();
+  });
+
   it('rejects invalid actions and missing paths', async () => {
     const { deps } = makeDeps();
     const tool = createHistoryTool(deps);

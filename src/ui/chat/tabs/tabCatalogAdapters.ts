@@ -1,3 +1,4 @@
+import { getMcpServerType } from '@pivi/pivi-agent-core/mcp/types';
 import type { ChatCatalogPort } from '@pivi/pivi-agent-core/runtime/chatPorts';
 
 import type {
@@ -21,15 +22,22 @@ export function createDropdownMcpServerProvider(
   catalog: ChatCatalogPort,
 ): DropdownMcpServerProvider {
   return {
-    getServers: () => catalog.listMcpServers(),
+    getServers: () => catalog.listMcpServers().map((server) => ({
+      name: server.name,
+      enabled: server.enabled,
+      description: server.description,
+      type: getMcpServerType(server.config),
+    })),
   };
 }
 
-/** Catalog-backed MCP tool list for SlashCommandDropdown. */
+/** Catalog-backed MCP tool list for SlashCommandDropdown (automatic inventory path). */
 export function createDropdownMcpToolProvider(
   catalog: ChatCatalogPort,
 ): DropdownMcpToolProvider {
   return {
-    listTools: (serverName) => catalog.listMcpTools(serverName),
+    listTools: (serverName) => (
+      catalog.listMcpInventoryTools?.(serverName) ?? catalog.listMcpTools(serverName)
+    ),
   };
 }

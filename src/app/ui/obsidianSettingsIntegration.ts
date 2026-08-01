@@ -1,4 +1,5 @@
 import {
+  isPiviManagementTool,
   TOOL_OBSIDIAN_ATTACHMENT,
   TOOL_OBSIDIAN_BASE,
   TOOL_OBSIDIAN_BASH,
@@ -22,7 +23,10 @@ import {
   TOOL_OBSIDIAN_TAGS,
   TOOL_OBSIDIAN_TASKS,
   TOOL_OBSIDIAN_WRITE,
+  TOOL_PIVI_COMMANDS,
+  TOOL_PIVI_MCP,
   TOOL_PIVI_SESSIONS,
+  TOOL_PIVI_SKILLS,
 } from '@pivi/pivi-agent-core/tools';
 import type {
   SettingsFeedbackMessage,
@@ -53,6 +57,9 @@ const TOOL_DESCRIPTORS: readonly [
   [TOOL_OBSIDIAN_TASKS, 'tools.display.tasks', 'tools.display.tasksDesc', 'cli'],
   [TOOL_OBSIDIAN_HISTORY, 'tools.display.history', 'tools.display.historyDesc', 'cli'],
   [TOOL_PIVI_SESSIONS, 'tools.display.sessions', 'tools.display.sessionsDesc'],
+  [TOOL_PIVI_MCP, 'tools.display.piviMcp', 'tools.display.piviMcpDesc'],
+  [TOOL_PIVI_SKILLS, 'tools.display.piviSkills', 'tools.display.piviSkillsDesc'],
+  [TOOL_PIVI_COMMANDS, 'tools.display.piviCommands', 'tools.display.piviCommandsDesc'],
   [TOOL_OBSIDIAN_DAILY, 'tools.display.daily', 'tools.display.dailyDesc', 'cli'],
   [TOOL_OBSIDIAN_GRAPH, 'tools.display.graph', 'tools.display.graphDesc'],
   [TOOL_OBSIDIAN_TAGS, 'tools.display.tags', 'tools.display.tagsDesc'],
@@ -81,7 +88,8 @@ export function createObsidianToolRows(
 ): readonly SettingsToolRow[] {
   const officialCliEnabled = isOfficialObsidianCliEnabled();
   return TOOL_DESCRIPTORS.map(([name, labelKey, descriptionKey, requirement]) => {
-    const group = name === TOOL_PIVI_SESSIONS
+    const managementTool = isPiviManagementTool(name);
+    const group = name === TOOL_PIVI_SESSIONS || managementTool
       ? 'pivi'
       : requirement === 'cli'
         ? 'host-cli'

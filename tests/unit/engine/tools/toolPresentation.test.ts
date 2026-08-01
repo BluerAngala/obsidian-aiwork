@@ -156,6 +156,9 @@ const EXPECTED_DESCRIPTORS: Readonly<Record<string, ExpectedDescriptor>> = {
   obsidian_tags: expectedDescriptor('tag', 'obsidian', { labelKey: 'tools.display.tags' }),
   obsidian_base: expectedDescriptor('database', 'obsidian', { labelKey: 'tools.display.base' }),
   pivi_sessions: expectedDescriptor('history', 'obsidian', { labelKey: 'tools.display.sessions' }),
+  pivi_mcp: expectedDescriptor(MCP_ICON_MARKER, 'mcp', { labelKey: 'tools.display.piviMcp' }),
+  pivi_skills: expectedDescriptor('sparkles', 'skill', { labelKey: 'tools.display.piviSkills' }),
+  pivi_commands: expectedDescriptor('terminal', 'obsidian', { labelKey: 'tools.display.piviCommands' }),
 };
 
 describe('tool presentation registry', () => {

@@ -65,6 +65,11 @@
       "stopTitle": "Stop",
       "sendEmptyTitle": "Enter a message"
     },
+    "piviManagementApproval": {
+      "title": "Confirm Pivi change",
+      "confirm": "Confirm",
+      "deny": "Deny"
+    },
     "capabilityApproval": {
       "title": "Permission required",
       "scopeQuestion": "How long should Pivi allow this?",
@@ -939,6 +944,12 @@
       "search": "Search",
       "sessions": "Pivi Sessions",
       "sessionsDesc": "Read durable sessions, list recoverable deleted sessions, or restore one in a visible Pivi tab.",
+      "piviMcp": "Pivi MCP",
+      "piviMcpDesc": "Manage persisted MCP servers through main-Agent confirmation.",
+      "piviSkills": "Pivi Skills",
+      "piviSkillsDesc": "Install, update, enable, disable, and remove managed Skills through main-Agent confirmation.",
+      "piviCommands": "Pivi Commands",
+      "piviCommandsDesc": "Manage workspace Commands through main-Agent confirmation.",
       "searchDesc": "Search note text, tags, or list markdown files in folders.",
       "noteInfo": "Note info",
       "noteInfoDesc": "Read metadata, tags, outgoing links, and frontmatter.",

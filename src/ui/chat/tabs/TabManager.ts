@@ -559,6 +559,22 @@ export class TabManager {
     }
   }
 
+  async refreshSlashCommandCachesStrict(): Promise<readonly { target: string; message: string }[]> {
+    const targets = [...this.tabs.values()]
+      .flatMap((tab, index) => tab.ui?.slashCommandDropdown
+        ? [{
+          target: `tab:${tab.id || String(index + 1)}`,
+          dropdown: tab.ui.slashCommandDropdown,
+        }]
+        : []);
+    const settled = await Promise.allSettled(
+      targets.map(({ dropdown }) => dropdown.prefetchCachesStrict()),
+    );
+    return settled.flatMap((result, index) => result.status === 'rejected'
+      ? [{ target: targets[index]!.target, message: 'Cache refresh failed.' }]
+      : []);
+  }
+
   // ============================================
   // Fork
   // ============================================

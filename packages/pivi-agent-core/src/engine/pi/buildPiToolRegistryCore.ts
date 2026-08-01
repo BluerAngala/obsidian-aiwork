@@ -44,12 +44,23 @@ export type PiBaseToolProvider = (
   options: PiBaseToolProviderOptions,
 ) => PiBaseToolProviderResult;
 
+/**
+ * Main-Agent-only tool provider. Distinct from {@link PiBaseToolProvider}:
+ * main registry composition may call it; subagent inventory construction must
+ * never request, receive, or filter it (structural absence, not a name blacklist).
+ */
+export type PiMainOnlyToolProvider = (
+  options: PiBaseToolProviderOptions,
+) => PiBaseToolProviderResult;
+
 export function buildPiToolRegistryCore(options: {
   subagentQueryRunner: PiSubagentQueryRunner;
   vaultPath: string;
   activeNotePath?: string | null;
   mcpBridge: PiMcpBridge | null;
   baseToolSpecs: ToolSpec[];
+  /** Main-Agent-only ToolSpecs; omitted from subagent inventory by not being passed. */
+  mainOnlyToolSpecs?: ToolSpec[];
   registeredToolSummary: RegisteredToolSummary;
   externalContexts?: ExternalContextAvailability[];
   subagentSettings?: { enabled: boolean; allowBackground: boolean; maxConcurrentSubagents: number };
@@ -65,9 +76,12 @@ export function buildPiToolRegistryCore(options: {
     : null;
   const mcpTools = options.mcpBridge?.getToolSpecs().map(toPiAgentTool) ?? [];
   const baseTools = options.baseToolSpecs.map(toPiAgentTool);
+  const mainOnlyToolSpecs = options.mainOnlyToolSpecs ?? [];
+  const mainOnlyTools = mainOnlyToolSpecs.map(toPiAgentTool);
 
   const tools: AgentTool[] = [
     ...baseTools,
+    ...mainOnlyTools,
     skillTool,
     ...(subagentTool ? [subagentTool] : []),
     ...mcpTools,
@@ -84,10 +98,21 @@ export function buildPiToolRegistryCore(options: {
     contextAppendices.push(layers.skillsXml.trim());
   }
 
+  const mainOnlyToolNames = mainOnlyToolSpecs.map((spec) => spec.name);
+  const registeredToolSummary: RegisteredToolSummary = mainOnlyToolNames.length > 0
+    ? {
+      ...options.registeredToolSummary,
+      obsidianTools: [
+        ...options.registeredToolSummary.obsidianTools,
+        ...mainOnlyToolNames,
+      ],
+    }
+    : options.registeredToolSummary;
+
   return {
     tools,
     registeredToolsSection: buildRegisteredToolsSection({
-      ...options.registeredToolSummary,
+      ...registeredToolSummary,
       includeMcp: mcpTools.length > 0,
       mcpInventory: options.mcpBridge?.getCachedInventory() ?? [],
       includeSkill: true,
@@ -106,6 +131,8 @@ export function buildPiToolRegistry(options: {
   externalContextPaths?: readonly string[];
   mcpBridge: PiMcpBridge | null;
   baseToolProvider: PiBaseToolProvider | null;
+  /** Optional; main Agent only. Never passed into subagent tool construction. */
+  mainOnlyToolProvider?: PiMainOnlyToolProvider | null;
   subagentQueryRunner?: PiSubagentQueryRunner;
   resolveReadMaxChars?: (requestedMaxChars?: number) => ReadAllowanceReservation;
   capabilityApproval?: CapabilityApprovalPort | null;
@@ -114,12 +141,16 @@ export function buildPiToolRegistry(options: {
     throw new Error('Pi tool registry requires a baseToolProvider.');
   }
 
-  const providedBaseTools = options.baseToolProvider({
+  const providerOptions: PiBaseToolProviderOptions = {
     vaultPath: options.vaultPath,
     externalContextPaths: options.externalContextPaths,
     resolveReadMaxChars: options.resolveReadMaxChars,
     capabilityApproval: options.capabilityApproval ?? null,
-  });
+  };
+  const providedBaseTools = options.baseToolProvider(providerOptions);
+  const mainOnlyToolSpecs = options.mainOnlyToolProvider
+    ? options.mainOnlyToolProvider(providerOptions).toolSpecs
+    : undefined;
   const subagentSettings = getSubagentRuntimeSettingsFromBag(options.host.settings);
 
   return buildPiToolRegistryCore({
@@ -128,6 +159,7 @@ export function buildPiToolRegistry(options: {
     activeNotePath: options.activeNotePath,
     mcpBridge: options.mcpBridge,
     baseToolSpecs: providedBaseTools.toolSpecs,
+    mainOnlyToolSpecs,
     registeredToolSummary: providedBaseTools.registeredToolSummary,
     externalContexts: providedBaseTools.externalContexts,
     subagentSettings,

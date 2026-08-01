@@ -247,50 +247,82 @@ export class SlashCommandDropdown {
 
   /** Warm catalog + MCP tool caches without delaying or invalidating an active selector. */
   async prefetchCaches(): Promise<void> {
-    await this.loadCaches();
+    await Promise.all([
+      this.loadCatalogEntries().catch(() => undefined),
+      this.loadMcpToolEntries().catch(() => undefined),
+    ]);
   }
 
-  private loadCaches(): Promise<void> {
-    return Promise.all([
-      this.loadCatalogEntries(),
-      this.loadMcpToolEntries(),
-    ]).then(() => undefined);
+  /**
+   * One generation-checked load that both populates caches and propagates failures.
+   * Management commits require observable failures; ordinary settings warmup stays best effort.
+   */
+  async prefetchCachesStrict(): Promise<void> {
+    await Promise.all([
+      this.loadCatalogEntries({ strict: true }),
+      this.loadMcpToolEntries({ strict: true }),
+    ]);
   }
 
-  private loadCatalogEntries(): Promise<void> {
+  /**
+   * Single-flight catalog load. Rejects on failure so strict callers observe it;
+   * best-effort callers (dropdown open / prefetchCaches) swallow at the call site.
+   * Strict joiners of a failed/incomplete flight restart once so success is never
+   * reported after a swallowed failure.
+   */
+  private loadCatalogEntries(options: { strict?: boolean } = {}): Promise<void> {
     if (this.catalogEntriesFetched || !this.getCatalogEntries) {
       return Promise.resolve();
     }
-    if (this.catalogLoadPromise) return this.catalogLoadPromise;
+    if (this.catalogLoadPromise) {
+      if (!options.strict) return this.catalogLoadPromise;
+      return this.joinStrictAfter(this.catalogLoadPromise, () => this.catalogEntriesFetched, () => (
+        this.loadCatalogEntries({ strict: true })
+      ));
+    }
 
     const generation = this.cacheGeneration;
     let loadPromise: Promise<void>;
-    loadPromise = fetchCatalogEntries(false, this.getCatalogEntries)
+    loadPromise = fetchCatalogEntries(false, this.getCatalogEntries, { strict: true })
       .then((result) => {
         if (generation !== this.cacheGeneration || result.kind !== 'ok') return;
         this.cachedCatalogEntries = result.entries;
         this.catalogEntriesFetched = true;
       })
-      .catch(() => undefined)
       .finally(() => {
         if (this.catalogLoadPromise === loadPromise) this.catalogLoadPromise = null;
       });
+    // Keep the shared slot from becoming an unhandled rejection when only best-effort waits.
+    if (!options.strict) {
+      void loadPromise.catch(() => undefined);
+    }
     this.catalogLoadPromise = loadPromise;
     return loadPromise;
   }
 
-  private loadMcpToolEntries(): Promise<void> {
+  /**
+   * Single-flight MCP tool load. Strict mode fails any remote rejection;
+   * best-effort mode keeps partial results and remains retryable.
+   */
+  private loadMcpToolEntries(options: { strict?: boolean } = {}): Promise<void> {
     if (this.mcpToolEntriesFetched || !this.getMcpManager) {
       return Promise.resolve();
     }
-    if (this.mcpToolLoadPromise) return this.mcpToolLoadPromise;
+    if (this.mcpToolLoadPromise) {
+      if (!options.strict) return this.mcpToolLoadPromise;
+      return this.joinStrictAfter(this.mcpToolLoadPromise, () => this.mcpToolEntriesFetched, () => (
+        this.loadMcpToolEntries({ strict: true })
+      ));
+    }
 
     const generation = this.cacheGeneration;
+    const strict = options.strict === true;
     let loadPromise: Promise<void>;
     loadPromise = fetchMcpToolEntries(
       false,
       this.getMcpManager,
       this.getMcpToolProvider,
+      { strict },
     )
       .then((result) => {
         if (generation !== this.cacheGeneration) return;
@@ -303,12 +335,30 @@ export class SlashCommandDropdown {
           this.mcpToolEntriesFetched = true;
         }
       })
-      .catch(() => undefined)
       .finally(() => {
         if (this.mcpToolLoadPromise === loadPromise) this.mcpToolLoadPromise = null;
       });
+    if (!strict) {
+      void loadPromise.catch(() => undefined);
+    }
     this.mcpToolLoadPromise = loadPromise;
     return loadPromise;
+  }
+
+  /** After an in-flight load settles, restart strict if the cache was not fully populated. */
+  private async joinStrictAfter(
+    inFlight: Promise<void>,
+    isFetched: () => boolean,
+    restart: () => Promise<void>,
+  ): Promise<void> {
+    const generation = this.cacheGeneration;
+    try {
+      await inFlight;
+    } catch {
+      // Prior flight failed; fall through to a strict restart.
+    }
+    if (generation !== this.cacheGeneration || isFetched()) return;
+    return restart();
   }
 
   private getInputValue(): string {
@@ -333,10 +383,10 @@ export class SlashCommandDropdown {
     this.currentSearchText = searchText;
     const pendingLoads: Promise<void>[] = [];
     if (!this.catalogEntriesFetched && this.getCatalogEntries !== null) {
-      pendingLoads.push(this.loadCatalogEntries());
+      pendingLoads.push(this.loadCatalogEntries().catch(() => undefined));
     }
     if (!this.mcpToolEntriesFetched && this.getMcpManager !== null) {
-      pendingLoads.push(this.loadMcpToolEntries());
+      pendingLoads.push(this.loadMcpToolEntries().catch(() => undefined));
     }
 
     this.filterAndRender(searchText, pendingLoads.length === 0);

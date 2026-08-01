@@ -157,11 +157,19 @@ export interface SettingsComplexPorts {
   commands: {
     refresh(): Promise<void>;
     listIconNames(): readonly string[];
-    listWorkspaceEntries(): Promise<readonly SlashCatalogEntry[]>;
+    loadWorkspaceCatalog(): Promise<{
+      readonly entries: readonly SlashCatalogEntry[];
+      readonly catalogRevision: number;
+    }>;
     listDropdownEntries(): Promise<readonly SlashCatalogEntry[]>;
-    saveWorkspaceEntry(entry: SlashCatalogEntry): Promise<SlashCatalogEntry>;
-    saveWorkspaceOrder(ids: readonly string[]): Promise<void>;
-    deleteWorkspaceEntry(entry: SlashCatalogEntry): Promise<void>;
+    saveWorkspaceEntry(entry: SlashCatalogEntry, catalogRevision: number): Promise<SlashCatalogEntry>;
+    renameWorkspaceEntry(previous: SlashCatalogEntry, entry: SlashCatalogEntry, catalogRevision: number): Promise<SlashCatalogEntry>;
+    saveWorkspaceOrder(ids: readonly string[], catalogRevision: number): Promise<void>;
+    deleteWorkspaceEntry(entry: SlashCatalogEntry, catalogRevision: number): Promise<{
+      saved: true;
+      refreshed: boolean;
+      warnings?: string[];
+    }>;
   };
   mcp: {
     load(): Promise<readonly ManagedMcpServer[]>;

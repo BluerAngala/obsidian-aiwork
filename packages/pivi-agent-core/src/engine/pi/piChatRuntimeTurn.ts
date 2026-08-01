@@ -172,6 +172,35 @@ async function runPromptLifecycle(
       return undefined;
     }
 
+    /**
+     * Overlay the live agent tools/system prompt onto the authoritative next
+     * context after tool results. Management mutations may have hot-synced
+     * `agent.state` during the tool call while prepareNextTurn still holds a
+     * stale snapshot. Preserve the chosen message array and any model/thinking
+     * selection from prior hooks.
+     */
+    const overlayCurrentToolsAndPrompt = <T extends {
+      context?: {
+        systemPrompt?: string;
+        messages?: AgentMessage[];
+        tools?: unknown[];
+      };
+      model?: unknown;
+      thinkingLevel?: unknown;
+    } | undefined>(update: T): T => {
+      if (!update) return update;
+      const baseContext = update.context ?? nextTurn.context;
+      return {
+        ...update,
+        context: {
+          ...baseContext,
+          messages: baseContext.messages ?? nextTurn.context.messages,
+          systemPrompt: agent.state.systemPrompt,
+          tools: agent.state.tools,
+        },
+      };
+    };
+
     const mergeCurrentSelection = async (
       update: ReturnType<NonNullable<Agent['prepareNextTurnWithContext']>>,
     ) => {
@@ -181,7 +210,7 @@ async function runPromptLifecycle(
       }
       const model = deps.resolveModel();
       if (!model) {
-        return previousUpdate;
+        return overlayCurrentToolsAndPrompt(previousUpdate ?? { context: nextTurn.context });
       }
       // Continuations do not pass through PiChatRuntime.ensureReady(). Resolve
       // credentials before moving a live Agent to a newly selected provider.
@@ -191,11 +220,12 @@ async function runPromptLifecycle(
         || signal?.aborted
         || activeTurn.abortController.signal.aborted
       ) return undefined;
-      return {
-        ...previousUpdate,
+      return overlayCurrentToolsAndPrompt({
+        ...(previousUpdate ?? {}),
+        context: previousUpdate?.context ?? nextTurn.context,
         model: authorizedModel,
         thinkingLevel: deps.resolveThinkingLevel(authorizedModel),
-      };
+      });
     };
 
     flushPendingSessionMessages(deps, pendingPersistenceMessages);
@@ -210,9 +240,15 @@ async function runPromptLifecycle(
       const previousUpdate = await previousPrepareNextTurn?.(nextTurn, signal);
       const hasPendingSteering = activeTurn.steeredTurns.length
         > activeTurn.persistedSteeredTurnCount;
-      return hasPendingSteering
-        ? mergeCurrentSelection(Promise.resolve(previousUpdate))
-        : previousUpdate;
+      if (hasPendingSteering) {
+        return mergeCurrentSelection(Promise.resolve(previousUpdate));
+      }
+      // Still overlay tools/prompt on tool-result continuations so management
+      // hot-syncs land in the very next provider request.
+      if (nextTurn.toolResults.length > 0) {
+        return overlayCurrentToolsAndPrompt(previousUpdate ?? { context: nextTurn.context });
+      }
+      return previousUpdate;
     }
     if (!shouldAutoCompactSession(deps.compaction, usage)) {
       prepareCompactionPrefire(deps.compaction, usage);
@@ -233,6 +269,8 @@ async function runPromptLifecycle(
       context: {
         ...nextTurn.context,
         messages: deps.sessionTree?.loadAgentMessages() ?? agent.state.messages,
+        systemPrompt: agent.state.systemPrompt,
+        tools: agent.state.tools,
       },
     }));
   };
