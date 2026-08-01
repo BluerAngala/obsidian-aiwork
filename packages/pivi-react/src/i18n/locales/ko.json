@@ -251,6 +251,7 @@
       "kindTool": "도구",
       "kindMcpServer": "MCP 서버",
       "kindMcpTool": "MCP 도구",
+      "newSessionDescription": "새 세션 탭 열기",
       "mcpServerDetail": "MCP 서버: {server}",
       "mcpToolDetail": "MCP 서버: {server} · 도구: {tool}"
     },

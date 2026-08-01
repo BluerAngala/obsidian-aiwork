@@ -251,6 +251,7 @@
       "kindTool": "Инструмент",
       "kindMcpServer": "MCP-сервер",
       "kindMcpTool": "MCP-инструмент",
+      "newSessionDescription": "Открыть новую вкладку сеанса",
       "mcpServerDetail": "MCP-сервер: {server}",
       "mcpToolDetail": "MCP-сервер: {server} · инструмент: {tool}"
     },

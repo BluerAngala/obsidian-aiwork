@@ -251,6 +251,7 @@
       "kindTool": "Ferramenta",
       "kindMcpServer": "Servidor MCP",
       "kindMcpTool": "Ferramenta MCP",
+      "newSessionDescription": "Abrir uma nova aba de sessão",
       "mcpServerDetail": "Servidor MCP: {server}",
       "mcpToolDetail": "Servidor MCP: {server} · ferramenta: {tool}"
     },

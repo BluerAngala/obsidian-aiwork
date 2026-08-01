@@ -256,6 +256,7 @@
       "kindTool": "Tool",
       "kindMcpServer": "MCP server",
       "kindMcpTool": "MCP tool",
+      "newSessionDescription": "Open a new session tab",
       "mcpServerDetail": "MCP server: {server}",
       "mcpToolDetail": "MCP server: {server} · tool: {tool}"
     },

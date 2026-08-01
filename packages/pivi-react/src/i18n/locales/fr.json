@@ -251,6 +251,7 @@
       "kindTool": "Outil",
       "kindMcpServer": "Serveur MCP",
       "kindMcpTool": "Outil MCP",
+      "newSessionDescription": "Ouvrir un nouvel onglet de session",
       "mcpServerDetail": "Serveur MCP : {server}",
       "mcpToolDetail": "Serveur MCP : {server} · outil : {tool}"
     },

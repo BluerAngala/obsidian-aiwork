@@ -1,3 +1,4 @@
+import type { SlashCommand } from '@pivi/pivi-agent-core/foundation';
 import type { ChatPorts } from '@pivi/pivi-agent-core/runtime/chatPorts';
 import type { SlashCommandDropdownConfig } from "@pivi/pivi-agent-core/skills/commands/slashCommandCatalog";
 import type { SlashCatalogEntry } from "@pivi/pivi-agent-core/skills/commands/slashCommandEntry";
@@ -18,6 +19,7 @@ export function initializeSlashCommands(
     config: SlashCommandDropdownConfig;
     getEntries: () => Promise<SlashCatalogEntry[]>;
   } | null,
+  onSelect?: (command: SlashCommand) => void,
 ): void {
   const { dom } = tab;
 
@@ -25,7 +27,7 @@ export function initializeSlashCommands(
     dom.inputContainerEl,
     dom.richInput,
     {
-      onSelect: () => undefined,
+      onSelect: (command) => onSelect?.(command),
     },
     {
       hiddenCommands: getHiddenCommands?.() ?? new Set(),

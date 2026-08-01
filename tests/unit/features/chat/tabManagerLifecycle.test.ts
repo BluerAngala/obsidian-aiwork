@@ -198,6 +198,24 @@ describe('TabManager lifecycle guards', () => {
     expect(tabMocks.createTab).toHaveBeenCalledTimes(1);
   });
 
+  it('opens a fresh tab when the new slash command is selected', async () => {
+    const { manager } = makeManager();
+    const first = await manager.createTab();
+    const initializeOptions = tabMocks.initializeTabUI.mock.calls[0]?.[2] as {
+      onSlashCommandSelect?: (command: { id: string }) => void;
+    };
+
+    first!.dom = {
+      richInput: { value: 'keep this draft /new ', selectionStart: 21, selectionEnd: 21 },
+    } as never;
+    initializeOptions.onSlashCommandSelect?.({ id: 'new' });
+    await Promise.resolve();
+
+    expect(first?.dom.richInput.value).toBe('keep this draft ');
+    expect(manager.getTabCount()).toBe(2);
+    expect(manager.getActiveTabId()).not.toBe(first?.id);
+  });
+
   it('synchronizes pinned external context paths across every tab selector', async () => {
     const { manager } = makeManager();
     const first = await manager.createTab(null, 'first');

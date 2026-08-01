@@ -15,6 +15,7 @@ import type { SlashCatalogEntry } from "@pivi/pivi-agent-core/skills/commands/sl
 import {
   COMPACT_COMMAND_ID,
   GENERATE_IMAGE_TOOL_ID,
+  NEW_SESSION_COMMAND_ID,
 } from "@pivi/pivi-agent-core/skills/commands/slashCommandIds";
 import {
   parseSlashCommandContent,
@@ -31,6 +32,8 @@ import type {
 } from '@pivi/pivi-agent-core/tools/piviManagement';
 import { PiviManagementError } from '@pivi/pivi-agent-core/tools/piviManagement';
 import type { TAbstractFile } from "obsidian";
+
+import { t } from '@/app/i18n';
 
 import {
   recoverCommandRemovalTransactions,
@@ -148,6 +151,20 @@ export class PiSlashCommandCatalog implements SlashCommandCatalog {
       name: COMPACT_COMMAND_ID,
       description: "Compact this session to preserve context",
       content: "/compact",
+      scope: "builtin",
+      source: "builtin",
+      isEditable: false,
+      isDeletable: false,
+      displayPrefix: "/",
+      insertPrefix: "/",
+    });
+
+    combined.push({
+      id: NEW_SESSION_COMMAND_ID,
+      kind: "command",
+      name: NEW_SESSION_COMMAND_ID,
+      description: t('chat.slash.newSessionDescription'),
+      content: "",
       scope: "builtin",
       source: "builtin",
       isEditable: false,

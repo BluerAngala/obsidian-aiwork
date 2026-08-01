@@ -256,6 +256,7 @@
       "kindTool": "Werkzeug",
       "kindMcpServer": "MCP-Server",
       "kindMcpTool": "MCP-Tool",
+      "newSessionDescription": "Neuen Sitzungs-Tab öffnen",
       "mcpServerDetail": "MCP-Server: {server}",
       "mcpToolDetail": "MCP-Server: {server} · Tool: {tool}"
     },

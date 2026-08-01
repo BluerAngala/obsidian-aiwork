@@ -213,6 +213,24 @@ Explain this: {{selected_text}}`,
     ]));
   });
 
+  it("includes new as a non-editable built-in command", async () => {
+    const dropdownEntries = await catalog.listDropdownEntries({
+      includeBuiltIns: true,
+    });
+
+    expect(dropdownEntries).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: "new",
+        name: "new",
+        content: "",
+        scope: "builtin",
+        source: "builtin",
+        isEditable: false,
+        isDeletable: false,
+      }),
+    ]));
+  });
+
   it("adds the image generation tool only when it is enabled", async () => {
     const imageCatalog = new PiSlashCommandCatalog(mockPlugin, mockAdapter, {
       isImageGenerationEnabled: () => true,

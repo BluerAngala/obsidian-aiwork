@@ -251,6 +251,7 @@
       "kindTool": "ツール",
       "kindMcpServer": "MCP サーバー",
       "kindMcpTool": "MCP ツール",
+      "newSessionDescription": "新しいセッションタブを開く",
       "mcpServerDetail": "MCP サーバー: {server}",
       "mcpToolDetail": "MCP サーバー: {server} · ツール: {tool}"
     },

@@ -251,6 +251,7 @@
       "kindTool": "工具",
       "kindMcpServer": "MCP 服务器",
       "kindMcpTool": "MCP 工具",
+      "newSessionDescription": "打开新的会话标签页",
       "mcpServerDetail": "MCP 服务器：{server}",
       "mcpToolDetail": "MCP 服务器：{server} · 工具：{tool}"
     },

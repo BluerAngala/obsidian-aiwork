@@ -251,6 +251,7 @@
       "kindTool": "工具",
       "kindMcpServer": "MCP 伺服器",
       "kindMcpTool": "MCP 工具",
+      "newSessionDescription": "開啟新的工作階段分頁",
       "mcpServerDetail": "MCP 伺服器：{server}",
       "mcpToolDetail": "MCP 伺服器：{server} · 工具：{tool}"
     },
