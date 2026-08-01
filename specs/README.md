@@ -10,7 +10,6 @@ Copy [000-template.md](000-template.md) to start a spec.
 
 | Spec | Created | Outcome |
 |---|---|---|
-| [040-agent-managed-pivi-capabilities.md](040-agent-managed-pivi-capabilities.md) | 2026-07-31 | Agent-managed MCP, pinned-package Skills, and Pivi Commands with one-shot confirmation and automatic transactional refresh. |
 
 ## Archived specs
 
@@ -55,6 +54,8 @@ Copy [000-template.md](000-template.md) to start a spec.
 | [037-ui-ux-accessibility-and-overlay-hardening.md](archive/037-ui-ux-accessibility-and-overlay-hardening.md) | 2026-07-24 | Closed verified keyboard, focus, overlay, destructive-action, responsive, i18n, and host-theme gaps without changing Pivi's visual direction. |
 | [038-sidebar-capability-approvals.md](archive/038-sidebar-capability-approvals.md) | 2026-07-24 | Sidebar inline Deny / once / session / always confirmations for unlisted bash and external directory access. |
 | [039-self-healing-session-index-append-refresh.md](archive/039-self-healing-session-index-append-refresh.md) | 2026-07-25 | Self-healing session-index append refresh: stale/corrupt/missing indexes rebuild from authoritative JSONL instead of aborting validated turns under cloud file replacement. |
+| [040-agent-managed-pivi-capabilities.md](archive/040-agent-managed-pivi-capabilities.md) | 2026-08-01 | Main-Agent-only `pivi_mcp` / `pivi_skills` / `pivi_commands` with one-shot localized confirmation, shared revisioned coordinators, managed-path protection, and automatic transactional refresh. |
+| [041-tool-architecture-hardening.md](archive/041-tool-architecture-hardening.md) | 2026-08-01 | Shell-aware Bash grants, Skills transaction path protection, unified reserved command identity, Commands transaction coordinator, localized approval presentation, ToolSpec-owned prompt usage, and duplicate-ownership cleanup. |
 
 ## Numbering and files
 

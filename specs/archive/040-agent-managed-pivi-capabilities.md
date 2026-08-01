@@ -1,10 +1,10 @@
 ---
 id: "040"
 title: "Agent-managed Pivi capabilities"
-status: Draft
+status: Completed
 created: 2026-07-31
-updated: 2026-07-31
-coordinator: "Unassigned"
+updated: 2026-08-01
+coordinator: "Amp"
 ---
 
 # 040 — Agent-managed Pivi capabilities
@@ -35,16 +35,16 @@ Pivi Skills do not accept generated `SKILL.md` bodies, arbitrary files, source t
 
 Allow the main Agent to add and manage Pivi capabilities through narrow, validated tools without exposing secrets, bypassing user authorization, losing concurrent Settings changes, or requiring a manual Pivi refresh.
 
-- [ ] `pivi_mcp`, `pivi_skills`, and `pivi_commands` expose the action sets and narrow schemas defined in this spec, appear in the main Agent registry and registered-tools prompt, and are structurally absent from subagent registries.
-- [ ] Every query action is non-interactive and uses a redacted, non-mutating snapshot; every mutation builds a trusted structured plan, requests exactly one sidebar inline confirmation, rechecks its revision, commits atomically, and returns a sanitized effective-state projection.
-- [ ] Settings and Agent mutations use the same app-owned coordinators, serialization, revision checks, secret/provenance rules, and refresh coordinator; stale snapshots or state changes during confirmation fail with `state_changed` rather than overwriting or silently rebasing.
-- [ ] Standard Agent Vault mutation APIs reject operations whose source, destination, or recursive target would alter Pivi-managed MCP, Skills, Commands, metadata, staging, or OAuth paths and direct the Agent to the matching `pivi_*` tool.
-- [ ] MCP Agent DTOs never expose or accept raw bearer tokens, OAuth client secrets, secret headers, or secret environment values; omitted secret fields preserve existing values and explicit clearing is represented separately.
-- [ ] Skill installation/update imports only output attributable to the current pinned-CLI operation; the tool has no action or parameter that can publish Agent-provided Skill content.
-- [ ] A successful mutation automatically refreshes every affected open Pivi tab, the invoking Agent's next provider continuation, tool registries, system prompts, slash catalogs, MCP inventories, and Obsidian command registrations as applicable.
-- [ ] Persistence failure performs no refresh; refresh failure after persistence returns `saved: true`, `refreshed: false`, and bounded target failures without misreporting the durable state.
-- [ ] Concurrent Agent calls, Settings edits, Vault watcher events, cancellations, denials, tab disposal, and plugin unload fail closed without partial publication, leaked pending approvals, terminated unrelated MCP calls, or lost updates.
-- [ ] Focused unit/integration tests, architecture checks, typecheck, lint, production build, plugin reload, and `npm run check:specs` pass with the acceptance scenarios below.
+- [x] `pivi_mcp`, `pivi_skills`, and `pivi_commands` expose the action sets and narrow schemas defined in this spec, appear in the main Agent registry and registered-tools prompt, and are structurally absent from subagent registries.
+- [x] Every query action is non-interactive and uses a redacted, non-mutating snapshot; every mutation builds a trusted structured plan, requests exactly one sidebar inline confirmation, rechecks its revision, commits atomically, and returns a sanitized effective-state projection.
+- [x] Settings and Agent mutations use the same app-owned coordinators, serialization, revision checks, secret/provenance rules, and refresh coordinator; stale snapshots or state changes during confirmation fail with `state_changed` rather than overwriting or silently rebasing.
+- [x] Standard Agent Vault mutation APIs reject operations whose source, destination, or recursive target would alter Pivi-managed MCP, Skills, Commands, metadata, staging, or OAuth paths and direct the Agent to the matching `pivi_*` tool.
+- [x] MCP Agent DTOs never expose or accept raw bearer tokens, OAuth client secrets, secret headers, or secret environment values; omitted secret fields preserve existing values and explicit clearing is represented separately.
+- [x] Skill installation/update imports only output attributable to the current pinned-CLI operation; the tool has no action or parameter that can publish Agent-provided Skill content.
+- [x] A successful mutation automatically refreshes every affected open Pivi tab, the invoking Agent's next provider continuation, tool registries, system prompts, slash catalogs, MCP inventories, and Obsidian command registrations as applicable.
+- [x] Persistence failure performs no refresh; refresh failure after persistence returns `saved: true`, `refreshed: false`, and bounded target failures without misreporting the durable state.
+- [x] Concurrent Agent calls, Settings edits, Vault watcher events, cancellations, denials, tab disposal, and plugin unload fail closed without partial publication, leaked pending approvals, terminated unrelated MCP calls, or lost updates.
+- [x] Focused unit/integration tests, architecture checks, typecheck, lint, production build, plugin reload, and `npm run check:specs` pass with the acceptance scenarios below.
 
 ## Scope and non-goals
 
@@ -171,13 +171,13 @@ Use `Pending`, `Claimed`, `In progress`, `Blocked`, or `Done` for workstream sta
 
 | ID | Deliverable | Agent | Status | Dependencies | Verification |
 |---|---|---|---|---|---|
-| WS-01 | Define narrow Agent DTOs, three discriminated ToolSpecs, registered-tool prompt/presentation entries, and explicit shared/main-only Pi tool providers | Unassigned | Pending | None | Schema/adapter/registry tests prove exact main/subagent inventories and sequential execution |
-| WS-02 | Add one-shot structured confirmation, revisioned mutation plans, cancellation lifecycle, and standard Agent managed-path protection | Unassigned | Pending | WS-01 contracts | Approval/TOCTOU/path-source/path-destination/recursive-parent/subagent tests |
-| WS-03 | Build shared MCP coordinator with pure snapshots, keyed/CAS mutation, redacted DTOs, complete secret cleanup, safe diagnostics, and generation/drain connections; migrate Settings | Unassigned | Pending | WS-01, WS-02 | MCP storage, secret, concurrency, diagnostics, active-call, and Settings/Agent race tests |
-| WS-04 | Build shared Skills coordinator with pure snapshots, pinned-package-only operations, isolated attributable output, canonical identities, serialization, and default-bundle metadata; migrate Settings | Unassigned | Pending | WS-01, WS-02 | Fake process/filesystem provenance, no-content-schema, rollback, race, and refresh tests |
-| WS-05 | Build shared Commands coordinator with atomic keyed mutation, stable generated identity, revisioned move, strict refresh, and Settings migration | Unassigned | Pending | WS-01, WS-02 | Atomic fault, identity, race, watcher, registry, and order tests |
-| WS-06 | Implement strict cross-view refresh reporting and active-turn configuration generations for MCP/tools/prompts/slash catalogs | Unassigned | Pending | WS-03–WS-05 | Same-turn continuation, multi-tab failure, draining MCP, and disposal tests |
-| WS-07 | Adversarial integration matrix, i18n, docs/guidance sync, full quality gates, production build, and live Obsidian reload | Unassigned | Pending | WS-01–WS-06 | Commands and manual scenarios in Verification |
+| WS-01 | Define narrow Agent DTOs, three discriminated ToolSpecs, registered-tool prompt/presentation entries, and explicit shared/main-only Pi tool providers | Amp | Done | None | Schema/adapter/registry tests prove exact main/subagent inventories and sequential execution |
+| WS-02 | Add one-shot structured confirmation, revisioned mutation plans, cancellation lifecycle, and standard Agent managed-path protection | Amp | Done | WS-01 contracts | Approval/TOCTOU/path-source/path-destination/recursive-parent/subagent tests |
+| WS-03 | Build shared MCP coordinator with pure snapshots, keyed/CAS mutation, redacted DTOs, complete secret cleanup, safe diagnostics, and generation/drain connections; migrate Settings | Amp | Done | WS-01, WS-02 | MCP storage, secret, concurrency, diagnostics, active-call, and Settings/Agent race tests |
+| WS-04 | Build shared Skills coordinator with pure snapshots, pinned-package-only operations, isolated attributable output, canonical identities, serialization, and default-bundle metadata; migrate Settings | Amp | Done | WS-01, WS-02 | Fake process/filesystem provenance, no-content-schema, rollback, race, and refresh tests |
+| WS-05 | Build shared Commands coordinator with atomic keyed mutation, stable generated identity, revisioned move, strict refresh, and Settings migration | Amp | Done | WS-01, WS-02 | Atomic fault, identity, race, watcher, registry, and order tests |
+| WS-06 | Implement strict cross-view refresh reporting and active-turn configuration generations for MCP/tools/prompts/slash catalogs | Amp | Done | WS-03–WS-05 | Same-turn continuation, multi-tab failure, draining MCP, and disposal tests |
+| WS-07 | Adversarial integration matrix, i18n, docs/guidance sync, full quality gates, production build, and live Obsidian reload | Amp | Done | WS-01–WS-06 | Commands and manual scenarios in Verification |
 
 ## Verification
 
@@ -250,6 +250,17 @@ Human visual sign-off:
 - Blockers: None for specification. Implementation must establish shared coordinators and runtime refresh semantics before adding thin ToolSpec wrappers.
 - Next action: Review action names and security boundaries, then activate WS-01.
 
+### 2026-08-01 — closeout — implementation evidence and acceptance
+
+- Changed: Implemented all seven workstreams across commits `844a3673`, `a69af8c2`, and `d8fbc4b4`, then hardened them under spec 041 (`bashAuthorization` grant policy, expanded managed-path namespaces, `WorkspaceCommandsCoordinator`, localized approval presentation, `ToolSpec.promptUsage` co-location, and duplicate-ownership cleanup).
+- Evidence: `packages/pivi-agent-core/src/tools/piviManagement/` (three discriminated ToolSpecs, schemas/validation, dedicated one-shot `PiviManagementApprovalPort`); `PiMainOnlyToolProvider` structural main/subagent separation in `engine/pi/buildPiToolRegistryCore.ts`; shared app-owned coordinators in `src/app/workspace/` (`PiviManagementService`, `WorkspaceCommandsCoordinator`, MCP/Skills coordinators); managed-path rejection in `requireAgentVaultMutationPath`; localized presentation in `src/app/piviManagementApprovalPresentation.ts` across all 10 locales.
+- Verification: Full quality-gate matrix recorded green in spec 041 (328 suites / 2,772 tests; typecheck, lint, boundary/architecture/spec/i18n checks, production build, bundle-size check), focused management/catalog/approval suites re-run after review follow-up fixes (111 tests), and live `obsidian plugin:reload id=pivi` with no Pivi errors. Independent user diff review of the complete working tree accepted the implementation and all review resolutions on 2026-08-01.
+- Deviations: The spec stayed in `Draft` while implementation proceeded; statuses were reconciled at closeout with the evidence above. `PiSlashCommandCatalog` retains a compatibility mutation facade that delegates every operation to `WorkspaceCommandsCoordinator` (recorded as a spec 041 compatibility decision). Legacy untagged Bash allowlist entries remain POSIX-only prefix grants with no implicit exact fallback.
+- Remaining: None. Archive with spec 041.
+
 ## Completion summary
 
-Complete this section before archiving. Summarize the delivered outcome, deviations from the original scope, verification results, and durable documentation updated. The coordinator then sets `status: Completed`, updates the date, moves the unchanged filename to `archive/`, and moves its index entry in the same change.
+- **Delivered outcome:** The main Agent can query and manage persisted MCP servers, pinned-package Vault Skills, and workspace slash Commands through three narrow, sequential, main-only ToolSpecs. Queries are non-interactive redacted snapshots; every mutation follows snapshot → validate → revisioned plan → one-shot sidebar confirmation → revision recheck → atomic commit → strict refresh → sanitized result, failing closed with `state_changed` on concurrent Settings edits. Standard Vault mutation tools reject Pivi-managed namespaces and direct the Agent to the owning `pivi_*` tool; MCP DTOs never carry raw secrets; `pivi_skills` exposes no content-publish surface. Subagents are structurally unable to see the management tools, and committed changes refresh open tabs, runtime registries, prompts, slash catalogs, and Obsidian command registrations without a reload.
+- **Deviations from original scope:** None against the tool contracts; process deviations and compatibility decisions are recorded in the 2026-08-01 closeout entry above and in spec 041.
+- **Verification results:** See the closeout entry; all success criteria are checked with repository evidence.
+- **Durable documentation updated:** Root `AGENTS.md` (managed capabilities, vault mutation containment, Commands/Bash/coordinator status), package and local `AGENTS.md` files, package READMEs, and numbered docs 02, 03, 07, 08, 09, 10.
