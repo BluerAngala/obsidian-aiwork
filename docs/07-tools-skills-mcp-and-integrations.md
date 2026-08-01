@@ -9,7 +9,8 @@ Pivi tools implement the host-neutral `ToolSpec` protocol. Concrete Obsidian exe
 ```mermaid
 flowchart TD
   Settings["Projected settings and credentials"] -- "gate" --> Registry["Tool registry"]
-  Obsidian["@pivi/obsidian-tools"] -- "returns ToolSpec" --> Registry
+  Obsidian["@pivi/obsidian-tools<br/>native + CLI adapters"] -- "returns ToolSpec" --> Registry
+  Sessions["core/tools<br/>pivi_sessions"] -- "returns ToolSpec" --> Registry
   Web["Web provider queue"] -- "returns ToolSpec" --> Registry
   MCP["Vault MCP bridge"] -- "exposes proxy tool" --> Registry
   Skills["Vault skill loader"] -- "exposes skill tool" --> Registry
@@ -35,11 +36,11 @@ flowchart LR
 ```
 
 - `mainAgent.ts` owns the static base prompt: Pivi identity, path conventions, vault mutation rules, Markdown hygiene, link verification, and the `<context_files>` delegation paragraph. It interpolates only `vaultPath` and `userName`.
-- `obsidianAgentTools.ts` builds the dynamic `## Available Tools` section from a `RegisteredToolSummary`. It lists each registered Obsidian tool with a one-line description and parameter shape, plus conditional MCP, Skills, Subagents, Web, Bash-allowlist, and reading-guidance blocks. This is the only place tool-by-tool parameter requirements are communicated to the model.
+- `obsidianAgentTools.ts` builds the dynamic `## Available Tools` section from the actual registered `ToolSpec` values plus capability inventory. Detailed tool-specific prose and parameter guidance are owned by each factory's optional `ToolSpec.promptUsage` beside its schema; the prompt builder renders those descriptors and only falls back to schema-derived parameter text. It must not reintroduce a central tool-name switch that duplicates argument contracts.
 - `buildTurnPrompt.ts` builds the per-turn payload from user input and context; it is not part of the system prompt.
 - `buildPiSystemPrompt.ts` composes the base prompt with the current ISO date and the registered-tools section.
 
-**Prompt/schema invariant:** When a tool schema in `packages/pivi-agent-core/src/engine/pi/` or `packages/obsidian-tools/` marks a field as required, the registered-tools prompt must list that field in its `Required parameters` sentence (or an equivalent explicit "must be passed" clause). Weaker models rely on the prose `Required parameters:` list rather than re-reading the JSON schema, so a mismatch causes first-turn tool-validation retries. The `spawn_agent` `run_in_background` field is the canonical example: the schema marks it required, so the prompt must list it alongside `label` and `message`.
+**Prompt/schema invariant:** A detailed usage descriptor lives with the owning factory/schema and is consumed from the registered `ToolSpec`; required fields and conditional contracts in that descriptor must agree with the schema. Schema-level and generated-prompt tests enforce this for contracts such as required `catalogRevision`, the `pivi_commands` move-anchor XOR, and `spawn_agent.run_in_background`.
 
 ## Obsidian tools
 
@@ -58,11 +59,13 @@ Large-note reads start with `obsidian_read` in stats mode, then use `obsidian_ma
 
 Prefer Obsidian's public in-process API for vault, metadata, file-manager, and workspace behavior. Use the official CLI only for capabilities the public API does not expose or for explicitly configured integrations; the CLI integration is disabled when its setting is absent. Pivi implements vault text search by scanning because Obsidian has no public vault-wide full-text search API. Base lookup by file/path uses direct vault and metadata-cache resolution, and an unresolved-links-only graph request reads `MetadataCache.unresolvedLinks` without enumerating vault files.
 
+`pivi_sessions` is a host-neutral core tool over an injected `SessionRecoveryPort`, composed into the shared base provider by the app rather than returned by `createObsidianTools`. Core Skills owns skill/command frontmatter parsing. The host package owns exact vault-edit occurrence matching and mismatch diagnostics used by `ObsidianVaultApi`; the concrete tools package does not maintain duplicate helpers for either responsibility.
+
 ## External access and process execution
 
 External reads require `allowExternalRead` and at least one allowed directory from device-local pinned settings or current-turn context. Host-side realpath containment rejects traversal outside those roots. Absolute paths are stripped from synchronized settings and JSONL.
 
-`obsidian_bash` requires `allowBash`, matches allowlist entries by exact command or required prefix, runs single-line commands through the user's login shell (`$SHELL -lc`) so terminal PATH and shell init apply, and constrains cwd to the vault before calling the host process runner. When a command is not on the allowlist, Pivi shows a sidebar inline confirmation (not a modal) with Deny, Allow once, Allow for this session, and Always allow; choosing Always allow for a multi-token command shows a second step to persist the full command or the first-token prefix to `bashAllowlist`, then refreshes runtime tools. Pipes and other shell syntax are allowed inside a command. The system prompt lists pre-approved allowlist commands, tells the agent not to run non-allowlisted commands on its own initiative, and permits `obsidian_bash` for user-explicit requests pending sidebar approval. It classifies Bash as a lowest-priority host diagnostic, forbids using it to read/search/list/modify vault files, and forbids another Bash attempt in the same turn after user denial or validation rejection. Multi-file vault work stays on Obsidian tools and subagents. `obsidian_command` and `obsidian_eval` require their individual gates plus the official Obsidian CLI. Do not broaden one capability because another is enabled.
+`obsidian_bash` requires `allowBash`, resolves the exact login shell before authorization, runs single-line commands through it, and constrains cwd to the vault before calling the host process runner. Settings encode new grants as `exact: <complete shell command>` or `prefix: <quoted safe argv prefix>`. Existing untagged strings retain legacy prefix behavior only for a known POSIX-compatible shell and a shell-safe single command; cmd.exe, fish, and unknown shells receive exact authorization only. When a command is not authorized, Pivi shows a sidebar inline confirmation (not a modal) with Deny, Allow once, Allow for this session, and Always allow. Exact interactive review may approve shell syntax such as a pipeline or redirect; only safe single commands can offer prefix persistence. The system prompt lists pre-approved allowlist commands, tells the agent not to run non-allowlisted commands on its own initiative, and permits `obsidian_bash` for user-explicit requests pending sidebar approval. It classifies Bash as a lowest-priority host diagnostic, forbids using it to read/search/list/modify vault files, and forbids another Bash attempt in the same turn after user denial or validation rejection. Multi-file vault work stays on Obsidian tools and subagents. `obsidian_command` and `obsidian_eval` require their individual gates plus the official Obsidian CLI. Do not broaden one capability because another is enabled.
 
 `obsidian_read_external` and `obsidian_list_external` require `allowExternalRead`. When a path is outside configured external roots, Pivi shows the same four-option sidebar inline confirmation; Always allow appends the directory root to device-local `externalReadDirectories`, pins it for the current tab, and refreshes runtime tools. Session-scoped grants clear on session switch, tab close, and plugin unload.
 
@@ -86,7 +89,7 @@ When available, `/generate-image` appears as a built-in tool mention. The visibl
 
 ## Skills
 
-Vault skills live under `.pivi/skills/`. The `skill` tool loads their instructions for an agent turn. Install/update uses the exact pinned `skills` dependency (`node <cli.mjs>`, `shell: forbidden`), validates a staged tree (no symlinks/escapes; size/`SKILL.md` limits), then publishes atomically. A first vault load may offer the `kepano/obsidian-skills` bundle, but installation and updates require explicit user confirmation. This repository does not track runtime vault skills.
+Vault skills live under `.pivi/skills/`. The `skill` tool loads their instructions for an agent turn. Install/update/remove uses the exact pinned `skills` dependency (`node <cli.mjs>`, `shell: forbidden`), validates isolated operation trees (no symlinks/escapes; size/`SKILL.md` limits), then publishes atomically. Agent-facing vault mutation policy reserves `.pivi/skills/**` plus every `skills-<operation>-*` staging, CLI-metadata, and transaction root, including remove/rollback roots. A first vault load may offer the `kepano/obsidian-skills` bundle, but installation and updates require explicit user confirmation. This repository does not track runtime vault skills.
 
 Keep remote activity explicit and do not introduce a global or cross-vault skill directory.
 
@@ -148,5 +151,5 @@ When adding a tool:
 2. Put Obsidian execution in `@pivi/obsidian-tools` and Pi adaptation in the engine.
 3. Define registration prerequisites and settings refresh behavior.
 4. Document mutation, privacy, credentials, network, and recovery semantics.
-5. Keep the registered-tools prompt in sync with the tool schema: every schema `required` field must appear in the prompt's `Required parameters` sentence so weaker models do not omit it and trigger tool-validation retries. Add a focused prompt test that asserts the required field name appears in the generated section.
+5. Put detailed prompt guidance in `ToolSpec.promptUsage` beside the owning schema/factory, and test the generated registered-tool section against that actual spec. Do not add a second central schema description keyed by tool name.
 6. Add focused implementation, registry, prompt, and failure-path tests.

@@ -49,6 +49,10 @@ export function createHistoryTool(deps: ObsidianToolDeps): ToolSpec {
     name: TOOL_OBSIDIAN_HISTORY,
     label: 'History',
     description: 'List, read, or restore Obsidian file history versions through the Obsidian CLI.',
+    promptUsage: {
+      summary: 'Recover changed, overwritten, or deleted notes from Obsidian history: discover with files when the path is unknown, list versions for a known path, inspect with read when practical, then restore in place.',
+      parameters: '`action` required files|list|read|restore; `path` required except for files; `version` required for read and restore.',
+    },
     parameters: {
       type: 'object',
       properties: {

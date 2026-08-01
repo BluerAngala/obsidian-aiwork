@@ -42,6 +42,20 @@ describe('mainAgent system prompt', () => {
       expect(prompt).not.toContain('obsidian_list_external');
     });
 
+    it('composes capability-aware registered guidance without weakening general principles', () => {
+      const prompt = buildSystemPrompt({}, {
+        registeredToolNames: ['obsidian_read'],
+        registeredToolsSection: '## Available Tools\n- `obsidian_read` — read marker',
+      });
+
+      expect(prompt).toContain('`obsidian_read` — read marker');
+      expect(prompt).not.toContain('obsidian_edit');
+      expect(prompt).not.toContain('pivi_sessions');
+      expect(prompt).not.toContain('spawn_agent');
+      expect(prompt).toContain('## Obsidian Markdown Hygiene');
+      expect(prompt).toContain('**Safety First**');
+    });
+
     it('prioritizes obsidian_edit over obsidian_write overwrite', () => {
       const prompt = buildSystemPrompt();
       expect(prompt).toContain('## Vault mutations (prefer `obsidian_edit` over `obsidian_write`)');

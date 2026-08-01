@@ -1,18 +1,17 @@
-import {
-  textResult,
-  TOOL_PIVI_SESSIONS,
-  type ToolSpec,
-} from '@pivi/pivi-agent-core/tools';
+import type { SessionRecoveryPort } from '../session/sessionRecoveryPort';
+import { TOOL_PIVI_SESSIONS } from './obsidianToolNames';
+import { textResult } from './toolResult';
+import type { ToolSpec } from './toolSpec';
 
-import type { ObsidianToolDeps } from './deps';
-
-export function createSessionsTool(deps: ObsidianToolDeps): ToolSpec {
-  const recovery = deps.sessionRecovery;
-  if (!recovery) throw new Error('Session recovery dependency is required.');
+export function createSessionsTool(recovery: SessionRecoveryPort): ToolSpec {
   return {
     name: TOOL_PIVI_SESSIONS,
     label: 'Pivi Sessions',
     description: 'Read a durable Pivi session, list recoverable deleted sessions, or restore one and open it in a visible Pivi tab.',
+    promptUsage: {
+      summary: 'Read a referenced durable Pivi session, list recoverable deleted sessions, or restore one and open it in a visible Pivi tab.',
+      parameters: '`action` required: read|list_deleted|restore; `sessionFile` is required only for read and restore and must be the exact value from session context or recovery results.',
+    },
     parameters: {
       type: 'object',
       properties: {

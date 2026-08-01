@@ -16,6 +16,10 @@ export function createPiviSkillsTool(port: PiviManagementPort): ToolSpec {
       'Mutations require one sidebar confirmation.',
     ].join(' '),
     parameters: PIVI_SKILLS_PARAMETERS,
+    promptUsage: {
+      summary: 'Query and manage vault Skills only through the pinned skills package; never supply Skill bodies, files, SKILL.md, source trees, or destinations',
+      parameters: '`action` required list|list_remote|install|set_enabled|update|update_all|remove; `source` required for list_remote/install; `skillNames?` optional install filter; `name` required for set_enabled/update/remove; `enabled` required for set_enabled.',
+    },
     executionMode: 'sequential',
     metadata: { displayKind: 'other' },
     async execute(_id, params, signal) {

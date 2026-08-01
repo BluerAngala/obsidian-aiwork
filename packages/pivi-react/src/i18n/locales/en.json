@@ -68,7 +68,23 @@
     "piviManagementApproval": {
       "title": "Confirm Pivi change",
       "confirm": "Confirm",
-      "deny": "Deny"
+      "deny": "Deny",
+      "management": {
+        "titles": {
+          "mcp": { "upsert": "Update MCP server \"{name}\"", "enable": "Enable MCP server \"{name}\"", "disable": "Disable MCP server \"{name}\"", "remove": "Remove MCP server \"{name}\"" },
+          "skills": { "install": "Install Skills from \"{source}\"", "enable": "Enable Skill \"{name}\"", "disable": "Disable Skill \"{name}\"", "update": "Update Skill \"{name}\"", "updateAll": "Update all package-managed Skills", "remove": "Remove Skill \"{name}\"" },
+          "commands": { "upsert": "Save command {command}", "remove": "Remove command {command}", "move": "Move command {command}" }
+        },
+        "changes": {
+          "mcpUpsert": "Apply the planned MCP server configuration.", "mcpEnable": "Enable this MCP server.", "mcpDisable": "Disable this MCP server.", "mcpRemove": "Remove this MCP server and its owned credentials.",
+          "skillsInstall": "Install Skills through the pinned package workflow.", "skillsEnable": "Enable this Skill.", "skillsDisable": "Disable this Skill.", "skillsUpdate": "Update this Skill from its package provenance.", "skillsUpdateAll": "Update every package-managed Skill.", "skillsRemove": "Remove this Skill from the workspace.",
+          "commandsUpsert": "Create or update this workspace command.", "commandsRemove": "Delete this workspace command.", "commandsMove": "Reorder this workspace command."
+        },
+        "fields": {
+          "server": "Server", "enabled": "Enabled", "type": "Type", "command": "Command", "args": "Arguments", "envNames": "Environment variable names", "url": "URL", "auth": "Authentication", "headerNames": "Header names", "bearerToken": "Bearer token", "oauth": "OAuth", "oauthGrant": "OAuth grant", "oauthClientId": "OAuth client ID", "oauthScope": "OAuth scope", "oauthClientSecret": "OAuth client secret", "contextSaving": "Context saving", "disabledTools": "Disabled tools", "source": "Source", "skills": "Skills", "skill": "Skill", "catalogRevision": "Catalog revision", "icon": "Icon", "prompt": "Prompt", "before": "Before", "after": "After"
+        },
+        "values": { "yes": "Yes", "no": "No", "clear": "Clear", "disabled": "Disabled", "updated": "Updated" }
+      }
     },
     "capabilityApproval": {
       "title": "Permission required",

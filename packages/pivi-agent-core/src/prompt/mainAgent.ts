@@ -9,6 +9,19 @@ export interface SystemPromptBuildOptions {
   currentDateIso?: string;
   /** Describes tools actually registered on the agent. */
   registeredToolsSection?: string;
+  /** Actual executable tool identities. When supplied, tool-specific base guidance is capability-filtered. */
+  registeredToolNames?: readonly string[];
+}
+
+const TOOL_IDENTIFIER_PATTERN = /\b(?:obsidian_[a-z0-9_]+|pivi_[a-z0-9_]+|spawn_agent)\b/g;
+
+function filterUnavailableToolGuidance(prompt: string, registeredToolNames?: readonly string[]): string {
+  if (!registeredToolNames) return prompt;
+  const registered = new Set(registeredToolNames);
+  return prompt.split('\n').filter((line) => {
+    const mentioned = line.match(TOOL_IDENTIFIER_PATTERN) ?? [];
+    return mentioned.every((name) => registered.has(name));
+  }).join('\n');
 }
 
 function getPathRules(vaultPath?: string): string {
@@ -199,7 +212,10 @@ export function buildSystemPrompt(
   settings: SystemPromptSettings = {},
   options: SystemPromptBuildOptions = {},
 ): string {
-  let prompt = getBaseSystemPrompt(settings.vaultPath, settings.userName);
+  let prompt = filterUnavailableToolGuidance(
+    getBaseSystemPrompt(settings.vaultPath, settings.userName),
+    options.registeredToolNames,
+  );
 
   if (options.currentDateIso) {
     prompt += `\n\n**Current date (runtime):** ${options.currentDateIso}`;
@@ -229,6 +245,10 @@ export function computeSystemPromptKey(
     options.registeredToolsSection || '',
     options.currentDateIso || '',
   ];
+
+  if (options.registeredToolNames) {
+    parts.push(options.registeredToolNames.join(','));
+  }
 
   if (appendixKey) {
     parts.push(appendixKey);

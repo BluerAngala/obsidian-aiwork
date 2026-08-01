@@ -5,6 +5,11 @@ export interface ToolSpec {
   parameters: Record<string, unknown>;
   execute(id: string, params: unknown, signal?: AbortSignal): Promise<unknown>;
   executionMode?: 'parallel' | 'sequential';
+  /** Prompt-only details owned beside this tool's schema/factory. */
+  promptUsage?: {
+    summary?: string;
+    parameters?: string;
+  };
   metadata?: {
     mutatesVault?: boolean;
     displayKind?: 'read' | 'write' | 'edit' | 'search' | 'todo' | 'subagent' | 'mcp' | 'other';

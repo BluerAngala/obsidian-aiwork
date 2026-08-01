@@ -57,11 +57,12 @@ function buildExternalApprovalRequest(
   };
 }
 
-function buildBashApprovalRequest(command: string): CapabilityApprovalRequest {
+function buildBashApprovalRequest(command: string, shellPath: string): CapabilityApprovalRequest {
   return {
     kind: 'bash',
     toolName: TOOL_OBSIDIAN_BASH,
     command,
+    shellPath,
     blockedPath: command,
     reason: 'Command is not on the Bash allowlist.',
     description: `Run command: ${command}`,
@@ -119,11 +120,12 @@ export async function ensureBashCommandAllowed(
   deps: ObsidianToolDeps,
   normalizedCommand: string,
   isAllowlisted: boolean,
+  shellPath = '/bin/sh',
 ): Promise<void> {
   if (isAllowlisted) {
     return;
   }
-  const request = buildBashApprovalRequest(normalizedCommand);
+  const request = buildBashApprovalRequest(normalizedCommand, shellPath);
   const port = deps.capabilityApproval;
   if (!port) {
     throw new Error(`Bash command not in allowlist: ${normalizedCommand.split(/\s+/)[0]}`);

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Concrete Obsidian-native tool specifications and execution helpers for note search/read/write, safe large-Markdown inspection, file operations, links, properties, tasks, guarded external filesystem reads, gated Bash, commands, eval, image generation, and history recovery.
+Concrete Obsidian-native tool specifications and execution helpers for note search/read/write, safe large-Markdown inspection, file operations, links, properties, tasks, guarded external filesystem reads, gated Bash, commands, eval, image generation, and Obsidian file-history recovery. Host-neutral Pivi session recovery tooling is owned by `@pivi/pivi-agent-core`.
 
 ## Allowed dependencies
 
@@ -18,13 +18,14 @@ Concrete Obsidian-native tool specifications and execution helpers for note sear
 
 ## Public API
 
-- `createObsidianTools`, Obsidian tool settings/types, frontmatter helpers, and vault edit matching helpers.
+- `createObsidianTools` and Obsidian tool settings/types.
+- `pivi_sessions` is intentionally not exported or composed here; app composition adds the core-owned factory to the shared base provider.
 - `obsidian_read` supports stats-only and line-range reads; `obsidian_markdown_structure` exposes heading line numbers and character counts so large notes can be inspected before selective reads.
 - `obsidian_read_external` / `obsidian_list_external` register only when external filesystem access is enabled and at least one allowed root is available.
 - `obsidian_history`, `obsidian_tasks`, and `obsidian_daily` register only when the official Obsidian CLI is available; `obsidian_base` uses the CLI only for its query action.
 - `obsidian_base` resolves a requested Base directly for view inspection, while its list action remains an explicit vault inventory operation. `obsidian_graph` enumerates files only for orphan/deadend analysis; unresolved-only analysis uses cached link metadata.
 - `obsidian_command` / `obsidian_eval` additionally require their settings gates and CLI availability. Image generation requires an injected generator.
-- `obsidian_bash` registers only when the Bash tool toggle is enabled, matches allowlist entries by command prefix, runs single-line commands through the user login shell, and invokes the injected process runner.
+- `obsidian_bash` registers only when the Bash tool toggle is enabled. New grants are tagged `exact:` complete commands or `prefix:` shell-safe argv prefixes; prefix authority never extends across control operators, substitutions, pipelines, redirects, or extra commands. Legacy untagged entries retain prefix behavior only for known POSIX-compatible shells and do not authorize commands on unsupported or unknown shell dialects. Execution still uses the resolved login shell and injected bounded process runner.
 - Exported through `@pivi/obsidian-tools`.
 
 ## See also

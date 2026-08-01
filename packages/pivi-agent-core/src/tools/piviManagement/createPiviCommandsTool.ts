@@ -18,6 +18,10 @@ export function createPiviCommandsTool(port: PiviManagementPort): ToolSpec {
       'Mutations require one sidebar confirmation.',
     ].join(' '),
     parameters: PIVI_COMMANDS_PARAMETERS,
+    promptUsage: {
+      summary: 'Query and manage vault-local Pivi slash Commands; list omits prompt bodies; get returns one command; upsert, remove, and move require catalogRevision',
+      parameters: '`action` required list|get|upsert|remove|move; `id` required except list; `content` required for upsert; optional upsert `name`/`description`/`argumentHint`/`icon`; upsert, remove, and move require `catalogRevision`; move also requires exactly one of `beforeId`/`afterId`.',
+    },
     executionMode: 'sequential',
     metadata: { displayKind: 'other' },
     async execute(_id, params, signal) {

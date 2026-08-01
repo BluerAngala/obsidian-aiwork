@@ -1,16 +1,9 @@
 import type { PiMainOnlyToolProvider } from "@pivi/pivi-agent-core/engine/pi/buildPiToolRegistryCore";
-import type {
-  McpManagementCoordinator,
-  McpManagementMutation,
-  McpManagementPlan,
-} from "@pivi/pivi-agent-core/mcp/mcpManagementCoordinator";
+import type { McpManagementCoordinator } from "@pivi/pivi-agent-core/mcp/mcpManagementCoordinator";
 import type {
   SkillsManagementCoordinator,
-  SkillsManagementMutation,
-  SkillsManagementPlan,
 } from "@pivi/pivi-agent-core/skills/vault/skillsManagementCoordinator";
 import {
-  type AgentMcpServerInput,
   createPiviCommandsTool,
   createPiviMcpTool,
   createPiviSkillsTool,
@@ -26,6 +19,12 @@ import {
   type PiviSkillsInput,
 } from "@pivi/pivi-agent-core/tools/piviManagement";
 
+import { t } from "../i18n";
+import {
+  presentCommandsManagementApproval,
+  presentMcpManagementApproval,
+  presentSkillsManagementApproval,
+} from "../piviManagementApprovalPresentation";
 import {
   type PiSlashCommandCatalog,
   PiviCommandsManagementError,
@@ -111,7 +110,7 @@ async function executeMcp(
   if (input.action === "test") return deps.mcp.test(input.name, signal);
 
   const plan = await deps.mcp.plan(input);
-  await requireConfirm(approval, buildMcpApprovalRequest(plan), signal);
+  await requireConfirm(approval, presentMcpManagementApproval(plan, t), signal);
   const committed = await deps.mcp.commit(plan, plan.revision, signal);
   const result: PiviManagementMutationResult<unknown> = {
     saved: true,
@@ -144,7 +143,7 @@ async function executeSkills(
   }
 
   const plan = deps.skills.plan(input);
-  await requireConfirm(approval, buildSkillsApprovalRequest(plan), signal);
+  await requireConfirm(approval, presentSkillsManagementApproval(plan, t), signal);
   const committed = await deps.skills.commit(plan, plan.revision, signal);
   return finalizeMutation(deps, "skills", {
     saved: true,
@@ -171,10 +170,16 @@ async function executeCommands(
     }
   }
 
-  await requireConfirm(approval, buildCommandsApprovalRequest(input), signal);
+  let plan;
+  try {
+    plan = await deps.commands.planCommands(input, signal);
+  } catch (cause) {
+    throw mapCommandsError(cause);
+  }
+  await requireConfirm(approval, presentCommandsManagementApproval(plan, t), signal);
   let committed: unknown;
   try {
-    committed = await deps.commands.executeCommands(input, signal);
+    committed = await deps.commands.commitCommands(plan, plan.revision, signal);
   } catch (cause) {
     throw mapCommandsError(cause);
   }
@@ -341,220 +346,7 @@ function isPlanValueArray(
   return Array.isArray(value);
 }
 
-function buildMcpApprovalRequest(plan: McpManagementPlan): PiviManagementApprovalRequest {
-  const mutation = plan.mutation;
-  const fields = mcpMutationFields(mutation);
-  const changeLines = mcpChangeLines(mutation);
-  return {
-    domain: "mcp",
-    action: mutation.action,
-    title: mcpTitle(mutation),
-    revision: plan.revision,
-    ...(changeLines.length ? { changeLines } : {}),
-    ...(fields.length ? { fields } : {}),
-  };
-}
-
-function mcpTitle(mutation: McpManagementMutation): string {
-  switch (mutation.action) {
-    case "upsert":
-      return `Update MCP server "${mutation.name}"`;
-    case "set_enabled":
-      return mutation.enabled
-        ? `Enable MCP server "${mutation.name}"`
-        : `Disable MCP server "${mutation.name}"`;
-    case "remove":
-      return `Remove MCP server "${mutation.name}"`;
-  }
-}
-
-function mcpChangeLines(mutation: McpManagementMutation): string[] {
-  if (mutation.action === "upsert") {
-    return ["Apply the planned MCP server configuration."];
-  }
-  if (mutation.action === "set_enabled") {
-    return [mutation.enabled ? "Enable this MCP server." : "Disable this MCP server."];
-  }
-  return ["Remove this MCP server and its owned credentials."];
-}
-
-function mcpMutationFields(mutation: McpManagementMutation): PiviManagementPlanField[] {
-  const fields: PiviManagementPlanField[] = [
-    { label: "Server", value: mutation.name },
-  ];
-  if (mutation.action === "set_enabled") {
-    fields.push({ label: "Enabled", value: mutation.enabled });
-    return fields;
-  }
-  if (mutation.action === "remove") return fields;
-  return [...fields, ...mcpServerFields(mutation.server)];
-}
-
-function mcpServerFields(server: AgentMcpServerInput): PiviManagementPlanField[] {
-  const fields: PiviManagementPlanField[] = [];
-  if ("command" in server) {
-    fields.push({ label: "Type", value: "stdio" });
-    fields.push({ label: "Command", value: server.command });
-    if (server.args?.length) fields.push({ label: "Args", value: [...server.args] });
-    const envNames = server.env ? Object.keys(server.env).sort() : [];
-    if (envNames.length) fields.push({ label: "Env names", value: envNames });
-  } else {
-    fields.push({ label: "Type", value: server.type });
-    fields.push({ label: "URL", value: server.url });
-    if (server.auth) fields.push({ label: "Auth", value: server.auth });
-    const headerNames = server.headers ? Object.keys(server.headers).sort() : [];
-    if (headerNames.length) fields.push({ label: "Header names", value: headerNames });
-    if (server.bearerToken?.source === "systemEnvironment") {
-      fields.push({ label: "Bearer token", value: `env:${server.bearerToken.variable}` });
-    } else if (server.bearerToken?.source === "clear") {
-      fields.push({ label: "Bearer token", value: "clear" });
-    }
-    if (server.oauth === false) {
-      fields.push({ label: "OAuth", value: "disabled" });
-    } else if (server.oauth) {
-      if (server.oauth.grantType) fields.push({ label: "OAuth grant", value: server.oauth.grantType });
-      if (server.oauth.clientId) fields.push({ label: "OAuth client ID", value: server.oauth.clientId });
-      if (server.oauth.scope) fields.push({ label: "OAuth scope", value: server.oauth.scope });
-      if (server.oauth.clearClientSecret) {
-        fields.push({ label: "OAuth client secret", value: "clear" });
-      }
-    }
-  }
-  if (server.enabled !== undefined) fields.push({ label: "Enabled", value: server.enabled });
-  if (server.contextSaving !== undefined) {
-    fields.push({ label: "Context saving", value: server.contextSaving });
-  }
-  if (server.disabledTools?.length) {
-    fields.push({ label: "Disabled tools", value: [...server.disabledTools] });
-  }
-  // Never copy Agent-provided prose (description) into confirmation cards.
-  return fields;
-}
-
-function buildSkillsApprovalRequest(plan: SkillsManagementPlan): PiviManagementApprovalRequest {
-  const mutation = plan.mutation;
-  return {
-    domain: "skills",
-    action: mutation.action,
-    title: skillsTitle(mutation),
-    revision: plan.revision,
-    changeLines: skillsChangeLines(mutation),
-    fields: skillsFields(mutation),
-  };
-}
-
-function skillsTitle(mutation: SkillsManagementMutation): string {
-  switch (mutation.action) {
-    case "install":
-      return `Install Skills from "${mutation.source}"`;
-    case "set_enabled":
-      return mutation.enabled
-        ? `Enable Skill "${mutation.name}"`
-        : `Disable Skill "${mutation.name}"`;
-    case "update":
-      return `Update Skill "${mutation.name}"`;
-    case "update_all":
-      return "Update all package-managed Skills";
-    case "remove":
-      return `Remove Skill "${mutation.name}"`;
-  }
-}
-
-function skillsChangeLines(mutation: SkillsManagementMutation): string[] {
-  switch (mutation.action) {
-    case "install":
-      return ["Install Skills through the pinned package workflow."];
-    case "set_enabled":
-      return [mutation.enabled ? "Enable this Skill." : "Disable this Skill."];
-    case "update":
-      return ["Update this Skill from its package provenance."];
-    case "update_all":
-      return ["Update every package-managed Skill."];
-    case "remove":
-      return ["Remove this Skill from the vault."];
-  }
-}
-
-function skillsFields(mutation: SkillsManagementMutation): PiviManagementPlanField[] {
-  switch (mutation.action) {
-    case "install": {
-      const fields: PiviManagementPlanField[] = [
-        { label: "Source", value: mutation.source },
-      ];
-      if (mutation.skillNames?.length) {
-        fields.push({ label: "Skills", value: [...mutation.skillNames] });
-      }
-      return fields;
-    }
-    case "set_enabled":
-      return [
-        { label: "Skill", value: mutation.name },
-        { label: "Enabled", value: mutation.enabled },
-      ];
-    case "update":
-    case "remove":
-      return [{ label: "Skill", value: mutation.name }];
-    case "update_all":
-      return [];
-  }
-}
-
-function buildCommandsApprovalRequest(
-  input: Extract<PiviCommandsInput, { action: "upsert" | "remove" | "move" }>,
-): PiviManagementApprovalRequest {
-  return {
-    domain: "commands",
-    action: input.action,
-    title: commandsTitle(input),
-    revision: input.catalogRevision,
-    changeLines: commandsChangeLines(input),
-    fields: commandsFields(input),
-  };
-}
-
-function commandsTitle(
-  input: Extract<PiviCommandsInput, { action: "upsert" | "remove" | "move" }>,
-): string {
-  switch (input.action) {
-    case "upsert":
-      return `Save command /${input.id}`;
-    case "remove":
-      return `Remove command /${input.id}`;
-    case "move":
-      return `Move command /${input.id}`;
-  }
-}
-
-function commandsChangeLines(
-  input: Extract<PiviCommandsInput, { action: "upsert" | "remove" | "move" }>,
-): string[] {
-  switch (input.action) {
-    case "upsert":
-      return ["Create or update this workspace command."];
-    case "remove":
-      return ["Delete this workspace command."];
-    case "move":
-      return ["Reorder this workspace command."];
-  }
-}
-
-function commandsFields(
-  input: Extract<PiviCommandsInput, { action: "upsert" | "remove" | "move" }>,
-): PiviManagementPlanField[] {
-  const fields: PiviManagementPlanField[] = [
-    { label: "Command", value: `/${input.id}` },
-    { label: "Catalog revision", value: input.catalogRevision },
-  ];
-  if (input.action === "upsert") {
-    // Never copy Agent-provided prose (description/argumentHint) into confirmation cards.
-    if (input.icon !== undefined) fields.push({ label: "Icon", value: input.icon });
-    fields.push({ label: "Prompt", value: "updated" });
-  } else if (input.action === "move") {
-    if (input.beforeId) fields.push({ label: "Before", value: `/${input.beforeId}` });
-    if (input.afterId) fields.push({ label: "After", value: `/${input.afterId}` });
-  }
-  return fields;
-}
+// Approval presentation is intentionally app-local and pure; this service only sequences it.
 
 function throwIfAborted(signal?: AbortSignal): void {
   if (signal?.aborted) {

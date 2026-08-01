@@ -18,42 +18,7 @@ import {
   normalizePathForVault,
   requireAgentVaultMutationPath,
 } from './path';
-
-function asciiDoubleQuotesToCurly(text: string): string {
-  let useOpen = true;
-  return text.replace(/"/g, () => {
-    const ch = useOpen ? '\u201c' : '\u201d';
-    useOpen = !useOpen;
-    return ch;
-  });
-}
-
-function curlyDoubleQuotesToAscii(text: string): string {
-  return text.replace(/[\u201c\u201d]/g, '"');
-}
-
-function buildOldStringNotFoundMessage(
-  filePath: string,
-  content: string,
-  oldString: string,
-): string {
-  const base = `old_string not found in ${filePath}. `
-    + 'Copy the exact substring from obsidian_read (same quotes, spaces, and line breaks).';
-
-  const curlyCandidate = asciiDoubleQuotesToCurly(oldString);
-  if (curlyCandidate !== oldString && content.includes(curlyCandidate)) {
-    return `${base} old_string uses ASCII straight quotes (") but the note uses curly quotes (“ ”). `
-      + 'Copy old_string verbatim from the latest obsidian_read output.';
-  }
-
-  const asciiCandidate = curlyDoubleQuotesToAscii(oldString);
-  if (asciiCandidate !== oldString && content.includes(asciiCandidate)) {
-    return `${base} old_string uses curly quotes (“ ”) but the note uses ASCII straight quotes ("). `
-      + 'Copy old_string verbatim from the latest obsidian_read output.';
-  }
-
-  return base;
-}
+import { replaceVaultEditMatch } from './vaultEditMatch';
 
 export interface VaultSearchHit {
   path: string;
@@ -308,18 +273,15 @@ export class ObsidianVaultApi {
     let replacements = 0;
     await this.capturePreWriteSnapshot(resolved);
     await this.app.vault.process(resolved, (data) => {
-      const parts = data.split(oldString);
-      const count = parts.length - 1;
-      if (count === 0) {
-        throw new Error(buildOldStringNotFoundMessage(resolved.path, data, oldString));
-      }
-      if (count > 1 && !replaceAll) {
-        throw new Error(
-          `old_string appears ${count} times in ${resolved.path}; use replace_all or include more context`,
-        );
-      }
-      replacements = count;
-      return replaceAll ? parts.join(newString) : data.replace(oldString, newString);
+      const result = replaceVaultEditMatch({
+        filePath: resolved.path,
+        content: data,
+        oldString,
+        newString,
+        replaceAll,
+      });
+      replacements = result.replacements;
+      return result.content;
     });
 
     return {

@@ -320,6 +320,8 @@ describe('createBashTool', () => {
       .resolves.toBeDefined();
     await expect(tool.execute('call-3', { command: 'npm run build:css' }))
       .rejects.toThrow('not in allowlist');
+    await expect(tool.execute('call-4', { command: 'git status; whoami' }))
+      .rejects.toThrow('not in allowlist');
 
     expect(processRunner.run).toHaveBeenCalledWith(expect.objectContaining({
       executable: expect.any(String),
@@ -389,23 +391,12 @@ describe('createBashTool', () => {
     expect(processRunner.run).not.toHaveBeenCalled();
   });
 
-  it('allows shell control syntax inside allowlisted commands', async () => {
-    const processRunner = {
-      run: jest.fn(async () => ({
-        termination: 'exit',
-        exitCode: 0,
-        signal: null,
-        stdout: 'ok\n',
-        stderr: '',
-        stdoutTruncated: false,
-        stderrTruncated: false,
-      })),
-    };
+  it('does not inherit prefix authority across shell control syntax', async () => {
+    const processRunner = { run: jest.fn() };
     const tool = createBashTool(makeDeps(processRunner, ['git', 'pwd']));
 
-    await expect(tool.execute('call-1', { command: 'pwd | wc -l' })).resolves.toBeDefined();
-    expect(processRunner.run).toHaveBeenCalledWith(expect.objectContaining({
-      args: ['-lc', 'pwd | wc -l'],
-    }));
+    await expect(tool.execute('call-1', { command: 'pwd | wc -l' }))
+      .rejects.toThrow('not in allowlist');
+    expect(processRunner.run).not.toHaveBeenCalled();
   });
 });

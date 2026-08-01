@@ -26,10 +26,13 @@ const externalRequest: CapabilityApprovalRequest = {
 
 describe('resolveBashAllowlistPersistEntry', () => {
   it('uses the full command or first-token prefix', () => {
-    expect(resolveBashAllowlistPersistEntry('ast-grep --version', 'full')).toBe('ast-grep --version');
-    expect(resolveBashAllowlistPersistEntry('ast-grep --version', 'prefix')).toBe('ast-grep');
+    expect(resolveBashAllowlistPersistEntry('ast-grep --version', 'full')).toBe('exact: ast-grep --version');
+    expect(resolveBashAllowlistPersistEntry('ast-grep --version', 'prefix')).toBe('prefix: "ast-grep"');
     expect(bashAllowlistPersistScopesDiffer('ast-grep --version')).toBe(true);
     expect(bashAllowlistPersistScopesDiffer('ast-grep')).toBe(false);
+    expect(bashAllowlistPersistScopesDiffer('printf x | cat')).toBe(false);
+    expect(resolveBashAllowlistPersistEntry('printf x | cat', 'full')).toBe('exact: printf x | cat');
+    expect(resolveBashAllowlistPersistEntry('type \\& whoami', 'prefix', 'cmd.exe')).toBe('exact: type \\& whoami');
   });
 });
 
@@ -46,6 +49,23 @@ describe('CapabilitySessionGrants', () => {
     expect(grants.hasSessionGrant(bashRequest)).toBe(false);
   });
 
+  it('stores session Bash approval as a canonical normalized exact grant', () => {
+    const grants = new CapabilitySessionGrants();
+    grants.rememberSessionGrant({ ...bashRequest, command: '  git status  ' });
+
+    expect(grants.hasSessionGrant({ ...bashRequest, command: 'git status' })).toBe(true);
+    expect(grants.hasSessionGrant({ ...bashRequest, command: ' git status ' })).toBe(true);
+  });
+
+  it('never broadens a session Bash approval to an argv prefix', () => {
+    const grants = new CapabilitySessionGrants();
+    grants.rememberSessionGrant({ ...bashRequest, command: 'git status' });
+
+    expect(grants.hasSessionGrant({ ...bashRequest, command: 'git status --short' })).toBe(false);
+    expect(grants.hasSessionGrant({ ...bashRequest, command: 'git status; whoami' })).toBe(false);
+    expect(grants.hasSessionGrant({ ...bashRequest, command: 'git' })).toBe(false);
+  });
+
   it('matches always-allowed bash entries by token prefix and clears them', () => {
     const grants = new CapabilitySessionGrants();
     grants.rememberBashAllowEntry('grep');
@@ -58,6 +78,9 @@ describe('CapabilitySessionGrants', () => {
     grants.rememberBashAllowEntry('npm run build');
     expect(grants.hasSessionGrant({ ...bashRequest, command: 'npm run build --watch' })).toBe(true);
     expect(grants.hasSessionGrant({ ...bashRequest, command: 'npm run build:css' })).toBe(false);
+    for (const suffix of ['; whoami', ' && whoami', ' || whoami', ' | cat', ' > out', ' `whoami`', ' $(whoami)', '\nwhoami']) {
+      expect(grants.hasSessionGrant({ ...bashRequest, command: `npm run build${suffix}` })).toBe(false);
+    }
 
     grants.clear();
     expect(grants.hasSessionGrant({ ...bashRequest, command: 'grep -n "foo" note.md' })).toBe(false);
@@ -119,7 +142,7 @@ describe('createCapabilityApprovalPort', () => {
       blockedPath: 'ast-grep --version',
     };
     await expect(port.requestApproval(versionRequest)).resolves.toEqual(result('allow-always', 'prefix'));
-    expect(persistBash).toHaveBeenCalledWith('ast-grep');
+    expect(persistBash).toHaveBeenCalledWith('prefix: "ast-grep"');
     expect(grants.hasSessionGrant(versionRequest)).toBe(true);
 
     persistBash.mockClear();
@@ -129,7 +152,7 @@ describe('createCapabilityApprovalPort', () => {
       persistence: { persistBashAllowlistEntry: persistBash },
     });
     await fullPort.requestApproval(versionRequest);
-    expect(persistBash).toHaveBeenCalledWith('ast-grep --version');
+    expect(persistBash).toHaveBeenCalledWith('exact: ast-grep --version');
   });
 
   it('persists external directories for allow-always', async () => {
@@ -189,6 +212,21 @@ describe('createCapabilityApprovalPort', () => {
     expect(grants.hasSessionGrant({ ...bashRequest, command: 'npm run build' })).toBe(true);
     expect(grants.hasSessionGrant({ ...bashRequest, command: 'npm run build:css' })).toBe(false);
     expect(grants.hasSessionGrant({ ...bashRequest, command: 'npm test' })).toBe(false);
+  });
+
+  it('keeps reviewed unsafe always grants exact on every shell', async () => {
+    const grants = new CapabilitySessionGrants();
+    const persist = jest.fn().mockResolvedValue(undefined);
+    const port = createCapabilityApprovalPort({
+      grants,
+      present: async () => result('allow-always', 'full'),
+      persistence: { persistBashAllowlistEntry: persist },
+    });
+    const request = { ...bashRequest, command: 'printf x | cat', shellPath: 'cmd.exe' };
+    await port.requestApproval(request);
+    expect(persist).toHaveBeenCalledWith('exact: printf x | cat');
+    expect(port.hasSessionGrant(request)).toBe(true);
+    expect(port.hasSessionGrant({ ...request, command: 'printf x | whoami' })).toBe(false);
   });
 
   it('clears session grants through the port', () => {

@@ -986,6 +986,20 @@ for (const file of piviReactCssFiles) {
   }
 }
 
+const obsidianToolsRoot = path.join(rootDir, 'packages', 'obsidian-tools');
+for (const file of listSourceFiles(obsidianToolsRoot)) {
+  const source = fs.readFileSync(file, 'utf8');
+  const ownershipMatch = /\b(?:createSessionsTool|SessionRecoveryPort|TOOL_PIVI_SESSIONS)\b/.exec(source);
+  if (ownershipMatch) {
+    failures.push({
+      rule: '@pivi/obsidian-tools does not own host-neutral session recovery tooling',
+      file: path.relative(rootDir, file),
+      line: source.slice(0, ownershipMatch.index).split('\n').length,
+      detail: `uses core-owned session tooling identifier "${ownershipMatch[0]}"`,
+    });
+  }
+}
+
 const pluginBaseImports = [];
 for (const root of sourceRoots) {
   for (const file of listSourceFiles(path.join(rootDir, root))) {

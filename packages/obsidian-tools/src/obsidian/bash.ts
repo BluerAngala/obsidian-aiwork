@@ -34,12 +34,16 @@ export function createBashTool(deps: ObsidianToolDeps): ToolSpec {
       + 'Prefer pre-approved allowlist commands; when the user explicitly requests a specific command, call this tool even if it is not allowlisted—Pivi shows a sidebar approval prompt first. '
       + 'Never use Bash to read, search, list, or modify vault files; use Obsidian tools and sub-agents for vault work. '
       + 'After the user denies or validation rejects a command, do not retry Bash during the same turn.',
+    promptUsage: {
+      summary: 'Lowest-priority host diagnostic only; never use it for vault file operations. Allowlist authorization is shell-safe: an exact command is pre-approved, while a prefix authorizes only a safe argv prefix and never control operators, substitutions, pipelines, redirects, or extra commands. A user-explicit non-allowlisted command receives sidebar approval; do not retry after denial or validation failure.',
+      parameters: '`command` required single-line shell command; `cwd?` must remain inside the vault.',
+    },
     parameters: {
       type: 'object',
       properties: {
         command: {
           type: 'string',
-          description: 'Single-line shell command (may include pipes and other shell syntax when allowlisted)',
+          description: 'Single-line shell command. Shell syntax requires exact interactive review; automatic prefix authorization is limited to safe single commands.',
         },
         cwd: {
           type: 'string',
@@ -59,9 +63,10 @@ export function createBashTool(deps: ObsidianToolDeps): ToolSpec {
         throw new Error('Bash command must be a single line');
       }
 
+      const invocation = buildLoginShellInvocation(normalizedCommand);
       const effectiveAllowlist = buildEffectiveBashAllowlist(settings.bashAllowlist);
-      if (!matchBashCommandAllowlist(normalizedCommand, effectiveAllowlist)) {
-        await ensureBashCommandAllowed(deps, normalizedCommand, false);
+      if (!matchBashCommandAllowlist(normalizedCommand, effectiveAllowlist, invocation.executable)) {
+        await ensureBashCommandAllowed(deps, normalizedCommand, false, invocation.executable);
       }
 
       const vaultRoot = getVaultPath(app);
@@ -69,11 +74,10 @@ export function createBashTool(deps: ObsidianToolDeps): ToolSpec {
         throw new Error('Vault path is unavailable for Bash cwd containment');
       }
 
-      const { executable, args } = buildLoginShellInvocation(normalizedCommand);
       const timeoutMs = settings.cliTimeoutMs || DEFAULT_BASH_TIMEOUT_MS;
       const result = await processRunner.run({
-        executable,
-        args: [...args],
+        executable: invocation.executable,
+        args: [...invocation.args],
         cwdPolicy: { mode: 'vault', vaultRoot },
         ...(typeof cwd === 'string' && cwd.trim() ? { cwd: cwd.trim() } : {}),
         timeoutMs,

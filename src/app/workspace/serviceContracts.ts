@@ -1,7 +1,7 @@
 import type { PiviNetworkClients } from '@pivi/obsidian-host/createPiviNetworkClients';
-import type { SessionRecoveryPort } from '@pivi/obsidian-tools';
 import type { PiviSettings } from '@pivi/pivi-agent-core/foundation';
 import type { FileStore } from '@pivi/pivi-agent-core/ports';
+import type { SessionRecoveryPort } from '@pivi/pivi-agent-core/session';
 import type { SlashCatalogEntry } from '@pivi/pivi-agent-core/skills/commands/slashCommandEntry';
 import type { App, EventRef } from 'obsidian';
 

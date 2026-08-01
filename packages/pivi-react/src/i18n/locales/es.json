@@ -63,7 +63,13 @@
     "piviManagementApproval": {
       "title": "Confirmar cambio de Pivi",
       "confirm": "Confirmar",
-      "deny": "Rechazar"
+      "deny": "Rechazar",
+      "management": {
+        "titles": { "mcp": { "upsert": "Actualizar el servidor MCP «{name}»", "enable": "Activar el servidor MCP «{name}»", "disable": "Desactivar el servidor MCP «{name}»", "remove": "Eliminar el servidor MCP «{name}»" }, "skills": { "install": "Instalar Skills desde «{source}»", "enable": "Activar Skill «{name}»", "disable": "Desactivar Skill «{name}»", "update": "Actualizar Skill «{name}»", "updateAll": "Actualizar todos los Skills gestionados por paquetes", "remove": "Eliminar Skill «{name}»" }, "commands": { "upsert": "Guardar comando {command}", "remove": "Eliminar comando {command}", "move": "Mover comando {command}" } },
+        "changes": { "mcpUpsert": "Aplicar la configuración prevista del servidor MCP.", "mcpEnable": "Activar este servidor MCP.", "mcpDisable": "Desactivar este servidor MCP.", "mcpRemove": "Eliminar este servidor MCP y sus credenciales.", "skillsInstall": "Instalar Skills mediante el flujo de paquetes fijado.", "skillsEnable": "Activar este Skill.", "skillsDisable": "Desactivar este Skill.", "skillsUpdate": "Actualizar este Skill desde su paquete de origen.", "skillsUpdateAll": "Actualizar todos los Skills gestionados por paquetes.", "skillsRemove": "Eliminar este Skill del espacio de trabajo.", "commandsUpsert": "Crear o actualizar este comando del espacio de trabajo.", "commandsRemove": "Eliminar este comando del espacio de trabajo.", "commandsMove": "Reordenar este comando del espacio de trabajo." },
+        "fields": { "server": "Servidor", "enabled": "Activado", "type": "Tipo", "command": "Comando", "args": "Argumentos", "envNames": "Variables de entorno", "url": "URL", "auth": "Autenticación", "headerNames": "Nombres de cabeceras", "bearerToken": "Token Bearer", "oauth": "OAuth", "oauthGrant": "Concesión OAuth", "oauthClientId": "ID de cliente OAuth", "oauthScope": "Ámbito OAuth", "oauthClientSecret": "Secreto de cliente OAuth", "contextSaving": "Ahorro de contexto", "disabledTools": "Herramientas desactivadas", "source": "Origen", "skills": "Skills", "skill": "Skill", "catalogRevision": "Revisión del catálogo", "icon": "Icono", "prompt": "Prompt", "before": "Antes", "after": "Después" },
+        "values": { "yes": "Sí", "no": "No", "clear": "Borrar", "disabled": "Desactivado", "updated": "Actualizado" }
+      }
     },
     "capabilityApproval": {
       "title": "Permiso requerido",

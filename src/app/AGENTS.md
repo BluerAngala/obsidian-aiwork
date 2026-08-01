@@ -102,12 +102,14 @@ flowchart LR
 | `ui/listObsidianCommands.ts` | Reads the host command registry for settings toolbar command pickers |
 | `ui/settingsHotkeys.ts` | Opens the Obsidian hotkeys tab pre-filtered for configurable Pivi shortcuts |
 | `ui/activateOpenSessionElsewhere.ts` | Reveals and activates another open chat view already bound to a session |
-| `workspace/PiWorkspaceServices.ts` | MCP, skills, tools, readiness, chat factories |
+| `workspace/PiWorkspaceServices.ts` | MCP, skills, tools, readiness, chat factories; composes core-owned session tooling into the shared base provider |
+| `workspace/baseSessionTools.ts` | Pure base-provider composition for the core-owned `pivi_sessions` tool and disabled-tool gate |
 | `workspace/createChatRuntimeServices.ts` | `PiChatRuntime` / aux-query construction only |
 | `workspace/workspaceServiceProviders.ts` | MCP connection-pool/diagnostics/tester and provider service construction helpers for `PiWorkspaceServices` |
 | `workspace/modelReadiness.ts` / `workspace/providerReadiness.ts` | Model/provider readiness derivation, connectivity testing, and metadata refresh |
 | `workspace/serviceContracts.ts` | Workspace-construction host contracts (`PiviWorkspaceHost`) shared by service providers |
-| `workspace/PiSlashCommandCatalog.ts` | Slash catalog composition over workspace commands, skills, MCP servers/tools, and built-in tool entries |
+| `workspace/PiSlashCommandCatalog.ts` | Vault watcher and slash catalog composition over workspace commands, skills, MCP servers/tools, and built-in tool entries |
+| `workspace/WorkspaceCommandsCoordinator.ts` | Workspace-command snapshot/revision, validated plans, CAS commits, persistence, and ordering |
 | `workspace/obsidianHttpRequest.ts` | Adapts Obsidian HTTP into custom-provider composition without leaking host networking into the Pi engine |
 | `workspace/piUiFacades.ts` | Settings/model/auth facades for product UI |
 | `commandRegistration.ts` / `viewRegistration.ts` / `settingsRegistration.ts` | App → UI mount points |

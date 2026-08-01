@@ -22,6 +22,7 @@ import { toPiAgentTool } from './piToolAdapter';
 
 export interface PiToolRegistry {
   tools: AgentTool[];
+  registeredToolNames: string[];
   registeredToolsSection: string;
   contextAppendices: string[];
   externalContexts: ExternalContextAvailability[];
@@ -108,11 +109,14 @@ export function buildPiToolRegistryCore(options: {
       ],
     }
     : options.registeredToolSummary;
+  const registeredSpecs = [...options.baseToolSpecs, ...mainOnlyToolSpecs];
 
   return {
     tools,
+    registeredToolNames: tools.map((tool) => tool.name),
     registeredToolsSection: buildRegisteredToolsSection({
       ...registeredToolSummary,
+      toolSpecs: registeredSpecs,
       includeMcp: mcpTools.length > 0,
       mcpInventory: options.mcpBridge?.getCachedInventory() ?? [],
       includeSkill: true,

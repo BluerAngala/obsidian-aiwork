@@ -69,6 +69,7 @@ import {
 
 import { requestOAuthManualCode } from "@/app/oauthManualCodePrompt";
 
+import { createBaseSessionTools } from "./baseSessionTools";
 import {
   type ChatRuntimeServiceFactories,
   createChatRuntimeServiceFactories,
@@ -417,8 +418,9 @@ function createObsidianBaseToolProvider(
       obsidianCliAvailable,
       resolveReadMaxChars,
       capabilityApproval: capabilityApproval ?? null,
-      sessionRecovery: host.sessionRecovery,
     });
+
+    toolSpecs.push(...createBaseSessionTools(host.sessionRecovery, settings.disabledTools));
 
     const webSearchSettings = getWebSearchToolsSettingsFromBag(host.settings);
     const environmentVariables = parseEnvironmentVariables(

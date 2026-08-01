@@ -63,7 +63,13 @@
     "piviManagementApproval": {
       "title": "Confirmar alteração do Pivi",
       "confirm": "Confirmar",
-      "deny": "Recusar"
+      "deny": "Recusar",
+      "management": {
+        "titles": { "mcp": { "upsert": "Atualizar servidor MCP “{name}”", "enable": "Ativar servidor MCP “{name}”", "disable": "Desativar servidor MCP “{name}”", "remove": "Remover servidor MCP “{name}”" }, "skills": { "install": "Instalar Skills de “{source}”", "enable": "Ativar Skill “{name}”", "disable": "Desativar Skill “{name}”", "update": "Atualizar Skill “{name}”", "updateAll": "Atualizar todos os Skills geridos por pacotes", "remove": "Remover Skill “{name}”" }, "commands": { "upsert": "Guardar comando {command}", "remove": "Remover comando {command}", "move": "Mover comando {command}" } },
+        "changes": { "mcpUpsert": "Aplicar a configuração planeada do servidor MCP.", "mcpEnable": "Ativar este servidor MCP.", "mcpDisable": "Desativar este servidor MCP.", "mcpRemove": "Remover este servidor MCP e as suas credenciais.", "skillsInstall": "Instalar Skills pelo fluxo de pacotes fixado.", "skillsEnable": "Ativar este Skill.", "skillsDisable": "Desativar este Skill.", "skillsUpdate": "Atualizar este Skill a partir do pacote de origem.", "skillsUpdateAll": "Atualizar todos os Skills geridos por pacotes.", "skillsRemove": "Remover este Skill do espaço de trabalho.", "commandsUpsert": "Criar ou atualizar este comando do espaço de trabalho.", "commandsRemove": "Eliminar este comando do espaço de trabalho.", "commandsMove": "Reordenar este comando do espaço de trabalho." },
+        "fields": { "server": "Servidor", "enabled": "Ativado", "type": "Tipo", "command": "Comando", "args": "Argumentos", "envNames": "Variáveis de ambiente", "url": "URL", "auth": "Autenticação", "headerNames": "Nomes de cabeçalhos", "bearerToken": "Token Bearer", "oauth": "OAuth", "oauthGrant": "Concessão OAuth", "oauthClientId": "ID de cliente OAuth", "oauthScope": "Âmbito OAuth", "oauthClientSecret": "Segredo de cliente OAuth", "contextSaving": "Poupança de contexto", "disabledTools": "Ferramentas desativadas", "source": "Origem", "skills": "Skills", "skill": "Skill", "catalogRevision": "Revisão do catálogo", "icon": "Ícone", "prompt": "Prompt", "before": "Antes", "after": "Depois" },
+        "values": { "yes": "Sim", "no": "Não", "clear": "Limpar", "disabled": "Desativado", "updated": "Atualizado" }
+      }
     },
     "capabilityApproval": {
       "title": "Permissão necessária",

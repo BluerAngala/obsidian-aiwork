@@ -52,20 +52,4 @@ export interface ObsidianToolDeps {
   imageGenerator?: ObsidianImageGenerator;
   resolveReadMaxChars?: (requestedMaxChars?: number) => ReadAllowanceReservation;
   capabilityApproval?: CapabilityApprovalPort | null;
-  sessionRecovery?: SessionRecoveryPort;
-}
-
-export interface SessionRecoveryPort {
-  read(sessionFile: string): Promise<string>;
-  listDeleted(): Promise<Array<{
-    sessionFile: string;
-    deletedAt: number;
-    expiresAt: number;
-    retentionDays: number;
-  }>>;
-  restore(sessionFile: string): Promise<{
-    sessionId: string;
-    title: string;
-    sessionFile: string;
-  }>;
 }

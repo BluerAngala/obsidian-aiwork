@@ -40,6 +40,7 @@ Generation guards invalidate late initialization after a view closes or the plug
 | `SettingsPorts` | React-owned settings capabilities implemented by `src/app/ui` |
 | `PiviChatViewHandle` | Semantic app control surface split into user `commands` and lifecycle `maintenance` operations |
 | `PiWorkspaceServices` | Plugin-wide service graph: stores, tools, MCP, skills, providers, runtime factories, and subagent limiter |
+| `WorkspaceCommandsCoordinator` | App-owned workspace-command plans, revisions, persistence, and ordering shared by Settings and Agent management |
 
 `createChatUiPorts(host, workspace)` adapts app facades and workspace services into `ChatPorts`. The app-owned imperative adapter closure captures those ports and constructs `TabManager`; the React mount contract never receives or forwards them.
 
@@ -66,6 +67,8 @@ Settings mount independently through `PiviSettingTabHost` and `SettingsRoot`. On
 `loadPluginSettings()` runs device-local provider and environment migration before session-store construction or workspace services. The coordinator reads raw `.pivi/settings.json`, migrates legacy provider fields into `pivi.providers.v1` and required secrets, migrates free-form environment text into the structured device-local registry (`pivi.environment.v1`) with `plain`, `secret`, and `systemEnvironment` sources, overlays runtime settings, and strips device-local fields from the synced file only after local state and secret writes succeed. Runtime still projects resolved `sharedEnvironmentVariables` and `agentSettings.environmentVariables` maps in memory for consumers, but synced `.pivi/settings.json` must not persist those fields. A synced save failure after a successful local commit keeps the local registry authoritative and shows a localized Notice.
 
 Before constructing the session store, startup also reconciles the vault-scoped device-local session journal (`pivi.session-journal.v1`) against on-disk JSONL. Confirmed or pending continuations that still match the source are dropped; append-compatible gaps are reapplied; non-append-compatible cloud replacement/rollback creates an explicit recovered session with visible provenance and never overwrites the externally changed file. A corrupt device-local journal blob resets to an empty journal with a warning rather than blocking startup. Rebuildable JSONL indexes live under a device-local home cache (`~/.pivi/session-indexes/<vault-key>/`), not beside synced `.pivi/sessions/*.jsonl`.
+
+Workspace composition builds the ordinary Obsidian-native inventory through `createObsidianTools`, then adds core-owned `pivi_sessions` through the shared base provider over an injected `SessionRecoveryPort`. The same base provider feeds main Agents and subagents. `@pivi/obsidian-tools` therefore retains concrete Obsidian/CLI adapters without owning host-neutral session recovery.
 
 ## Runtime creation and refresh
 

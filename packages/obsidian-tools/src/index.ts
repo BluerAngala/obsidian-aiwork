@@ -3,11 +3,7 @@ import { createObsidianTools } from './createObsidianTools';
 export {
   buildEffectiveBashAllowlist,
   DEFAULT_SAFE_BASH_ALLOWLIST,
-  matchBashAllowlist,
   matchBashCommandAllowlist,
-  parseBashAllowlistEntry,
-  resolveExecutablePath,
-  tokenizeArgv,
 } from './bashAllowlist';
 export {
   CAPABILITY_TOOL_NAMES,
@@ -16,7 +12,6 @@ export {
   resolveExternalDirectoryRoot,
 } from './capabilityApprovalGate';
 export { createObsidianTools } from './createObsidianTools';
-export * from './frontmatter';
 export { buildLoginShellInvocation, resolveLoginShellPath } from './loginShell';
 export { createAttachmentTool } from './obsidian/attachment';
 export { createBaseTool } from './obsidian/base';
@@ -24,7 +19,7 @@ export { createBashTool } from './obsidian/bash';
 export { createCommandTool } from './obsidian/command';
 export { createDailyTool } from './obsidian/daily';
 export { createDeletePathTool } from './obsidian/deletePath';
-export type { ObsidianToolDeps, SessionRecoveryPort } from './obsidian/deps';
+export type { ObsidianToolDeps } from './obsidian/deps';
 export { createEditNoteTool } from './obsidian/editNote';
 export { createEvalTool } from './obsidian/eval';
 export { createGenerateImageTool } from './obsidian/generateImage';
@@ -42,11 +37,9 @@ export { createPropertiesTool } from './obsidian/properties';
 export { createReadExternalTool } from './obsidian/readExternal';
 export { createReadNoteTool } from './obsidian/readNote';
 export { createSearchTool } from './obsidian/search';
-export { createSessionsTool } from './obsidian/sessions';
 export { createTagsTool } from './obsidian/tags';
 export { createTasksTool } from './obsidian/tasks';
 export { createWriteNoteTool } from './obsidian/writeNote';
 export * from './settings';
-export * from './vaultEditMatch';
 
 export default createObsidianTools;

@@ -54,6 +54,7 @@ function makeDeps(overrides?: {
   mcpCommit?: jest.Mock;
   skillsCommit?: jest.Mock;
   commandsExecute?: jest.Mock;
+  commandsCommit?: jest.Mock;
   refresh?: jest.Mock;
 }): {
   deps: PiviManagementServiceDeps;
@@ -69,7 +70,7 @@ function makeDeps(overrides?: {
     plan: jest.Mock;
     commit: jest.Mock;
   };
-  commands: { executeCommands: jest.Mock };
+  commands: { executeCommands: jest.Mock; planCommands: jest.Mock; commitCommands: jest.Mock };
   refresh: jest.Mock;
   refreshHost: PiviManagementRefreshHost;
 } {
@@ -144,6 +145,12 @@ function makeDeps(overrides?: {
         effective: { id: input.id, name: input.id, content: 'body' },
       };
     }),
+    planCommands: jest.fn(async (input) => ({ revision: input.catalogRevision, mutation: structuredClone(input) })),
+    commitCommands: overrides?.commandsCommit ?? jest.fn(async (plan) => ({
+      saved: true,
+      refreshed: true,
+      effective: { id: plan.mutation.id, name: plan.mutation.id, content: 'body' },
+    })),
   };
   const refresh = overrides?.refresh ?? jest.fn(async () => [] as const);
   const refreshHost: PiviManagementRefreshHost = {
@@ -296,13 +303,18 @@ describe('PiviManagementService', () => {
         saved: true,
         refreshed: true,
       });
-      expect(commands.executeCommands).toHaveBeenCalledWith(input, undefined);
+      expect(commands.planCommands).toHaveBeenCalledWith(input, undefined);
+      expect(commands.commitCommands).toHaveBeenCalledWith(
+        expect.objectContaining({ revision: 7, mutation: input }),
+        7,
+        undefined,
+      );
       expect(refresh).toHaveBeenCalledWith('commands');
     } else {
       await expect(port.executeCommands(input)).rejects.toMatchObject({
         code: decision === 'deny' ? 'denied' : 'cancelled',
       });
-      expect(commands.executeCommands).not.toHaveBeenCalled();
+      expect(commands.commitCommands).not.toHaveBeenCalled();
       expect(refresh).not.toHaveBeenCalled();
     }
   });
@@ -337,6 +349,7 @@ describe('PiviManagementService', () => {
     expect(mcp.commit).not.toHaveBeenCalled();
     expect(skills.commit).not.toHaveBeenCalled();
     expect(commands.executeCommands).toHaveBeenCalledTimes(1);
+    expect(commands.commitCommands).not.toHaveBeenCalled();
     expect(refresh).not.toHaveBeenCalled();
   });
 
@@ -365,10 +378,10 @@ describe('PiviManagementService', () => {
   });
 
   it('maps command catalog state_changed without retry', async () => {
-    const executeCommands = jest.fn(async () => {
+    const commitCommands = jest.fn(async () => {
       throw new PiviCommandsManagementError('state_changed', 'Command catalog changed');
     });
-    const { deps, refresh } = makeDeps({ commandsExecute: executeCommands });
+    const { deps, refresh } = makeDeps({ commandsCommit: commitCommands });
     const approval = makeApproval('confirm');
     const port = createPiviManagementPort(deps, approval.port);
 
@@ -377,7 +390,7 @@ describe('PiviManagementService', () => {
       id: 'hello',
       catalogRevision: 7,
     })).rejects.toMatchObject({ code: 'state_changed' });
-    expect(executeCommands).toHaveBeenCalledTimes(1);
+    expect(commitCommands).toHaveBeenCalledTimes(1);
     expect(refresh).not.toHaveBeenCalled();
   });
 
@@ -441,7 +454,7 @@ describe('PiviManagementService', () => {
       revision: 9,
     });
     expect(commandsRequest.fields?.some((field) => (
-      field.label === 'Prompt' && field.value === 'updated'
+      field.label === 'Prompt' && field.value === 'Updated'
     ))).toBe(true);
     expect(commandsRequest.fields?.some((field) => field.label === 'Description')).toBe(false);
     expect(commandsRequest.fields?.some((field) => field.label === 'Argument hint')).toBe(false);

@@ -284,6 +284,10 @@ export const PIVI_COMMANDS_PARAMETERS = {
         catalogRevision: { type: 'number' },
       },
       required: ['action', 'id', 'catalogRevision'],
+      oneOf: [
+        { required: ['beforeId'], not: { required: ['afterId'] } },
+        { required: ['afterId'], not: { required: ['beforeId'] } },
+      ],
       additionalProperties: false,
     },
   ],

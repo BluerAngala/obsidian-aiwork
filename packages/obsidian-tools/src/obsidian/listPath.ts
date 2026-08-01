@@ -17,6 +17,10 @@ export function createListPathTool(deps: ObsidianToolDeps): ToolSpec {
     name: TOOL_OBSIDIAN_LIST,
     label: 'List folder',
     description: 'List direct children of a vault folder, including files, folders, and attachments. Use path="" for vault root.',
+    promptUsage: {
+      summary: 'List direct children of a vault folder, including non-Markdown files, folders, and attachments; prefer this over search query=* for simple folder listing.',
+      parameters: '`path?` vault-relative folder; empty or omitted means vault root.',
+    },
     parameters: {
       type: 'object',
       properties: {

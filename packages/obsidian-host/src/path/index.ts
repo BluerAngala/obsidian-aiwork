@@ -485,6 +485,7 @@ const PIVI_MANAGED_PATH_NAMESPACES: readonly ManagedPathNamespace[] = [
       '.pivi/skills-staging',
       '.pivi/skills-install-',
       '.pivi/skills-list-',
+      '.pivi/skills-remove-',
       '.pivi/skills-update-',
       '.pivi/skills-update-all-',
       '.pivi/skills-default-update-',

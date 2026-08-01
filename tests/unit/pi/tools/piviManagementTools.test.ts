@@ -18,6 +18,7 @@ import {
   getToolPresentationDescriptor,
   MCP_ICON_MARKER,
 } from '@pivi/pivi-agent-core/tools/toolPresentation';
+import { Validator } from '@cfworker/json-schema';
 
 function getText(result: unknown): string {
   const content = (result as { content: Array<{ text: string }> }).content;
@@ -111,7 +112,20 @@ describe('pivi management tool contracts', () => {
     }
   });
 
-  it('requires catalogRevision on commands move and content on upsert', () => {
+  it('requires catalogRevision on every command mutation and encodes move anchor XOR', () => {
+    const schema = JSON.parse(JSON.stringify(PIVI_COMMANDS_PARAMETERS)) as ConstructorParameters<typeof Validator>[0];
+    const validator = new Validator(schema);
+    const isValid = (value: unknown) => validator.validate(value).valid;
+    expect(isValid({ action: 'upsert', id: 'a', content: 'body' })).toBe(false);
+    expect(isValid({ action: 'remove', id: 'a' })).toBe(false);
+    expect(isValid({ action: 'move', id: 'a', beforeId: 'b' })).toBe(false);
+    expect(isValid({ action: 'move', id: 'a', catalogRevision: 1 })).toBe(false);
+    expect(isValid({
+      action: 'move', id: 'a', beforeId: 'b', afterId: 'c', catalogRevision: 1,
+    })).toBe(false);
+    expect(isValid({ action: 'move', id: 'a', beforeId: 'b', catalogRevision: 1 })).toBe(true);
+    expect(isValid({ action: 'move', id: 'a', afterId: 'b', catalogRevision: 1 })).toBe(true);
+
     const move = PIVI_COMMANDS_PARAMETERS.oneOf.find(
       (variant) => (variant as { properties: { action: { const: string } } }).properties.action.const === 'move',
     ) as unknown as { required: readonly string[] };
@@ -119,7 +133,7 @@ describe('pivi management tool contracts', () => {
       (variant) => (variant as { properties: { action: { const: string } } }).properties.action.const === 'upsert',
     ) as unknown as { required: readonly string[]; properties: Record<string, unknown> };
     expect([...move.required]).toEqual(expect.arrayContaining(['catalogRevision', 'id', 'action']));
-    expect([...upsert.required]).toEqual(expect.arrayContaining(['content', 'id', 'action']));
+    expect([...upsert.required]).toEqual(expect.arrayContaining(['content', 'catalogRevision', 'id', 'action']));
     expect(upsert.properties).not.toHaveProperty('integrationKey');
     expect(upsert.properties).not.toHaveProperty('revision');
   });
@@ -304,8 +318,15 @@ describe('pivi management presentation and prompt', () => {
   });
 
   it('documents management tools in the registered-tools prompt when listed', () => {
+    const port = makePort();
+    const toolSpecs = [
+      createPiviMcpTool(port),
+      createPiviSkillsTool(port),
+      createPiviCommandsTool(port),
+    ];
     const section = buildRegisteredToolsSection({
-      obsidianTools: [TOOL_PIVI_MCP, TOOL_PIVI_SKILLS, TOOL_PIVI_COMMANDS],
+      obsidianTools: toolSpecs.map((tool) => tool.name),
+      toolSpecs,
       obsidianCliAvailable: true,
       includeMcp: false,
       includeSkill: false,

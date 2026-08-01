@@ -15,6 +15,7 @@ import type { SlashCatalogEntry } from "@pivi/pivi-agent-core/skills/commands/sl
 import {
   COMPACT_COMMAND_ID,
   GENERATE_IMAGE_TOOL_ID,
+  isReservedCommandId,
   NEW_SESSION_COMMAND_ID,
 } from "@pivi/pivi-agent-core/skills/commands/slashCommandIds";
 import {
@@ -23,35 +24,30 @@ import {
 } from "@pivi/pivi-agent-core/skills/slashCommand";
 import { TOOL_OBSIDIAN_GENERATE_IMAGE } from "@pivi/pivi-agent-core/tools/obsidianToolNames";
 import type {
-  AgentCommandDetail,
   AgentCommandSummary,
   PiviCommandsGetResult,
   PiviCommandsInput,
   PiviCommandsListResult,
-  PiviManagementMutationResult,
 } from '@pivi/pivi-agent-core/tools/piviManagement';
-import { PiviManagementError } from '@pivi/pivi-agent-core/tools/piviManagement';
 import type { TAbstractFile } from "obsidian";
 
 import { t } from '@/app/i18n';
 
 import {
   recoverCommandRemovalTransactions,
-  removeCommandFiles,
 } from "./commandRemovalTransaction";
 import type { PiviWorkspaceHost } from "./serviceContracts";
+import {
+  PiviCommandsManagementError,
+  WorkspaceCommandsCoordinator,
+  type WorkspaceCommandsPlan,
+} from './WorkspaceCommandsCoordinator';
+export { PiviCommandsManagementError } from './WorkspaceCommandsCoordinator';
 
 const COMMANDS_DIR = ".pivi/commands";
 const LEGACY_TEMPLATES_DIR = ".pivi/templates";
 const logger = new PluginLogger('PiSlashCommandCatalog');
 const COMMANDS_MUTATION_KEY = '.pivi/commands/*';
-
-export class PiviCommandsManagementError extends Error {
-  constructor(public readonly code: 'not_found' | 'not_eligible' | 'state_changed' | 'invalid_input', message: string) {
-    super(message);
-    this.name = 'PiviCommandsManagementError';
-  }
-}
 
 export interface PiSlashCommandCatalogOptions {
   isImageGenerationEnabled?: () => boolean;
@@ -71,12 +67,20 @@ export class PiSlashCommandCatalog implements SlashCommandCatalog {
   private loaded = false;
   private catalogRevision = 0;
   private readonly generatedIntegrationKeys = new Map<string, string>();
+  private readonly reportedReservedPaths = new Set<string>();
+  readonly commandsCoordinator: WorkspaceCommandsCoordinator;
 
   constructor(
     private readonly plugin: PiviWorkspaceHost,
     private readonly adapter: FileStore,
     private readonly options: PiSlashCommandCatalogOptions = {},
   ) {
+    this.commandsCoordinator = new WorkspaceCommandsCoordinator(
+      plugin,
+      adapter,
+      () => this.createIntegrationKey(),
+    );
+    this.commandsCoordinator.connectCatalog(() => this.refreshUnlocked());
     this.registerVaultWatcher();
   }
 
@@ -187,70 +191,15 @@ export class PiSlashCommandCatalog implements SlashCommandCatalog {
   }
 
   async getWorkspaceSnapshot(): Promise<WorkspaceCommandCatalogSnapshot> {
-    await this.refresh();
-    return {
-      entries: this.workspaceEntries.map(entry => ({ ...entry })),
-      catalogRevision: this.catalogRevision,
-    };
+    return this.commandsCoordinator.snapshot();
   }
 
   async saveWorkspaceEntry(entry: SlashCatalogEntry, catalogRevision: number): Promise<void> {
-    await runSerializedSave(COMMANDS_MUTATION_KEY, async () => {
-      await this.refreshUnlocked();
-      this.requireRevision(catalogRevision);
-      const existing = this.workspaceEntries.find(candidate => candidate.id === entry.id);
-      const path = `${COMMANDS_DIR}/${entry.id}.md`;
-      const command: SlashCommand = {
-        ...entry,
-        kind: 'command',
-        argumentHint: entry.argumentHint?.trim() || entry.name,
-        integrationKey: existing?.integrationKey ?? entry.integrationKey ?? this.createIntegrationKey(),
-      };
-      await this.assertRevision(catalogRevision);
-      await writeFileAtomically(
-        this.adapter,
-        path,
-        serializeSlashCommandMarkdown(command, entry.content),
-      );
-      if (existing?.persistenceKey?.startsWith("legacy-template:")) {
-        const legacyPath = `${LEGACY_TEMPLATES_DIR}/${entry.id}.md`;
-        if (await this.adapter.exists(legacyPath)) await this.adapter.delete(legacyPath);
-      }
-      await this.refreshUnlocked();
-    });
+    await this.commandsCoordinator.saveEntry(entry, catalogRevision);
   }
 
   async renameWorkspaceEntry(previous: SlashCatalogEntry, entry: SlashCatalogEntry, catalogRevision: number): Promise<void> {
-    await runSerializedSave(COMMANDS_MUTATION_KEY, async () => {
-      await this.refreshUnlocked();
-      this.requireRevision(catalogRevision);
-      const existing = this.workspaceEntries.find(candidate => candidate.id === previous.id);
-      if (!existing || existing.scope !== 'workspace' || !existing.isEditable || !existing.isDeletable) {
-        throw new PiviCommandsManagementError('not_eligible', `Command /${previous.id} is not an editable workspace command.`);
-      }
-      if (this.workspaceEntries.some(candidate => candidate.id === entry.id && candidate.id !== previous.id)) {
-        throw new PiviCommandsManagementError('state_changed', `Command /${entry.id} already exists.`);
-      }
-      await this.assertRevision(catalogRevision);
-      const oldPath = existing.persistenceKey?.startsWith('legacy-template:')
-        ? `${LEGACY_TEMPLATES_DIR}/${previous.id}.md`
-        : `${COMMANDS_DIR}/${previous.id}.md`;
-      const newPath = `${COMMANDS_DIR}/${entry.id}.md`;
-      const backupPath = `${oldPath}.rename-${Date.now().toString(36)}`;
-      const command: SlashCommand = { ...entry, kind: 'command',
-        argumentHint: entry.argumentHint?.trim() || entry.name,
-        integrationKey: existing.integrationKey ?? this.createIntegrationKey() };
-      await this.adapter.rename(oldPath, backupPath);
-      try {
-        await writeFileAtomically(this.adapter, newPath, serializeSlashCommandMarkdown(command, entry.content));
-        await this.adapter.delete(backupPath);
-      } catch (error) {
-        if (await this.adapter.exists(newPath)) await this.adapter.delete(newPath).catch(() => undefined);
-        await this.adapter.rename(backupPath, oldPath).catch(() => undefined);
-        throw error;
-      }
-      await this.refreshUnlocked();
-    });
+    await this.commandsCoordinator.renameEntry(previous, entry, catalogRevision);
   }
 
   async deleteWorkspaceEntry(entry: SlashCatalogEntry, catalogRevision: number): Promise<{
@@ -258,133 +207,35 @@ export class PiSlashCommandCatalog implements SlashCommandCatalog {
     refreshed: boolean;
     warnings?: string[];
   }> {
-    return runSerializedSave(COMMANDS_MUTATION_KEY, async () => {
-      await this.refreshUnlocked();
-      this.requireRevision(catalogRevision);
-      const exact = this.workspaceEntries.find(candidate => candidate.id === entry.id);
-      if (!exact || exact.scope !== 'workspace' || !exact.isEditable || !exact.isDeletable) {
-        throw new PiviCommandsManagementError('not_eligible', `Command /${entry.id} is not an editable workspace command.`);
-      }
-      await this.assertRevision(catalogRevision);
-      const cleanupFailed = await removeCommandFiles(this.adapter, entry.id);
-      await this.refreshUnlocked();
-      return cleanupFailed
-        ? { saved: true, refreshed: false,
-            warnings: ['Command was removed, but transaction cleanup failed.'] }
-        : { saved: true, refreshed: true };
-    });
+    const result = await this.commandsCoordinator.deleteEntry(entry, catalogRevision);
+    return {
+      saved: true,
+      refreshed: result.refreshed,
+      ...(result.warnings ? { warnings: [...result.warnings] } : {}),
+    };
   }
 
   async saveWorkspaceOrder(ids: readonly string[], catalogRevision: number): Promise<void> {
-    await runSerializedSave(COMMANDS_MUTATION_KEY, async () => {
-      await this.refreshUnlocked();
-      this.requireRevision(catalogRevision);
-      const eligible = new Set(this.workspaceEntries.map(entry => entry.id));
-      if (ids.length !== eligible.size || new Set(ids).size !== ids.length || ids.some(id => !eligible.has(id))) {
-        throw new PiviCommandsManagementError('state_changed', 'Command order no longer matches the current catalog.');
-      }
-      await this.assertRevision(catalogRevision);
-      const previousOrder = this.plugin.settings.workspaceCommandOrder;
-      this.plugin.settings.workspaceCommandOrder = [...ids];
-      try {
-        await this.plugin.saveSettings();
-      } catch (error) {
-        this.plugin.settings.workspaceCommandOrder = previousOrder;
-        throw error;
-      }
-      await this.refreshUnlocked();
-    });
+    await this.commandsCoordinator.saveOrder(ids, catalogRevision);
+  }
+
+  planCommands(input: Extract<PiviCommandsInput, { action: 'upsert' | 'remove' | 'move' }>, signal?: AbortSignal): Promise<WorkspaceCommandsPlan> {
+    return this.commandsCoordinator.plan(input, signal);
+  }
+
+  commitCommands(plan: WorkspaceCommandsPlan, revision: number, signal?: AbortSignal) {
+    return this.commandsCoordinator.commit(plan, revision, signal);
   }
 
   async executeCommands(input: PiviCommandsInput, signal?: AbortSignal): Promise<unknown> {
     if (input.action === 'list') return this.agentList();
     if (input.action === 'get') return this.agentGet(input.id);
-    if (input.action === 'upsert') {
-      if (input.name !== undefined && input.name !== input.id) {
-        throw new PiviCommandsManagementError('invalid_input', 'Command rename is not supported; name must equal id.');
-      }
-      return runSerializedSave(COMMANDS_MUTATION_KEY, async () => {
-        throwIfCommandsAborted(signal);
-        await this.refreshUnlocked();
-        this.requireRevision(input.catalogRevision);
-        const conflicting = this.runtimeCommands.find(item => item.id === input.id);
-        if (conflicting || input.id === COMPACT_COMMAND_ID || input.id === GENERATE_IMAGE_TOOL_ID) {
-          throw new PiviCommandsManagementError('not_eligible',
-            `Command /${input.id} is owned by ${conflicting?.scope ?? 'builtin'}.`);
-        }
-        const existing = this.workspaceEntries.find(item => item.id === input.id);
-        const command: SlashCommand = { id: input.id, kind: 'command', name: input.id,
-          description: input.description, argumentHint: input.argumentHint?.trim() || input.id,
-          icon: input.icon, content: input.content,
-          integrationKey: existing?.integrationKey ?? this.createIntegrationKey() };
-        await this.assertRevision(input.catalogRevision);
-        throwIfCommandsAborted(signal);
-        await writeFileAtomically(this.adapter, `${COMMANDS_DIR}/${input.id}.md`,
-          serializeSlashCommandMarkdown(command, input.content));
-        return this.refreshMutationResult(input.id);
-      });
-    }
-    if (input.action === 'remove') {
-      return runSerializedSave(COMMANDS_MUTATION_KEY, async () => {
-        throwIfCommandsAborted(signal);
-        await this.refreshUnlocked();
-        this.requireRevision(input.catalogRevision);
-        const entry = this.workspaceEntries.find(item => item.id === input.id);
-        if (!entry) throw new PiviCommandsManagementError('not_found', `Command /${input.id} was not found.`);
-        await this.assertRevision(input.catalogRevision);
-        throwIfCommandsAborted(signal);
-        const cleanupFailed = await removeCommandFiles(this.adapter, input.id);
-        const result = await this.refreshMutationResult();
-        if (!cleanupFailed) return result;
-        return {
-          ...result,
-          refreshed: false,
-          warnings: ['Command was removed, but transaction cleanup failed.'],
-          refreshFailures: [
-            ...(result.refreshFailures ?? []),
-            { target: 'commands:cleanup', message: 'Transaction cleanup failed.' },
-          ],
-        };
-      });
-    }
-    return runSerializedSave(COMMANDS_MUTATION_KEY, async () => {
-      throwIfCommandsAborted(signal);
-      await this.refreshUnlocked();
-      this.requireRevision(input.catalogRevision);
-      const ids = this.workspaceEntries.map(entry => entry.id);
-      const from = ids.indexOf(input.id);
-      const anchorId = input.beforeId ?? input.afterId!;
-      const anchor = ids.indexOf(anchorId);
-      if (from < 0 || anchor < 0 || input.id === anchorId) {
-        throw new PiviCommandsManagementError('not_eligible', 'Move requires two distinct editable workspace commands.');
-      }
-      ids.splice(from, 1);
-      const currentAnchor = ids.indexOf(anchorId);
-      ids.splice(input.beforeId ? currentAnchor : currentAnchor + 1, 0, input.id);
-      await this.assertRevision(input.catalogRevision);
-      throwIfCommandsAborted(signal);
-      const previousOrder = this.plugin.settings.workspaceCommandOrder;
-      this.plugin.settings.workspaceCommandOrder = ids;
-      try {
-        await this.plugin.saveSettings();
-      } catch (error) {
-        this.plugin.settings.workspaceCommandOrder = previousOrder;
-        throw error;
-      }
-      const refreshResult = await this.refreshMutationResult(input.id);
-      if (!refreshResult.refreshed) return refreshResult;
-      const effective = this.workspaceEntries.find(entry => entry.id === input.id);
-      if (!effective) throw new PiviCommandsManagementError('not_found', `Command /${input.id} was not found.`);
-      return {
-        saved: true,
-        refreshed: true,
-        effective: { ...toAgentSummary(effective), content: effective.content },
-      } satisfies PiviManagementMutationResult<AgentCommandDetail>;
-    });
+    const plan = await this.planCommands(input, signal);
+    return this.commitCommands(plan, plan.revision, signal);
   }
 
   setRuntimeCommands(commands: SlashCommand[]): void {
-    this.runtimeCommands = commands.map((cmd) => ({
+    this.runtimeCommands = commands.filter(cmd => !isReservedCommandId(cmd.id)).map((cmd) => ({
       id: cmd.id,
       kind: cmd.kind ?? "command",
       name: cmd.name,
@@ -407,6 +258,7 @@ export class PiSlashCommandCatalog implements SlashCommandCatalog {
       displayPrefix: "/",
       insertPrefix: "/",
     }));
+    this.commandsCoordinator.setRuntimeIds(this.runtimeCommands.map(command => command.id));
   }
 
   getDropdownConfig(): SlashCommandDropdownConfig {
@@ -429,13 +281,17 @@ export class PiSlashCommandCatalog implements SlashCommandCatalog {
       const files = (await Promise.all([COMMANDS_DIR, LEGACY_TEMPLATES_DIR]
         .map(dir => this.adapter.listFiles(dir)))).flat().filter(path => isCatalogCommandPath(path));
       for (const file of files) {
+        const id = commandIdFromPath(file);
+        if (isReservedCommandId(id)) {
+          this.reportReservedWorkspaceFile(file, id);
+          continue;
+        }
         const content = await this.adapter.read(file);
         const parsed = parseSlashCommandContent(content);
         if (typeof parsed.integrationKey === 'string'
           && /^[a-z0-9][a-z0-9-]{0,127}$/i.test(parsed.integrationKey)) continue;
         const filename = file.split('/').at(-1);
         if (!filename) throw new Error(`Custom command has no filename: ${file}`);
-        const id = filename.slice(0, -3);
         const integrationKey = this.createIntegrationKey();
         await writeFileAtomically(this.adapter, file, serializeSlashCommandMarkdown({
           id, name: id, description: parsed.description, argumentHint: parsed.argumentHint || id,
@@ -457,6 +313,11 @@ export class PiSlashCommandCatalog implements SlashCommandCatalog {
 
         for (const file of mdFiles) {
           try {
+            const id = commandIdFromPath(file);
+            if (isReservedCommandId(id)) {
+              this.reportReservedWorkspaceFile(file, id);
+              continue;
+            }
             const content = await this.adapter.read(file);
             const parsed = parseSlashCommandContent(content);
             authoritativeBytes.push([dir, file, content]);
@@ -467,7 +328,6 @@ export class PiSlashCommandCatalog implements SlashCommandCatalog {
               logger.error(`Custom command has no filename: ${file}`);
               continue;
             }
-            const id = filename.substring(0, filename.lastIndexOf(".md"));
             const integrationKey = typeof parsed.integrationKey === 'string'
               && /^[a-z0-9][a-z0-9-]{0,127}$/i.test(parsed.integrationKey)
               ? parsed.integrationKey
@@ -513,10 +373,10 @@ export class PiSlashCommandCatalog implements SlashCommandCatalog {
         identities: entries.map(entry => [entry.id, entry.integrationKey]),
         order,
       });
-      const nextRevision = hashRevision(fingerprint);
-      const changed = !this.loaded || nextRevision !== this.catalogRevision;
+      const revisionChanged = this.commandsCoordinator.acceptCatalogScan(entries, fingerprint);
+      const changed = !this.loaded || revisionChanged;
       this.workspaceEntries = entries;
-      this.catalogRevision = nextRevision;
+      this.catalogRevision = this.commandsCoordinator.currentRevision();
       this.loaded = true;
       if (changed) this.options.onWorkspaceEntriesChanged?.(entries.map(entry => ({ ...entry })));
   }
@@ -533,44 +393,16 @@ export class PiSlashCommandCatalog implements SlashCommandCatalog {
     return { command: { ...toAgentSummary(entry), content: entry.content }, catalogRevision: this.catalogRevision };
   }
 
-  private mutationResultUnlocked(id: string): PiviManagementMutationResult<AgentCommandDetail> {
-    const entry = this.workspaceEntries.find(candidate => candidate.id === id);
-    if (!entry) throw new PiviCommandsManagementError('not_found', `Command /${id} was not found.`);
-    return { saved: true, refreshed: true, effective: { ...toAgentSummary(entry), content: entry.content } };
-  }
-
-  private async refreshMutationResult(id?: string): Promise<PiviManagementMutationResult<AgentCommandDetail>> {
-    try {
-      await this.refreshUnlocked();
-      return id ? this.mutationResultUnlocked(id) : { saved: true, refreshed: true };
-    } catch {
-      return {
-        saved: true,
-        refreshed: false,
-        refreshFailures: [{ target: 'commands:catalog', message: 'Runtime refresh failed.' }],
-      };
-    }
-  }
-
-  private requireRevision(expectedRevision: number): void {
-    if (expectedRevision !== this.catalogRevision) {
-      throw new PiviCommandsManagementError('state_changed', 'Command catalog changed; list commands and retry.');
-    }
-  }
-
-  private async assertRevision(expectedRevision: number): Promise<void> {
-    await this.refreshUnlocked();
-    this.requireRevision(expectedRevision);
-  }
-
   private createIntegrationKey(): string {
     return this.options.createIntegrationKey?.() ?? randomUUID();
   }
-}
 
-function throwIfCommandsAborted(signal?: AbortSignal): void {
-  if (signal?.aborted) {
-    throw new PiviManagementError('cancelled', 'Command management was cancelled.');
+  private reportReservedWorkspaceFile(path: string, id: string): void {
+    if (this.reportedReservedPaths.has(path)) return;
+    this.reportedReservedPaths.add(path);
+    logger.warn(
+      `Ignored ${path} because /${id} is reserved by Pivi. The file was preserved; rename it to a non-reserved command ID to use its content.`,
+    );
   }
 }
 
@@ -578,15 +410,6 @@ function toAgentSummary(entry: SlashCatalogEntry): AgentCommandSummary {
   return { id: entry.id, name: entry.name, description: entry.description,
     argumentHint: entry.argumentHint, icon: entry.icon, scope: entry.scope,
     source: entry.source, isEditable: entry.isEditable, isDeletable: entry.isDeletable };
-}
-
-function hashRevision(value: string): number {
-  let hash = 2166136261;
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-  return hash >>> 0;
 }
 
 /** Catalog command markdown only — never removal artifacts or non-md siblings. */
@@ -599,4 +422,10 @@ function isCatalogCommandPath(path: string): boolean {
     if (filename.slice(0, -3).includes('.')) return false;
   }
   return path.startsWith(`${COMMANDS_DIR}/`) || path.startsWith(`${LEGACY_TEMPLATES_DIR}/`);
+}
+
+function commandIdFromPath(path: string): string {
+  const filename = path.split('/').at(-1);
+  if (!filename) throw new Error(`Custom command has no filename: ${path}`);
+  return filename.slice(0, -3);
 }

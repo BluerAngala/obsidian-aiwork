@@ -111,6 +111,17 @@ describe('requireVaultRelativeMutationPath', () => {
 });
 
 describe('assertAgentManagedPathMutationAllowed', () => {
+  // Mechanically mirrors every name passed to withOperationRoot() in
+  // vaultSkillsService; changing that production inventory requires updating
+  // this policy-contract table.
+  const vaultSkillsOperationRoots = [
+    '.pivi/skills-install-',
+    '.pivi/skills-default-update-',
+    '.pivi/skills-remove-',
+    '.pivi/skills-update-all-',
+    '.pivi/skills-update-',
+  ] as const;
+
   const blockedDirect: Array<{ path: string; tool: string }> = [
     { path: '.pivi/mcp.json', tool: 'pivi_mcp' },
     { path: '.pivi/mcp.json.corrupt-abc', tool: 'pivi_mcp' },
@@ -125,6 +136,8 @@ describe('assertAgentManagedPathMutationAllowed', () => {
     { path: '.pivi/skills-staging/op-1/skill', tool: 'pivi_skills' },
     { path: '.pivi/skills-install-op/skills/demo', tool: 'pivi_skills' },
     { path: '.pivi/skills-list-op/skills-lock.json', tool: 'pivi_skills' },
+    { path: '.pivi/skills-remove-op', tool: 'pivi_skills' },
+    { path: '.pivi/skills-remove-op/skills/demo/SKILL.md', tool: 'pivi_skills' },
     { path: '.pivi/skills-update-op/.agents/skills/demo', tool: 'pivi_skills' },
     { path: '.pivi/skills-update-all-op/.pivi/skills/demo', tool: 'pivi_skills' },
     { path: '.pivi/skills-default-update-op/skills/demo', tool: 'pivi_skills' },
@@ -162,6 +175,7 @@ describe('assertAgentManagedPathMutationAllowed', () => {
     { path: '.pivi', tool: 'pivi_mcp' },
     { path: '.pivi/.agents', tool: 'pivi_skills' },
     { path: '.pivi/.cursor', tool: 'pivi_skills' },
+    { path: '.pivi/skills-remove-op', tool: 'pivi_skills' },
     { path: '.pivi/.skills-transaction-123', tool: 'pivi_skills' },
   ];
 
@@ -175,6 +189,17 @@ describe('assertAgentManagedPathMutationAllowed', () => {
   it.each(allowedDirect)('direct mode allows unrelated path %s', (target) => {
     expect(() => assertAgentManagedPathMutationAllowed(target, { mode: 'direct' })).not.toThrow();
   });
+
+  it.each(vaultSkillsOperationRoots)(
+    'blocks actual operation root %s and a descendant',
+    (rootPrefix) => {
+      const root = `${rootPrefix}mechanical-test`;
+      expect(() => assertAgentManagedPathMutationAllowed(root, { mode: 'direct' }))
+        .toThrow(/pivi_skills/);
+      expect(() => assertAgentManagedPathMutationAllowed(`${root}/nested/SKILL.md`, { mode: 'direct' }))
+        .toThrow(/pivi_skills/);
+    },
+  );
 
   it('direct mode allows ancestors that recursive mode blocks', () => {
     expect(() => assertAgentManagedPathMutationAllowed('.pivi', { mode: 'direct' })).not.toThrow();
@@ -226,6 +251,13 @@ describe('requireAgentVaultMutationPath', () => {
   it('blocks recursive delete/move of managed ancestors', () => {
     expect(() => requireAgentVaultMutationPath('.pivi', vaultPath, { mode: 'recursive' }))
       .toThrow(/managed by Pivi/);
+  });
+
+  it('blocks a recursive move source ancestor while allowing an ordinary destination', () => {
+    expect(() => requireAgentVaultMutationPath('.pivi', vaultPath, { mode: 'recursive' }))
+      .toThrow(/pivi_mcp/);
+    expect(requireAgentVaultMutationPath('archive/pivi-backup', vaultPath, { mode: 'direct' }))
+      .toBe('archive/pivi-backup');
   });
 
   it('allows move destinations outside managed namespaces', () => {

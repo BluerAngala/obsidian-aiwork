@@ -24,6 +24,10 @@ export function createReadNoteTool(deps: ObsidianToolDeps): ToolSpec {
     executionMode: 'sequential',
     label: 'Read note',
     description: 'Read a note body via vault API. Defaults to stats-only for large files; explicit line ranges automatically return the largest complete-line page that fits maxChars and provide nextStartLine when more remains.',
+    promptUsage: {
+      summary: 'Read a note through the vault API. For potentially large files use stats first, then line ranges; when truncated continue at nextStartLine. Read the full body only deliberately with sufficient maxChars.',
+      parameters: '`file?` note title or `path?` exact vault-relative path (one required); `mode?` content|stats; `startLine?`/`endLine?` inclusive; `maxChars?` content cap.',
+    },
     parameters: {
       type: 'object',
       properties: {

@@ -1,4 +1,5 @@
 import { parseSlashCommandContent } from '@pivi/pivi-agent-core/skills/slashCommand';
+import { RESERVED_COMMAND_IDS } from '@pivi/pivi-agent-core/skills/commands/slashCommandIds';
 import { PiSlashCommandCatalog } from '@/app/workspace/PiSlashCommandCatalog';
 import type { FileStore } from "@pivi/pivi-agent-core/ports";
 import type PiviPlugin from "@/main";
@@ -231,6 +232,44 @@ Explain this: {{selected_text}}`,
     ]));
   });
 
+  it('shadows reserved workspace files without reading or mutating their bytes', async () => {
+    const reservedBytes = new Map([...RESERVED_COMMAND_IDS].map(id => [
+      `.pivi/commands/${id}.md`,
+      `legacy bytes for ${id}`,
+    ]));
+    const store = createMemoryCommandStore(Object.fromEntries(reservedBytes));
+    const memoryCatalog = new PiSlashCommandCatalog(mockPlugin, store.adapter, {
+      isImageGenerationEnabled: () => true,
+      createIntegrationKey: () => 'generated-key',
+    });
+
+    await memoryCatalog.prepareWorkspace();
+    expect(await memoryCatalog.listWorkspaceEntries()).toEqual([]);
+    const dropdown = await memoryCatalog.listDropdownEntries({ includeBuiltIns: true });
+    for (const [path, bytes] of reservedBytes) {
+      expect(store.files.get(path)).toBe(bytes);
+      expect(dropdown.filter(entry => entry.id === commandId(path))).toHaveLength(1);
+    }
+  });
+
+  it.each([...RESERVED_COMMAND_IDS])('rejects reserved /%s from Settings and Agent writes', async (id) => {
+    const snapshot = await catalog.getWorkspaceSnapshot();
+    const entry = { ...snapshot.entries[0]!, id, name: id };
+
+    await expect(catalog.saveWorkspaceEntry(entry, snapshot.catalogRevision))
+      .rejects.toMatchObject({ code: 'not_eligible' });
+    await expect(catalog.renameWorkspaceEntry(snapshot.entries[0]!, entry, snapshot.catalogRevision))
+      .rejects.toMatchObject({ code: 'not_eligible' });
+    await expect(catalog.executeCommands({
+      action: 'upsert', id, content: 'must not write', catalogRevision: snapshot.catalogRevision,
+    })).rejects.toMatchObject({ code: 'not_eligible' });
+    await expect(catalog.executeCommands({
+      action: 'remove', id, catalogRevision: snapshot.catalogRevision,
+    })).rejects.toMatchObject({ code: 'not_eligible' });
+    expect(mockAdapter.write).not.toHaveBeenCalled();
+    expect(mockAdapter.delete).not.toHaveBeenCalled();
+  });
+
   it("adds the image generation tool only when it is enabled", async () => {
     const imageCatalog = new PiSlashCommandCatalog(mockPlugin, mockAdapter, {
       isImageGenerationEnabled: () => true,
@@ -257,6 +296,12 @@ Explain this: {{selected_text}}`,
   });
 
   it("saves custom vault templates to files", async () => {
+    const store = createMemoryCommandStore({
+      ".pivi/commands/explain.md": COMMAND_BYTES,
+    });
+    const memoryCatalog = new PiSlashCommandCatalog(mockPlugin, store.adapter, {
+      createIntegrationKey: () => 'generated-key',
+    });
     const newEntry = {
       id: "critique",
       kind: "command" as const,
@@ -272,15 +317,10 @@ Explain this: {{selected_text}}`,
       insertPrefix: "/",
     };
 
-    const snapshot = await catalog.getWorkspaceSnapshot();
-    await catalog.saveWorkspaceEntry(newEntry, snapshot.catalogRevision);
-    expect(mockAdapter.write).toHaveBeenCalledWith(
-      expect.stringMatching(/^\.pivi\/commands\/critique\.md\.tmp-/),
+    const snapshot = await memoryCatalog.getWorkspaceSnapshot();
+    await memoryCatalog.saveWorkspaceEntry(newEntry, snapshot.catalogRevision);
+    expect(store.files.get('.pivi/commands/critique.md')).toEqual(
       expect.stringMatching(/description: Critique text[\s\S]*argument-hint: text[\s\S]*integration-key: generated-key/),
-    );
-    expect(mockAdapter.rename).toHaveBeenCalledWith(
-      expect.stringMatching(/^\.pivi\/commands\/critique\.md\.tmp-/),
-      ".pivi/commands/critique.md",
     );
   });
 
@@ -313,6 +353,60 @@ Explain this: {{selected_text}}`,
     mockPlugin.settings.workspaceCommandOrder = ['explain'];
     const reordered = await catalog.executeCommands({ action: 'list' }) as { catalogRevision: number };
     expect(reordered.catalogRevision).not.toBe(bodyEdit.catalogRevision);
+  });
+
+  it("keeps the revision for unchanged scans and advances it for every distinct fingerprint", async () => {
+    let bytes = `---\nintegration-key: stable-key\n---\nFirst body`;
+    mockAdapter.read.mockImplementation(async () => bytes);
+    const first = await catalog.executeCommands({ action: 'list' }) as { catalogRevision: number };
+    const unchanged = await catalog.executeCommands({ action: 'list' }) as { catalogRevision: number };
+    expect(unchanged.catalogRevision).toBe(first.catalogRevision);
+
+    bytes = bytes.replace('First body', 'Second body');
+    const second = await catalog.executeCommands({ action: 'list' }) as { catalogRevision: number };
+    bytes = bytes.replace('Second body', 'Third body');
+    const third = await catalog.executeCommands({ action: 'list' }) as { catalogRevision: number };
+    expect(second.catalogRevision).toBe(first.catalogRevision + 1);
+    expect(third.catalogRevision).toBe(second.catalogRevision + 1);
+  });
+
+  it.each(['Settings', 'Agent'])('%s upserts preserve leading and trailing prompt whitespace bytes', async (surface) => {
+    const store = createMemoryCommandStore({ '.pivi/commands/explain.md': COMMAND_BYTES });
+    const memoryCatalog = new PiSlashCommandCatalog(mockPlugin, store.adapter, {
+      createIntegrationKey: () => 'generated-key',
+    });
+    const content = '\n  Keep these prompt bytes.  \n\n';
+    const snapshot = await memoryCatalog.getWorkspaceSnapshot();
+
+    if (surface === 'Settings') {
+      await memoryCatalog.saveWorkspaceEntry({ ...snapshot.entries[0]!, content }, snapshot.catalogRevision);
+    } else {
+      await memoryCatalog.executeCommands({
+        action: 'upsert', id: 'explain', content, catalogRevision: snapshot.catalogRevision,
+      });
+    }
+
+    const persisted = store.files.get('.pivi/commands/explain.md')!;
+    expect(persisted.endsWith(`---\n${content}`)).toBe(true);
+    expect(parseSlashCommandContent(persisted).promptContent).toBe(content);
+  });
+
+  it('rejects an approved Agent plan after a watcher-visible change without writing', async () => {
+    const store = createMemoryCommandStore({ '.pivi/commands/explain.md': COMMAND_BYTES });
+    const memoryCatalog = new PiSlashCommandCatalog(mockPlugin, store.adapter, {
+      createIntegrationKey: () => 'generated-key',
+    });
+    const snapshot = await memoryCatalog.getWorkspaceSnapshot();
+    const plan = await memoryCatalog.planCommands({
+      action: 'upsert', id: 'explain', content: 'Approved body', catalogRevision: snapshot.catalogRevision,
+    });
+
+    store.files.set('.pivi/commands/explain.md', COMMAND_BYTES.replace('Explain this:', 'Watcher edit:'));
+    (store.adapter.write as jest.Mock).mockClear();
+    await expect(memoryCatalog.commitCommands(plan, snapshot.catalogRevision))
+      .rejects.toMatchObject({ code: 'state_changed' });
+    expect(store.adapter.write).not.toHaveBeenCalled();
+    expect(store.files.get('.pivi/commands/explain.md')).toContain('Watcher edit:');
   });
 
   it("rejects stale upsert, remove, and move revisions without overwriting newer bytes", async () => {
@@ -552,6 +646,10 @@ argumentHint: code
 integration-key: generated-key
 ---
 Explain this: {{selected_text}}`;
+
+function commandId(path: string): string {
+  return path.split('/').at(-1)!.slice(0, -3);
+}
 
 function createMemoryCommandStore(initial: Record<string, string>): {
   files: Map<string, string>;
