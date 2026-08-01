@@ -8,6 +8,7 @@ import {
   type BashAuthorizationGrant,
   createExactBashGrant,
   createPrefixBashGrant,
+  decodeBashGrant,
   encodeBashGrant,
   matchBashAuthorization,
 } from '../tools/bashAuthorization';
@@ -86,7 +87,7 @@ export class CapabilitySessionGrants {
    */
   rememberBashAllowEntry(grant: BashAuthorizationGrant | string): void {
     if (typeof grant === 'string') {
-      const parsed = createPrefixBashGrant(grant, '/bin/sh');
+      const parsed = decodeBashGrant(grant, '/bin/sh');
       if (!parsed) return;
       grant = parsed;
     }

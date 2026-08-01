@@ -736,6 +736,27 @@ describe('obsidian tool input hardening', () => {
       .rejects.toThrow('pivi_skills');
   });
 
+  it('allows append to create a daily note that does not exist yet', async () => {
+    const deps = makeDeps();
+    (deps.vault.resolveFile as jest.Mock).mockReturnValue(null);
+    (deps.cli.run as jest.Mock)
+      .mockResolvedValueOnce('notes/new-daily.md')
+      .mockResolvedValueOnce('created');
+    const tool = createDailyTool(deps);
+
+    await expect(tool.execute('call', {
+      action: 'append',
+      content: 'first entry',
+    })).resolves.toMatchObject({
+      details: { action: 'append' },
+    });
+    expect(deps.vault.resolveFile).not.toHaveBeenCalled();
+    expect(deps.cli.run).toHaveBeenNthCalledWith(2, {
+      vaultName: 'vault',
+      args: ['daily:append', 'content=first entry'],
+    });
+  });
+
   it('rejects invalid graph actions and limits before metadata access', async () => {
     const deps = makeDeps();
     const tool = createGraphTool(deps);

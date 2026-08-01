@@ -110,6 +110,7 @@ flowchart LR
 | `workspace/serviceContracts.ts` | Workspace-construction host contracts (`PiviWorkspaceHost`) shared by service providers |
 | `workspace/PiSlashCommandCatalog.ts` | Vault watcher and slash catalog composition over workspace commands, skills, MCP servers/tools, and built-in tool entries |
 | `workspace/WorkspaceCommandsCoordinator.ts` | Workspace-command snapshot/revision, validated plans, CAS commits, persistence, and ordering |
+| `workspace/vaultSkillsMetadataPort.ts` | Default-bundle settings bookkeeping port for the skills coordinator; runs inside the publication transaction with settings compensation on save failure |
 | `workspace/obsidianHttpRequest.ts` | Adapts Obsidian HTTP into custom-provider composition without leaking host networking into the Pi engine |
 | `workspace/piUiFacades.ts` | Settings/model/auth facades for product UI |
 | `commandRegistration.ts` / `viewRegistration.ts` / `settingsRegistration.ts` | App → UI mount points |

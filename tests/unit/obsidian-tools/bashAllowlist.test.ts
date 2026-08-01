@@ -1,7 +1,12 @@
 import {
   matchBashCommandAllowlist,
 } from '@pivi/obsidian-tools';
-import { tokenizeBashArgv } from '@pivi/pivi-agent-core/tools';
+import {
+  createPrefixBashGrant,
+  decodeBashGrant,
+  encodeBashGrant,
+  tokenizeBashArgv,
+} from '@pivi/pivi-agent-core/tools';
 
 describe('bashAllowlist shell-aware matching', () => {
   it('tokenizes quoted argv literally', () => {
@@ -58,5 +63,19 @@ describe('bashAllowlist shell-aware matching', () => {
   it('preserves POSIX double-quote backslashes instead of over-unescaping', () => {
     expect(tokenizeBashArgv('printf "a\\qb"')).toEqual(['printf', 'a\\qb']);
     expect(tokenizeBashArgv('printf "a\\\\b"')).toEqual(['printf', 'a\\b']);
+  });
+
+  it('round-trips prefix grants with shell-literal JSON-sensitive argv', () => {
+    const command = "printf '$VAR' '`tick`' 'a\\\\b' 'json \"quote\"'";
+    const grant = createPrefixBashGrant(command, '/bin/sh');
+    expect(grant).toEqual({
+      kind: 'argv-prefix',
+      argv: ['printf', '$VAR', '`tick`', 'a\\\\b', 'json "quote"'],
+    });
+    if (!grant) throw new Error('Expected a prefix grant');
+
+    const encoded = encodeBashGrant(grant);
+    expect(decodeBashGrant(encoded, '/bin/sh')).toEqual(grant);
+    expect(matchBashCommandAllowlist(command, [encoded], '/bin/sh')).toBe(true);
   });
 });

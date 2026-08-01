@@ -149,6 +149,66 @@ Explain this: {{selected_text}}`,
     expect(entries.map((entry) => entry.id)).toEqual(["gamma", "alpha", "beta"]);
   });
 
+  it("keeps existing workspace commands with legacy non-slug ids visible", async () => {
+    const store = createMemoryCommandStore({
+      ".pivi/commands/review notes.md": COMMAND_BYTES,
+      ".pivi/commands/复盘.md": COMMAND_BYTES,
+    });
+    const memoryCatalog = new PiSlashCommandCatalog(mockPlugin, store.adapter, {
+      createIntegrationKey: () => 'generated-key',
+    });
+
+    const snapshot = await memoryCatalog.getWorkspaceSnapshot();
+    expect(snapshot.entries.map(entry => entry.id)).toEqual(["review notes", "复盘"]);
+  });
+
+  it("updates workspace command order when renaming a command", async () => {
+    mockPlugin.settings.workspaceCommandOrder = ["first", "second"];
+    mockPlugin.saveSettings = jest.fn().mockResolvedValue(undefined);
+    const store = createMemoryCommandStore({
+      ".pivi/commands/first.md": COMMAND_BYTES,
+      ".pivi/commands/second.md": COMMAND_BYTES,
+    });
+    const memoryCatalog = new PiSlashCommandCatalog(mockPlugin, store.adapter, {
+      createIntegrationKey: () => 'generated-key',
+    });
+
+    const snapshot = await memoryCatalog.getWorkspaceSnapshot();
+    const first = snapshot.entries.find(entry => entry.id === "first")!;
+    await memoryCatalog.renameWorkspaceEntry(
+      first,
+      { ...first, id: "renamed", name: "renamed" },
+      snapshot.catalogRevision,
+    );
+
+    expect(mockPlugin.settings.workspaceCommandOrder).toEqual(["renamed", "second"]);
+    expect((await memoryCatalog.listWorkspaceEntries()).map(entry => entry.id)).toEqual(["renamed", "second"]);
+  });
+
+  it("rolls back the renamed file and order when order persistence fails", async () => {
+    mockPlugin.settings.workspaceCommandOrder = ["first", "second"];
+    mockPlugin.saveSettings = jest.fn().mockRejectedValue(new Error("settings unavailable"));
+    const store = createMemoryCommandStore({
+      ".pivi/commands/first.md": COMMAND_BYTES,
+      ".pivi/commands/second.md": COMMAND_BYTES,
+    });
+    const memoryCatalog = new PiSlashCommandCatalog(mockPlugin, store.adapter, {
+      createIntegrationKey: () => 'generated-key',
+    });
+
+    const snapshot = await memoryCatalog.getWorkspaceSnapshot();
+    const first = snapshot.entries.find(entry => entry.id === "first")!;
+    await expect(memoryCatalog.renameWorkspaceEntry(
+      first,
+      { ...first, id: "renamed", name: "renamed" },
+      snapshot.catalogRevision,
+    )).rejects.toThrow("settings unavailable");
+
+    expect(mockPlugin.settings.workspaceCommandOrder).toEqual(["first", "second"]);
+    expect(store.files.has(".pivi/commands/first.md")).toBe(true);
+    expect(store.files.has(".pivi/commands/renamed.md")).toBe(false);
+  });
+
   it("loads legacy templates when no command file exists", async () => {
     mockAdapter.listFiles.mockImplementation(async (folder: string) => {
       if (folder === ".pivi/templates") {

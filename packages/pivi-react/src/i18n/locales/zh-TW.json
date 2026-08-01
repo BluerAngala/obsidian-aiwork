@@ -790,7 +790,8 @@
           "remove": "{name} 已移除。",
           "enable": "{name} 已啟用。",
           "disable": "{name} 已停用。"
-        }
+        },
+        "partialFailure": "技能已儲存，但部分後續作業失敗。"
       }
     },
     "slashCommandsUi": {

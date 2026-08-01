@@ -790,7 +790,8 @@
           "remove": "{name} を削除しました。",
           "enable": "{name} を有効にしました。",
           "disable": "{name} を無効にしました。"
-        }
+        },
+        "partialFailure": "スキルは保存されましたが、一部の後続処理に失敗しました。"
       }
     },
     "slashCommandsUi": {

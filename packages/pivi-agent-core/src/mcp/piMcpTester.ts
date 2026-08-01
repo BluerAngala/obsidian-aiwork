@@ -113,7 +113,22 @@ export async function testPiMcpServer(
         }),
       );
     } catch {
+      if (controller.signal.aborted) {
+        return {
+          success: false,
+          tools: [],
+          error: signal?.aborted ? "Connection aborted" : "Connection timeout (10s)",
+        };
+      }
       logger.warn('MCP test tool listing failed');
+    }
+
+    if (controller.signal.aborted) {
+      return {
+        success: false,
+        tools: [],
+        error: signal?.aborted ? "Connection aborted" : "Connection timeout (10s)",
+      };
     }
 
     return {

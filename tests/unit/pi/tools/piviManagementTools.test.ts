@@ -194,6 +194,36 @@ describe('pivi management runtime validation', () => {
     })).toThrow('unsafe field');
   });
 
+  it('preserves omitted OAuth fields while allowing an explicit client-secret clear', () => {
+    const clearInput = parsePiviMcpInput({
+      action: 'upsert',
+      name: 'srv',
+      server: {
+        type: 'http',
+        url: 'https://example.com',
+        oauth: { clearClientSecret: true },
+      },
+    });
+    expect(clearInput).toMatchObject({
+      server: { oauth: { clearClientSecret: true } },
+    });
+    const partialInput = parsePiviMcpInput({
+      action: 'upsert',
+      name: 'srv',
+      server: {
+        type: 'http',
+        url: 'https://example.com',
+        oauth: { clientId: 'client-id' },
+      },
+    });
+    expect(partialInput).toMatchObject({
+      server: { oauth: { clientId: 'client-id' } },
+    });
+    if (clearInput.action !== 'upsert') throw new Error('Expected an MCP upsert');
+    if (!('oauth' in clearInput.server)) throw new Error('Expected a remote MCP server');
+    expect(clearInput.server.oauth).toEqual({ clearClientSecret: true });
+  });
+
   it('rejects Skill content/source-tree/destination fields', () => {
     expect(() => parsePiviSkillsInput({
       action: 'install',

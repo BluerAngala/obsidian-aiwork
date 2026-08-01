@@ -1,6 +1,7 @@
 import type { SlashCommand } from '@pivi/pivi-agent-core/foundation';
 import type { SlashCommandDropdownConfig } from '@pivi/pivi-agent-core/skills/commands/slashCommandCatalog';
 import type { SlashCatalogEntry } from '@pivi/pivi-agent-core/skills/commands/slashCommandEntry';
+import { NEW_SESSION_COMMAND_ID } from '@pivi/pivi-agent-core/skills/commands/slashCommandIds';
 import { normalizeArgumentHint } from '@pivi/pivi-agent-core/skills/slashCommand';
 import { setIcon } from 'obsidian';
 
@@ -698,6 +699,10 @@ export class SlashCommandDropdown {
     if (selected.slashCommand) {
       this.callbacks.onSelect(selected.slashCommand);
     }
-    this.inputEl.focus();
+    // New-session selection activates another tab synchronously through the
+    // callback; do not return focus to the input belonging to the old tab.
+    if (selected.slashCommand?.id !== NEW_SESSION_COMMAND_ID) {
+      this.inputEl.focus();
+    }
   }
 }

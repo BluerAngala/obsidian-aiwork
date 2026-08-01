@@ -46,7 +46,7 @@ export interface AppMcpToolProvider {
   dispose(): Promise<void>;
   invalidate?(serverName?: string): void;
   invalidateAll?(): void;
-  prefetchEnabledServers?(): Promise<void>;
+  prefetchEnabledServers?(signal?: AbortSignal): Promise<void>;
 }
 
 export interface AppMcpDiagnostics {

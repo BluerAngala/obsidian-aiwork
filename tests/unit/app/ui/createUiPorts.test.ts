@@ -1,6 +1,7 @@
 import type { PiviSettings } from '@pivi/pivi-agent-core/foundation';
 import { DEFAULT_PIVI_SETTINGS } from '@pivi/pivi-agent-core/foundation/settingsDefaults';
 import * as defaultSkillsRemote from '@pivi/pivi-agent-core/skills/vault/fetchDefaultVaultSkillsRemoteSha';
+import { SkillsManagementCoordinator } from '@pivi/pivi-agent-core/skills/vault/skillsManagementCoordinator';
 import { VaultSkillsService } from '@pivi/pivi-agent-core/skills/vault/vaultSkillsService';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -16,6 +17,22 @@ import {
 } from '@/app/ui/createUiPorts';
 import type { ChatUiCompositionHost } from '@/app/ui/createUiPorts';
 import { listObsidianCommands } from '@/app/ui/listObsidianCommands';
+import { createVaultSkillsMetadataPort } from '@/app/workspace/vaultSkillsMetadataPort';
+
+function createWorkspaceWithSkills(host: PiviSettingsHost, vaultPath: string) {
+  return {
+    credentialStore: null,
+    webSearchCredentialStore: null,
+    mcpStorage: {},
+    mcpToolProvider: {},
+    slashCommandCatalog: {},
+    skillsManagement: new SkillsManagementCoordinator({
+      service: new VaultSkillsService(vaultPath, { processRunner: host.processRunner }),
+      vaultPath,
+      metadata: createVaultSkillsMetadataPort(host),
+    }),
+  };
+}
 
 function createUiFacades(): PiviUiFacades {
   return {
@@ -470,13 +487,7 @@ describe('UI port adapters', () => {
       httpClient: {},
       processRunner: {},
     } as unknown as PiviSettingsHost;
-    const ports = createSettingsUiPorts(host, {
-      credentialStore: null,
-      webSearchCredentialStore: null,
-      mcpStorage: {},
-      mcpToolProvider: {},
-      slashCommandCatalog: {},
-    } as never);
+    const ports = createSettingsUiPorts(host, createWorkspaceWithSkills(host, vaultPath) as never);
 
     await ports.complex.skills.featuredBundle.install();
 
@@ -506,13 +517,7 @@ describe('UI port adapters', () => {
       httpClient: {},
       processRunner: {},
     } as unknown as PiviSettingsHost;
-    const ports = createSettingsUiPorts(host, {
-      credentialStore: null,
-      webSearchCredentialStore: null,
-      mcpStorage: {},
-      mcpToolProvider: {},
-      slashCommandCatalog: {},
-    } as never);
+    const ports = createSettingsUiPorts(host, createWorkspaceWithSkills(host, vaultPath) as never);
 
     await expect(ports.complex.skills.featuredBundle.install()).rejects.toThrow('install failed');
 
@@ -545,13 +550,7 @@ describe('UI port adapters', () => {
       httpClient: {},
       processRunner: {},
     } as unknown as PiviSettingsHost;
-    const ports = createSettingsUiPorts(host, {
-      credentialStore: null,
-      webSearchCredentialStore: null,
-      mcpStorage: {},
-      mcpToolProvider: {},
-      slashCommandCatalog: {},
-    } as never);
+    const ports = createSettingsUiPorts(host, createWorkspaceWithSkills(host, vaultPath) as never);
 
     await ports.complex.skills.featuredBundle.update();
 
@@ -583,13 +582,7 @@ describe('UI port adapters', () => {
       httpClient: {},
       processRunner: {},
     } as unknown as PiviSettingsHost;
-    const ports = createSettingsUiPorts(host, {
-      credentialStore: null,
-      webSearchCredentialStore: null,
-      mcpStorage: {},
-      mcpToolProvider: {},
-      slashCommandCatalog: {},
-    } as never);
+    const ports = createSettingsUiPorts(host, createWorkspaceWithSkills(host, vaultPath) as never);
 
     await ports.complex.skills.remove('obsidian-cli');
     await ports.complex.skills.remove('custom-skill');

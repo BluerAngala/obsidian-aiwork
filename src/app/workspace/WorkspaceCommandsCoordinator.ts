@@ -28,30 +28,42 @@ export interface WorkspaceCommandSnapshot {
   readonly catalogRevision: number;
 }
 
+export interface WorkspaceCommandScan {
+  readonly entries: readonly SlashCatalogEntry[];
+  readonly fingerprint: string;
+}
+
+export type WorkspaceCommandScanner = () => Promise<WorkspaceCommandScan>;
+
 export type WorkspaceCommandsMutation = Extract<PiviCommandsInput, { action: 'upsert' | 'remove' | 'move' }>;
 export interface WorkspaceCommandsPlan {
   readonly revision: number;
   readonly mutation: WorkspaceCommandsMutation;
 }
 
-/** Owns all command mutation policy and persistence; the catalog supplies only scanning/refresh. */
+/** Workspace-command ids are path-safe slugs, with dots retained for round-trip fidelity. */
+export function isValidWorkspaceCommandId(id: string): boolean {
+  return /^[a-z0-9][a-z0-9._-]{0,127}$/i.test(id);
+}
+
+/** Owns the command snapshot, revision, mutation policy, lock, and persistence. */
 export class WorkspaceCommandsCoordinator {
   private entries: SlashCatalogEntry[] = [];
   private fingerprint: string | undefined;
   private revision = 0;
-  private refreshCatalog: (() => Promise<void>) | undefined;
   private runtimeIds = new Set<string>();
 
   constructor(
     private readonly host: PiviWorkspaceHost,
     private readonly store: FileStore,
     private readonly createKey: () => string = () => randomUUID(),
+    private readonly scanCatalog: WorkspaceCommandScanner,
+    private readonly onEntriesChanged?: (entries: readonly SlashCatalogEntry[]) => void,
   ) {}
 
-  connectCatalog(refresh: () => Promise<void>): void { this.refreshCatalog = refresh; }
   setRuntimeIds(ids: readonly string[]): void { this.runtimeIds = new Set(ids); }
 
-  acceptCatalogScan(entries: readonly SlashCatalogEntry[], fingerprint: string): boolean {
+  private acceptCatalogScan(entries: readonly SlashCatalogEntry[], fingerprint: string): boolean {
     const changed = fingerprint !== this.fingerprint;
     if (changed && this.revision === Number.MAX_SAFE_INTEGER) {
       throw new RangeError('Workspace command catalog revision space is exhausted.');
@@ -60,12 +72,17 @@ export class WorkspaceCommandsCoordinator {
     if (changed) {
       this.fingerprint = fingerprint;
       this.revision += 1;
+      this.onEntriesChanged?.(this.currentEntries());
     }
     return changed;
   }
 
   currentEntries(): SlashCatalogEntry[] { return this.entries.map(entry => ({ ...entry })); }
   currentRevision(): number { return this.revision; }
+
+  async withMutationLock<T>(operation: () => Promise<T>): Promise<T> {
+    return runSerializedSave(COMMANDS_MUTATION_KEY, operation);
+  }
 
   async snapshot(): Promise<WorkspaceCommandSnapshot> {
     await this.refresh();
@@ -78,6 +95,9 @@ export class WorkspaceCommandsCoordinator {
     this.requireRevision(input.catalogRevision);
     const id = input.id.trim();
     if (!id || id !== input.id) throw new PiviCommandsManagementError('invalid_input', 'Command id must be non-empty and trimmed.');
+    if (!isValidWorkspaceCommandId(id)) {
+      throw new PiviCommandsManagementError('invalid_input', 'Command id must be a path-safe slug.');
+    }
     this.assertAvailable(id);
     if (input.action === 'upsert') {
       if (input.name !== undefined && input.name !== id) {
@@ -105,14 +125,14 @@ export class WorkspaceCommandsCoordinator {
   }
 
   async commit(plan: WorkspaceCommandsPlan, expectedRevision: number, signal?: AbortSignal): Promise<PiviManagementMutationResult<AgentCommandDetail>> {
-    return runSerializedSave(COMMANDS_MUTATION_KEY, async () => {
+    return this.withMutationLock(async () => {
       throwIfAborted(signal);
-      await this.refresh();
+      await this.refreshWithoutLock();
       if (plan.revision !== expectedRevision) throw new PiviCommandsManagementError('state_changed', 'Command plan revision changed.');
       this.requireRevision(expectedRevision);
       const mutation = plan.mutation;
       this.assertAvailable(mutation.id);
-      await this.refresh();
+      await this.refreshWithoutLock();
       this.requireRevision(expectedRevision);
       throwIfAborted(signal);
       if (mutation.action === 'upsert') return this.commitUpsert(mutation);
@@ -134,21 +154,26 @@ export class WorkspaceCommandsCoordinator {
     return this.commit(await this.plan({ action: 'remove', id: entry.id, catalogRevision: revision }), revision);
   }
 
-  async saveOrder(ids: readonly string[], revision: number): Promise<void> {
-    await runSerializedSave(COMMANDS_MUTATION_KEY, async () => {
-      await this.refresh(); this.requireRevision(revision);
+  async saveOrder(ids: readonly string[], revision: number): Promise<WorkspaceCommandSnapshot> {
+    await this.withMutationLock(async () => {
+      await this.refreshWithoutLock(); this.requireRevision(revision);
       const eligible = new Set(this.entries.map(entry => entry.id));
       if (ids.length !== eligible.size || new Set(ids).size !== ids.length || ids.some(id => !eligible.has(id))) {
         throw new PiviCommandsManagementError('state_changed', 'Command order no longer matches the current catalog.');
       }
       await this.persistOrder([...ids]);
-      await this.refresh();
+      await this.refreshWithoutLock();
     });
+    return { entries: this.currentEntries(), catalogRevision: this.revision };
   }
 
   async renameEntry(previous: SlashCatalogEntry, entry: SlashCatalogEntry, revision: number): Promise<void> {
-    await runSerializedSave(COMMANDS_MUTATION_KEY, async () => {
-      await this.refresh(); this.requireRevision(revision); this.assertAvailable(entry.id);
+    await this.withMutationLock(async () => {
+      await this.refreshWithoutLock(); this.requireRevision(revision);
+      if (!isValidWorkspaceCommandId(entry.id)) {
+        throw new PiviCommandsManagementError('invalid_input', 'Command id must be a path-safe slug.');
+      }
+      this.assertAvailable(entry.id);
       const existing = this.entries.find(candidate => candidate.id === previous.id);
       if (!existing || this.entries.some(candidate => candidate.id === entry.id && candidate.id !== previous.id)) {
         throw new PiviCommandsManagementError('state_changed', 'Command catalog changed; list commands and retry.');
@@ -156,18 +181,28 @@ export class WorkspaceCommandsCoordinator {
       const oldPath = existing.persistenceKey?.startsWith('legacy-template:') ? `${LEGACY_TEMPLATES_DIR}/${previous.id}.md` : `${COMMANDS_DIR}/${previous.id}.md`;
       const newPath = `${COMMANDS_DIR}/${entry.id}.md`;
       const backup = `${oldPath}.rename-${Date.now().toString(36)}`;
+      const previousOrder = this.host.settings.workspaceCommandOrder;
+      const nextOrder = previousOrder?.map(id => id === previous.id ? entry.id : id);
+      let orderPersisted = false;
       const command: SlashCommand = { ...entry, kind: 'command', argumentHint: entry.argumentHint?.trim() || entry.name,
         integrationKey: existing.integrationKey ?? this.createKey() };
       await this.store.rename(oldPath, backup);
       try {
         await writeFileAtomically(this.store, newPath, serializeSlashCommandMarkdown(command, entry.content));
+        if (nextOrder && !arraysEqual(nextOrder, previousOrder)) {
+          await this.persistOrder(nextOrder);
+          orderPersisted = true;
+        }
         await this.store.delete(backup);
       } catch (error) {
+        if (orderPersisted) {
+          await this.persistOrder(previousOrder).catch(() => undefined);
+        }
         if (await this.store.exists(newPath)) await this.store.delete(newPath).catch(() => undefined);
         await this.store.rename(backup, oldPath).catch(() => undefined);
         throw error;
       }
-      await this.refresh();
+      await this.refreshWithoutLock();
     });
   }
 
@@ -200,15 +235,15 @@ export class WorkspaceCommandsCoordinator {
     return this.refreshResult(input.id);
   }
 
-  private async persistOrder(ids: string[]): Promise<void> {
+  private async persistOrder(ids: readonly string[]): Promise<void> {
     const previous = this.host.settings.workspaceCommandOrder;
-    this.host.settings.workspaceCommandOrder = ids;
+    this.host.settings.workspaceCommandOrder = [...ids];
     try { await this.host.saveSettings(); } catch (error) { this.host.settings.workspaceCommandOrder = previous; throw error; }
   }
 
   private async refreshResult(id?: string): Promise<PiviManagementMutationResult<AgentCommandDetail>> {
     try {
-      await this.refresh();
+      await this.refreshWithoutLock();
       if (!id) return { saved: true, refreshed: true };
       const entry = this.entries.find(candidate => candidate.id === id);
       if (!entry) throw new PiviCommandsManagementError('not_found', `Command /${id} was not found.`);
@@ -218,10 +253,19 @@ export class WorkspaceCommandsCoordinator {
     } catch { return { saved: true, refreshed: false, refreshFailures: [{ target: 'commands:catalog', message: 'Runtime refresh failed.' }] }; }
   }
 
-  private async refresh(): Promise<void> {
-    if (!this.refreshCatalog) throw new Error('Workspace commands coordinator is not connected to its catalog.');
+  async refresh(): Promise<void> {
+    await this.withMutationLock(() => this.refreshWithoutLock());
+  }
+
+  /** Called by preparation and already-serialized mutations. */
+  async refreshWithoutLock(): Promise<void> {
+    await this.recoverTransactionsWithoutLock();
+    const scan = await this.scanCatalog();
+    this.acceptCatalogScan(scan.entries, scan.fingerprint);
+  }
+
+  async recoverTransactionsWithoutLock(): Promise<void> {
     await recoverCommandRemovalTransactions(this.store);
-    await this.refreshCatalog();
   }
   private requireRevision(expected: number): void {
     if (expected !== this.revision) throw new PiviCommandsManagementError('state_changed', 'Command catalog changed; list commands and retry.');
@@ -229,6 +273,10 @@ export class WorkspaceCommandsCoordinator {
   private assertAvailable(id: string): void {
     if (isReservedCommandId(id) || this.runtimeIds.has(id)) throw new PiviCommandsManagementError('not_eligible', `Command /${id} is not eligible for workspace management.`);
   }
+}
+
+function arraysEqual(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
 function throwIfAborted(signal?: AbortSignal): void {

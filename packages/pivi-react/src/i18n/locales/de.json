@@ -790,7 +790,8 @@
           "remove": "{name} entfernt.",
           "enable": "{name} aktiviert.",
           "disable": "{name} deaktiviert."
-        }
+        },
+        "partialFailure": "Skills wurden gespeichert, aber einige Folgearbeiten sind fehlgeschlagen."
       }
     },
     "slashCommandsUi": {

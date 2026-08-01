@@ -40,6 +40,7 @@ interface ServerConnection {
   tools: McpTool[];
   activeCalls: number;
   retired: boolean;
+  abortController: AbortController;
   closePromise?: Promise<void>;
   drainPromise?: Promise<void>;
   resolveDrain?: () => void;
@@ -58,6 +59,24 @@ function mergeBearerHeaders(
   return {
     ...headers,
     Authorization: headers?.Authorization ?? `Bearer ${bearerToken}`,
+  };
+}
+
+function combineAbortSignals(
+  signals: readonly (AbortSignal | undefined)[],
+): { signal: AbortSignal | undefined; dispose: () => void } {
+  const active = signals.filter((signal): signal is AbortSignal => !!signal);
+  if (active.length === 0) return { signal: undefined, dispose: () => undefined };
+  const controller = new AbortController();
+  const listeners = active.map((signal) => {
+    const abort = () => controller.abort(signal.reason);
+    if (signal.aborted) abort();
+    signal.addEventListener('abort', abort, { once: true });
+    return { signal, abort };
+  });
+  return {
+    signal: controller.signal,
+    dispose: () => listeners.forEach(({ signal, abort }) => signal.removeEventListener('abort', abort)),
   };
 }
 
@@ -179,6 +198,9 @@ export class PiMcpConnectionPool {
   private readonly connectPromises = new Map<string, PendingConnection>();
   private readonly pendingConnections = new Set<Promise<ServerConnection>>();
   private readonly retiredDrains = new Set<Promise<void>>();
+  private readonly pendingProbes = new Set<Promise<McpTool[]>>();
+  private readonly probeControllers = new Map<string, Set<AbortController>>();
+  private readonly disposeAbortController = new AbortController();
   private readonly serverGenerations = new Map<string, number>();
   private generation = 0;
   private disposed = false;
@@ -202,11 +224,12 @@ export class PiMcpConnectionPool {
     signal?: AbortSignal,
   ): Promise<string> {
     const connection = await this.acquire(server, signal);
+    const combined = combineAbortSignals([signal, connection.abortController.signal]);
     try {
       const result = await connection.client.callTool(
         { name: toolName, arguments: args },
         undefined,
-        { signal },
+        combined.signal ? { signal: combined.signal } : undefined,
       );
 
       const parts: string[] = [];
@@ -234,6 +257,7 @@ export class PiMcpConnectionPool {
 
       return parts.join("\n") || "(empty result)";
     } finally {
+      combined.dispose();
       await this.release(connection);
     }
   }
@@ -242,20 +266,44 @@ export class PiMcpConnectionPool {
    * One-shot non-authenticating inventory connect (headers/bearer only).
    * Does not attach an OAuth client provider and does not persist tokens.
    */
-  async probe(server: ManagedMcpServer): Promise<McpTool[]> {
-    const result = await testPiMcpServer(
-      server,
-      this.fetch,
-      this.processEnv,
-      this.secretStorage,
-      this.stdioCwd,
+  async probe(server: ManagedMcpServer, signal?: AbortSignal): Promise<McpTool[]> {
+    const controller = new AbortController();
+    const controllers = this.probeControllers.get(server.name) ?? new Set<AbortController>();
+    controllers.add(controller);
+    this.probeControllers.set(server.name, controllers);
+    const combined = combineAbortSignals([
+      controller.signal,
+      this.disposeAbortController.signal,
+      signal,
+    ]);
+    const promise = (async () => {
+      try {
+        const result = await testPiMcpServer(
+          server,
+          this.fetch,
+          this.processEnv,
+          this.secretStorage,
+          this.stdioCwd,
+          combined.signal,
+        );
+        if (!result.success) {
+          throw new Error(
+            result.error ?? `Failed to reach MCP server "${server.name}"`,
+          );
+        }
+        return result.tools;
+      } finally {
+        combined.dispose();
+        controllers.delete(controller);
+        if (controllers.size === 0) this.probeControllers.delete(server.name);
+      }
+    })();
+    this.pendingProbes.add(promise);
+    void promise.then(
+      () => this.pendingProbes.delete(promise),
+      () => this.pendingProbes.delete(promise),
     );
-    if (!result.success) {
-      throw new Error(
-        result.error ?? `Failed to reach MCP server "${server.name}"`,
-      );
-    }
-    return result.tools;
+    return promise;
   }
 
   async close(serverName: string): Promise<void> {
@@ -266,14 +314,16 @@ export class PiMcpConnectionPool {
     if (connection) {
       this.trackRetirement(connection);
     }
+    this.abortProbes(serverName);
   }
 
-  async closeAll(): Promise<void> {
+  async closeAll(force = false): Promise<void> {
     this.generation += 1;
     const connections = [...this.connections.values()];
     this.connections.clear();
     this.connectPromises.clear();
-    connections.forEach(connection => this.trackRetirement(connection));
+    connections.forEach(connection => this.trackRetirement(connection, force));
+    for (const serverName of this.probeControllers.keys()) this.abortProbes(serverName);
   }
 
   async dispose(): Promise<void> {
@@ -281,8 +331,10 @@ export class PiMcpConnectionPool {
       return;
     }
     this.disposed = true;
-    await this.closeAll();
+    this.disposeAbortController.abort();
+    await this.closeAll(true);
     await Promise.allSettled([...this.pendingConnections]);
+    await Promise.allSettled([...this.pendingProbes]);
     await Promise.allSettled([...this.retiredDrains]);
   }
 
@@ -305,10 +357,11 @@ export class PiMcpConnectionPool {
       return pending.promise;
     }
 
+    const combined = combineAbortSignals([signal, this.disposeAbortController.signal]);
     const promise = this.acceptConnection(
       server.name,
       generation,
-      this.createConnection(server, signal),
+      this.createConnection(server, combined.signal).finally(combined.dispose),
     );
     const entry = { generation, promise };
     this.connectPromises.set(server.name, entry);
@@ -344,8 +397,9 @@ export class PiMcpConnectionPool {
     }
   }
 
-  private async retire(connection: ServerConnection): Promise<void> {
+  private async retire(connection: ServerConnection, force = false): Promise<void> {
     connection.retired = true;
+    if (force) connection.abortController.abort();
     if (connection.activeCalls === 0) {
       await this.closeConnection(connection);
       return;
@@ -353,11 +407,24 @@ export class PiMcpConnectionPool {
     connection.drainPromise ??= new Promise<void>((resolve) => {
       connection.resolveDrain = resolve;
     });
-    await connection.drainPromise;
+    if (!force) {
+      await connection.drainPromise;
+      return;
+    }
+    await Promise.race([
+      connection.drainPromise,
+      new Promise<void>((resolve) => {
+        window.setTimeout(resolve, 1000);
+      }),
+    ]);
+    if (connection.activeCalls > 0) {
+      await this.closeConnection(connection);
+      connection.resolveDrain?.();
+    }
   }
 
-  private trackRetirement(connection: ServerConnection): void {
-    const drain = this.retire(connection);
+  private trackRetirement(connection: ServerConnection, force = false): void {
+    const drain = this.retire(connection, force);
     this.retiredDrains.add(drain);
     void drain.finally(() => this.retiredDrains.delete(drain));
   }
@@ -440,6 +507,19 @@ export class PiMcpConnectionPool {
     const disabled = new Set(server.disabledTools ?? []);
     tools = tools.filter((tool) => !disabled.has(tool.name));
 
-    return { client, transport, tools, activeCalls: 0, retired: false };
+    return {
+      client,
+      transport,
+      tools,
+      activeCalls: 0,
+      retired: false,
+      abortController: new AbortController(),
+    };
+  }
+
+  private abortProbes(serverName: string): void {
+    for (const controller of this.probeControllers.get(serverName) ?? []) {
+      controller.abort();
+    }
   }
 }

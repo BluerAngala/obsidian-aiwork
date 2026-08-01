@@ -27,7 +27,10 @@ import { ModalLayer } from '../shared/ModalLayer';
 import { SettingsActionFeedback, SettingsItemActions, SettingsListHeader, SettingsPageDescription, SettingsRemoveButton } from './controls';
 
 function normalizeCommandName(value: string): string {
-  return value.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '');
+  return value.trim().toLowerCase()
+    .replace(/[^a-z0-9._-]/g, '')
+    .replace(/^[._-]+/g, '')
+    .slice(0, 128);
 }
 
 function commandKey(entry: SlashCatalogEntry): string {
@@ -495,6 +498,12 @@ export function CommandsTab({ ports }: { readonly ports: SettingsPorts }) {
       try {
         if (catalogRevision === null) throw new Error('Command catalog is not loaded.');
         await ports.complex.commands.saveWorkspaceOrder(ids, catalogRevision);
+        const snapshot = await ports.complex.commands.loadWorkspaceCatalog();
+        if (mounted.current) {
+          setEntries(snapshot.entries);
+          setCatalogRevision(snapshot.catalogRevision);
+          setOrder(snapshot.entries.map(entry => entry.id));
+        }
         return true;
       } catch (cause) {
         setOrder([...originalOrder]);

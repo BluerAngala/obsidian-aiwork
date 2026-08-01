@@ -27,7 +27,7 @@ const externalRequest: CapabilityApprovalRequest = {
 describe('resolveBashAllowlistPersistEntry', () => {
   it('uses the full command or first-token prefix', () => {
     expect(resolveBashAllowlistPersistEntry('ast-grep --version', 'full')).toBe('exact: ast-grep --version');
-    expect(resolveBashAllowlistPersistEntry('ast-grep --version', 'prefix')).toBe('prefix: "ast-grep"');
+    expect(resolveBashAllowlistPersistEntry('ast-grep --version', 'prefix')).toBe('prefix: ["ast-grep"]');
     expect(bashAllowlistPersistScopesDiffer('ast-grep --version')).toBe(true);
     expect(bashAllowlistPersistScopesDiffer('ast-grep')).toBe(false);
     expect(bashAllowlistPersistScopesDiffer('printf x | cat')).toBe(false);
@@ -142,7 +142,7 @@ describe('createCapabilityApprovalPort', () => {
       blockedPath: 'ast-grep --version',
     };
     await expect(port.requestApproval(versionRequest)).resolves.toEqual(result('allow-always', 'prefix'));
-    expect(persistBash).toHaveBeenCalledWith('prefix: "ast-grep"');
+    expect(persistBash).toHaveBeenCalledWith('prefix: ["ast-grep"]');
     expect(grants.hasSessionGrant(versionRequest)).toBe(true);
 
     persistBash.mockClear();

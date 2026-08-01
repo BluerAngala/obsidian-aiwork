@@ -91,8 +91,24 @@ describe('React commands settings', () => {
 
   it('reorders custom commands with the keyboard and saves the id order once on drop', async () => {
     const second: SlashCatalogEntry = { ...command, id: 'explain', name: 'explain', integrationKey: 'explain-key', persistenceKey: 'commands/explain.md' };
-    const saveWorkspaceOrder = jest.fn(async () => undefined);
-    renderCommands(createPorts([command, second], { saveWorkspaceOrder }));
+    let currentEntries: readonly SlashCatalogEntry[] = [command, second];
+    let currentRevision = 1;
+    const saveWorkspaceOrder = jest.fn(async (_ids: readonly string[], _revision: number) => undefined);
+    const saveWorkspaceEntry = jest.fn(async (entry: SlashCatalogEntry) => entry);
+    const loadWorkspaceCatalog = jest.fn(async () => ({
+      entries: currentEntries,
+      catalogRevision: currentRevision,
+    }));
+    const ports = createPorts([command, second], {
+      saveWorkspaceOrder: async (ids, revision) => {
+        saveWorkspaceOrder(ids, revision);
+        currentEntries = ids.map(id => currentEntries.find(entry => entry.id === id)!);
+        currentRevision = 2;
+      },
+      saveWorkspaceEntry,
+      loadWorkspaceCatalog,
+    });
+    renderCommands(ports);
 
     const handle = await screen.findByRole('button', { name: 'Reorder /review, currently position 1' });
     fireEvent.keyDown(handle, { key: ' ' });
@@ -104,6 +120,15 @@ describe('React commands settings', () => {
     expect(saveWorkspaceOrder).toHaveBeenCalledTimes(1);
     expect(saveWorkspaceOrder).toHaveBeenCalledWith(['explain', 'review'], 1);
     expect(screen.getByRole('button', { name: 'Reorder /review, currently position 2' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Edit command review'));
+    const card = screen.getByLabelText('Edit command review').closest('details') as HTMLElement;
+    fireEvent.change(card.querySelector('textarea')!, { target: { value: 'Updated after reorder' } });
+    fireEvent.click(within(card).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(saveWorkspaceEntry).toHaveBeenCalledWith(
+      expect.objectContaining({ content: 'Updated after reorder' }),
+      2,
+    ));
   });
 
   it('rolls the command order back when saving the order fails', async () => {

@@ -35,7 +35,7 @@ export function createPrefixBashGrant(command: string, shellPath: string): BashA
 export function encodeBashGrant(grant: BashAuthorizationGrant): string {
   return grant.kind === 'exact-shell'
     ? `${BASH_EXACT_ENTRY_PREFIX}${grant.command}`
-    : `${BASH_PREFIX_ENTRY_PREFIX}${grant.argv.map(token => JSON.stringify(token)).join(' ')}`;
+    : `${BASH_PREFIX_ENTRY_PREFIX}${JSON.stringify(grant.argv)}`;
 }
 
 export function decodeBashGrant(entry: string, shellPath: string): BashAuthorizationGrant | null {
@@ -46,7 +46,21 @@ export function decodeBashGrant(entry: string, shellPath: string): BashAuthoriza
   }
   if (normalized.startsWith(BASH_PREFIX_ENTRY_PREFIX)) {
     if (!isPosixCompatibleShell(shellPath)) return null;
-    return createPrefixBashGrant(normalized.slice(BASH_PREFIX_ENTRY_PREFIX.length), shellPath);
+    const encodedArgv = normalized.slice(BASH_PREFIX_ENTRY_PREFIX.length);
+    try {
+      const argv: unknown = JSON.parse(encodedArgv);
+      if (
+        Array.isArray(argv)
+        && argv.length > 0
+        && argv.every((token): token is string => typeof token === 'string')
+      ) {
+        return { kind: 'argv-prefix', argv };
+      }
+    } catch {
+      // Continue with the legacy token format below.
+    }
+    // Prefix entries written before the JSON-array format remain readable.
+    return createPrefixBashGrant(encodedArgv, shellPath);
   }
   // Legacy untagged entries retain prefix behavior only when the resolved shell
   // is known POSIX-compatible and both entry and candidate pass the safe parser.

@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 
+import { PluginLogger } from '../../foundation/pluginLogger';
 import type {
   AgentSkillSummary,
   PiviSkillsInput,
@@ -10,6 +11,7 @@ import type {
   PiviSkillsListResult,
 } from '../../tools/piviManagement';
 import { PiviManagementError } from '../../tools/piviManagement';
+import type { SkillsPublicationMetadata } from './skillPublicationTransaction';
 import { normalizeSkillSlug, type VaultSkillEntry, type VaultSkillsService } from './vaultSkillsService';
 
 export type SkillsManagementMutation = Exclude<PiviSkillsInput, { action: 'list' | 'list_remote' }>;
@@ -59,15 +61,42 @@ export interface SkillsManagementMetadataContext {
 const GENERIC_REFRESH_FAILURE = 'Runtime refresh failed.';
 const GENERIC_METADATA_FAILURE = 'Metadata refresh failed.';
 const GENERIC_SNAPSHOT_FAILURE = 'Skills snapshot refresh failed.';
+const logger = new PluginLogger('SkillsManagement');
 
 function packageMetadata(vaultPath: string): Record<string, SkillsLockEntry> {
   const lockPath = path.join(vaultPath, '.pivi', 'skills-lock.json');
   if (!fs.existsSync(lockPath)) return {};
   try {
     const parsed = JSON.parse(fs.readFileSync(lockPath, 'utf8')) as { skills?: unknown };
-    return parsed.skills && typeof parsed.skills === 'object'
-      ? parsed.skills as Record<string, SkillsLockEntry>
-      : {};
+    if (
+      !parsed
+      || typeof parsed !== 'object'
+      || !parsed.skills
+      || typeof parsed.skills !== 'object'
+      || Array.isArray(parsed.skills)
+    ) {
+      return {};
+    }
+    const valid: Record<string, SkillsLockEntry> = {};
+    for (const [name, value] of Object.entries(parsed.skills)) {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        logger.warn(`Skipped invalid skills-lock entry "${name}".`);
+        continue;
+      }
+      const candidate = value as { source?: unknown; skillPath?: unknown };
+      if (
+        (candidate.source !== undefined && typeof candidate.source !== 'string')
+        || (candidate.skillPath !== undefined && typeof candidate.skillPath !== 'string')
+      ) {
+        logger.warn(`Skipped invalid skills-lock entry "${name}".`);
+        continue;
+      }
+      valid[name] = {
+        ...(typeof candidate.source === 'string' ? { source: candidate.source } : {}),
+        ...(typeof candidate.skillPath === 'string' ? { skillPath: candidate.skillPath } : {}),
+      };
+    }
+    return valid;
   } catch {
     return {};
   }
@@ -123,8 +152,15 @@ export class SkillsManagementCoordinator {
 
   constructor(private readonly options: SkillsManagementCoordinatorOptions) {}
 
-  prepareWorkspace(): void {
-    this.options.service.prepareWorkspace();
+  async prepareWorkspace(): Promise<void> {
+    await this.options.service.prepareWorkspace((metadata) => {
+      if (!this.options.metadata) return;
+      const pending = metadata;
+      return this.options.metadata.mutationPublished(
+        pending.mutation as SkillsManagementMutation,
+        pending.context as SkillsManagementMetadataContext | undefined,
+      );
+    });
   }
 
   snapshot(): PiviSkillsListResult & { revision: string } {
@@ -155,16 +191,17 @@ export class SkillsManagementCoordinator {
       if (expectedRevision !== plan.revision || this.snapshot().revision !== expectedRevision) {
         throw new PiviManagementError('state_changed', 'Skills state changed after this operation was planned.');
       }
-      const metadataMutation = plan.mutation.action === 'remove'
-        ? { ...plan.mutation, name: this.requireSkill(plan.mutation.name).folderName }
-        : plan.mutation;
+      const mutation = this.normalizeMutation(plan.mutation);
+      const metadataMutation = mutation.action === 'remove'
+        ? { ...mutation, name: this.requireSkill(mutation.name).folderName }
+        : mutation;
       // Default-bundle metadata is part of publication compensation whenever a
       // mutation replaces or removes the managed tree.
       const transactionalMetadata = plan.mutation.action === 'install'
         || plan.mutation.action === 'update'
         || plan.mutation.action === 'update_all'
         || plan.mutation.action === 'remove';
-      await this.apply(plan.mutation, signal, {
+      await this.apply(mutation, signal, {
         beforePublish: () => {
           signal?.throwIfAborted();
           if (this.snapshot().revision !== expectedRevision) {
@@ -176,6 +213,9 @@ export class SkillsManagementCoordinator {
             await this.options.metadata?.mutationPublished(metadataMutation, metadataContext);
           }
           : undefined,
+        ...(transactionalMetadata && this.options.metadata ? {
+          metadata: { mutation: metadataMutation, context: metadataContext },
+        } : {}),
       });
       if (!transactionalMetadata) {
         // Non-publication mutations still need durable bookkeeping; failure here means
@@ -210,6 +250,12 @@ export class SkillsManagementCoordinator {
           { action: 'update_all' },
           { ...metadataContext, defaultBundleUpdate: true },
         ),
+        ...(this.options.metadata ? {
+          metadata: {
+            mutation: { action: 'update_all' },
+            context: { ...metadataContext, defaultBundleUpdate: true },
+          },
+        } : {}),
       });
       return this.finishAfterDurableSave();
     });
@@ -263,6 +309,7 @@ export class SkillsManagementCoordinator {
     hooks: {
       beforePublish?: () => void;
       afterPublish?: () => void | Promise<void>;
+      metadata?: SkillsPublicationMetadata;
     },
   ): Promise<void> {
     switch (mutation.action) {
@@ -272,6 +319,7 @@ export class SkillsManagementCoordinator {
           signal,
           beforePublish: hooks.beforePublish,
           afterPublish: hooks.afterPublish,
+          metadata: hooks.metadata,
         });
         return;
       case 'set_enabled': {
@@ -291,6 +339,7 @@ export class SkillsManagementCoordinator {
         await this.options.service.updateSkill(updateIdentity, skill.folderName, signal, {
           beforePublish: hooks.beforePublish,
           afterPublish: hooks.afterPublish,
+          metadata: hooks.metadata,
         });
         return;
       }
@@ -298,6 +347,7 @@ export class SkillsManagementCoordinator {
         await this.options.service.updateAll(signal, {
           beforePublish: hooks.beforePublish,
           afterPublish: hooks.afterPublish,
+          metadata: hooks.metadata,
         });
         return;
       case 'remove':
@@ -309,6 +359,14 @@ export class SkillsManagementCoordinator {
         );
         return;
     }
+  }
+
+  private normalizeMutation(mutation: SkillsManagementMutation): SkillsManagementMutation {
+    if (mutation.action !== 'install') return structuredClone(mutation);
+    return {
+      ...structuredClone(mutation),
+      source: normalizeSkillSlug(mutation.source),
+    };
   }
 
   private requireSkill(identity: string): VaultSkillEntry {

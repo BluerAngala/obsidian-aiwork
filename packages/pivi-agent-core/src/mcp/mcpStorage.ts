@@ -11,6 +11,7 @@ import {
   writeFileAtomically,
 } from '../foundation/configPublication';
 import { listMcpValueSecretIds as listConfigMcpValueSecretIds } from '../foundation/configValueSource';
+import { PluginLogger } from '../foundation/pluginLogger';
 import type { SyncSecretStore } from '../ports';
 import {
   assertValidMcpServerName,
@@ -72,6 +73,8 @@ export class McpConfigLoadError extends Error {
     this.name = 'McpConfigLoadError';
   }
 }
+
+const logger = new PluginLogger('McpStorage');
 
 function isSecretStorageAvailable(
   secretStorage: SyncSecretStore | undefined,
@@ -222,14 +225,8 @@ export class McpStorage {
         parsed.diagnostics,
       );
     }
-    return {
-      servers: this.parseServers(parsed.value as unknown as ManagedMcpConfigFile),
-      revision: this.revisionOfContent(content),
-    };
-  }
-
-  static revisionOfServers(servers: readonly ManagedMcpServer[]): string {
-    return stableProviderIdDigest(JSON.stringify(servers));
+    const servers = this.parseServers(parsed.value as unknown as ManagedMcpConfigFile);
+    return { servers, revision: this.revisionOfContent(content, servers) };
   }
 
   async saveIfRevision(servers: ManagedMcpServer[], expectedRevision: string): Promise<McpSaveResult> {
@@ -260,7 +257,10 @@ export class McpStorage {
       });
     } catch (error) {
       if (!published) {
-        transaction?.rollback();
+        const rollbackFailures = transaction?.rollback() ?? [];
+        if (rollbackFailures.length > 0) {
+          logger.warn('MCP secret rollback had failures', rollbackFailures);
+        }
       }
       throw error;
     } finally {
@@ -268,11 +268,34 @@ export class McpStorage {
     }
   }
 
-  private revisionOfContent(content: string | null): string {
-    return stableProviderIdDigest(content === null ? '<absent>' : content);
+  private revisionOfContent(
+    content: string | null,
+    parsedServers?: readonly ManagedMcpServer[],
+  ): string {
+    let servers = parsedServers;
+    if (!servers && content !== null) {
+      const parsed = parseJsonObjectWithDiagnostics(PIVI_MCP_CONFIG_PATH, content);
+      if (parsed.ok) {
+        servers = this.parseServers(parsed.value as unknown as ManagedMcpConfigFile);
+      }
+    }
+    const directSecrets = [...(servers ?? [])]
+      .sort((left, right) => left.name.localeCompare(right.name))
+      .map(server => [
+        server.name,
+        this.getStoredSecret(server.name, 'bearer-token') ?? null,
+        this.getStoredSecret(server.name, 'client-secret') ?? null,
+      ]);
+    return stableProviderIdDigest(JSON.stringify([
+      content === null ? '<absent>' : content,
+      directSecrets,
+    ]));
   }
 
-  private createSecretTransaction(): { storage: SyncSecretStore; rollback(): void } | null {
+  private createSecretTransaction(): {
+    storage: SyncSecretStore;
+    rollback(): Array<{ target: string; message: string }>;
+  } | null {
     const underlying = this.secretStorage;
     if (!isSecretStorageAvailable(underlying)) return null;
     const undo = new Map<string, { previous: string | null | undefined; staged: string }>();
@@ -289,12 +312,21 @@ export class McpStorage {
     return {
       storage,
       rollback: () => {
+        const failures: Array<{ target: string; message: string }> = [];
         for (const [id, entry] of undo) {
-          // A concurrent OAuth writer wins over this transaction's undo.
-          if (underlying.getSecret(id) !== entry.staged) continue;
-          if (entry.previous === undefined && underlying.deleteSecret) underlying.deleteSecret(id);
-          else underlying.setSecret(id, entry.previous ?? '');
+          try {
+            // A concurrent OAuth writer wins over this transaction's undo.
+            if (underlying.getSecret(id) !== entry.staged) continue;
+            if (entry.previous == null && underlying.deleteSecret) underlying.deleteSecret(id);
+            else underlying.setSecret(id, entry.previous ?? '');
+          } catch (cause) {
+            failures.push({
+              target: id,
+              message: cause instanceof Error ? cause.message : 'Secret rollback failed',
+            });
+          }
         }
+        return failures;
       },
     };
   }
@@ -430,8 +462,6 @@ export class McpStorage {
       publishedContent,
     );
     onPublished?.();
-    const revision = this.revisionOfContent(publishedContent);
-
     const cleanupFailures: McpSaveResult['cleanupFailures'] = [];
     if (isSecretStorageAvailable(this.secretStorage)) {
       const uniqueObsolete = [...new Set(obsoleteSecretIds)];
@@ -451,7 +481,7 @@ export class McpStorage {
       }
     }
     return {
-      revision,
+      revision: this.revisionOfContent(publishedContent),
       cleanupFailures: cleanupFailures.slice(0, 20),
     };
   }

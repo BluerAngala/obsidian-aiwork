@@ -4,6 +4,7 @@ import type { ManagedMcpServer } from '@pivi/pivi-agent-core/mcp/types';
 const mockClients: Array<{
   connect: jest.Mock;
   listTools: jest.Mock;
+  callTool: jest.Mock;
   close: jest.Mock;
 }> = [];
 const mockTransports: Array<{ close: jest.Mock }> = [];
@@ -12,7 +13,8 @@ const mockConnectPromises: Promise<void>[] = [];
 jest.mock('@modelcontextprotocol/sdk/client', () => ({
   Client: class MockClient {
     connect = jest.fn(() => mockConnectPromises.shift() ?? Promise.resolve());
-    listTools = jest.fn();
+    listTools = jest.fn(async () => ({ tools: [] }));
+    callTool = jest.fn();
     close = jest.fn(async () => {});
 
     constructor() {
@@ -69,5 +71,25 @@ describe('PiMcpConnectionPool', () => {
     expect(mockClients[0]?.close).toHaveBeenCalledTimes(1);
     expect(mockTransports[0]?.close).toHaveBeenCalledTimes(1);
     await expect(pool.listTools(server)).rejects.toThrow('is disposed');
+  });
+
+  it('aborts an active tool call before waiting for connection retirement', async () => {
+    const pool = new PiMcpConnectionPool(null, jest.fn(), {});
+    const callStarted = createDeferred();
+    const call = pool.callTool(server, 'search', {});
+    await Promise.resolve();
+    mockClients[0]?.callTool.mockImplementation(
+      (_request, _options, options: { signal?: AbortSignal }) => new Promise((_resolve, reject) => {
+        callStarted.resolve();
+        options.signal?.addEventListener('abort', () => reject(new Error('aborted')));
+      }),
+    );
+
+    await callStarted.promise;
+    const dispose = pool.dispose();
+
+    await expect(call).rejects.toThrow('aborted');
+    await expect(dispose).resolves.toBeUndefined();
+    expect(mockClients[0]?.callTool.mock.calls[0]?.[2].signal.aborted).toBe(true);
   });
 });

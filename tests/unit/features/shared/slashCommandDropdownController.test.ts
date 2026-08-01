@@ -1,4 +1,5 @@
 import type { SlashCatalogEntry } from '@pivi/pivi-agent-core/skills/commands/slashCommandEntry';
+import { NEW_SESSION_COMMAND_ID } from '@pivi/pivi-agent-core/skills/commands/slashCommandIds';
 import { setIcon } from 'obsidian';
 
 import { SlashCommandDropdown } from '@/ui/shared/components/SlashCommandDropdown';
@@ -223,6 +224,28 @@ describe('SlashCommandDropdown controller', () => {
     expect(dropdown.handleKeydown(keyboardEvent('Enter'))).toBe(true);
     expect(input.value).toBe('/generate-image ');
     expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('does not refocus the old input after selecting new session', async () => {
+    const container = new FakeElement();
+    const input = new FakeInput();
+    const onSelect = jest.fn();
+    const dropdown = new SlashCommandDropdown(
+      container as unknown as HTMLElement,
+      input as unknown as HTMLTextAreaElement,
+      { onSelect },
+      // The built-in new-session entry carries the bare reserved id, unlike
+      // workspace commands whose ids use the `command:` scheme.
+      { getCatalogEntries: async () => [{ ...catalogEntry('new'), id: NEW_SESSION_COMMAND_ID, scope: 'builtin' }] },
+    );
+
+    setInput(input, '/new');
+    dropdown.handleInputChange();
+    await flushAsyncDropdown();
+
+    expect(dropdown.handleKeydown(keyboardEvent('Enter'))).toBe(true);
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: NEW_SESSION_COMMAND_ID }));
+    expect(input.focus).not.toHaveBeenCalled();
   });
 
   it('does not consume Enter or Tab while an IME composition is active', async () => {

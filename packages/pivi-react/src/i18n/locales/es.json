@@ -790,7 +790,8 @@
           "remove": "{name} quitada.",
           "enable": "{name} activada.",
           "disable": "{name} desactivada."
-        }
+        },
+        "partialFailure": "Las skills se guardaron, pero algunas tareas posteriores fallaron."
       }
     },
     "slashCommandsUi": {

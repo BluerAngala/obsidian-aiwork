@@ -210,10 +210,14 @@ function parseOAuthInput(value: unknown): AgentMcpOAuthInput | false | undefined
     throw new Error('oauth.clearClientSecret must be a boolean.');
   }
   return {
-    grantType: grantType,
-    clientId: optionalString(value.clientId, 'oauth.clientId'),
-    scope: optionalString(value.scope, 'oauth.scope'),
-    clearClientSecret: clearClientSecret,
+    ...(grantType !== undefined ? { grantType } : {}),
+    ...(Object.prototype.hasOwnProperty.call(value, 'clientId')
+      ? { clientId: optionalString(value.clientId, 'oauth.clientId') }
+      : {}),
+    ...(Object.prototype.hasOwnProperty.call(value, 'scope')
+      ? { scope: optionalString(value.scope, 'oauth.scope') }
+      : {}),
+    ...(clearClientSecret !== undefined ? { clearClientSecret } : {}),
   };
 }
 

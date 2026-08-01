@@ -388,6 +388,36 @@ describe("McpStorage", () => {
     });
   });
 
+  it("isolates staged-secret rollback failures and preserves the publication error", async () => {
+    const adapter = new MemoryVaultAdapter();
+    const values = new Map<string, string>();
+    let failRollbackId: string | undefined;
+    const secretStorage = {
+      getSecret: (id: string) => values.get(id) ?? null,
+      setSecret: (id: string, value: string) => { values.set(id, value); },
+      deleteSecret: (id: string) => {
+        if (id === failRollbackId) throw new Error("keychain rollback unavailable");
+        values.delete(id);
+      },
+      listSecrets: (prefix?: string) => [...values.keys()].filter(id => !prefix || id.startsWith(prefix)),
+    };
+    const failingAdapter = Object.assign(adapter, {
+      write: jest.fn(async () => { throw new Error("disk full"); }),
+    }) as unknown as FileStore;
+    const storage = new McpStorage(failingAdapter, secretStorage);
+    const goodId = listMcpServerSecretIds("good", "bearer-token")[0]!;
+    const badId = listMcpServerSecretIds("bad", "bearer-token")[0]!;
+    failRollbackId = badId;
+
+    await expect(storage.save([
+      remoteServer({ name: "good", auth: "bearer", bearerToken: "good-token" }),
+      remoteServer({ name: "bad", auth: "bearer", bearerToken: "bad-token" }),
+    ])).rejects.toThrow("disk full");
+
+    expect(values.get(goodId)).toBeUndefined();
+    expect(values.get(badId)).toBe("bad-token");
+  });
+
   it.each([
     {
       label: "remote headers to stdio env",

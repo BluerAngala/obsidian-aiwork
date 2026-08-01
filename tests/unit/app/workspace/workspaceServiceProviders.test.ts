@@ -105,7 +105,10 @@ describe('PiMcpToolProvider', () => {
     await provider.prefetchEnabledServers();
 
     expect(probe).toHaveBeenCalledTimes(1);
-    expect(probe).toHaveBeenCalledWith(expect.objectContaining({ name: 'remote' }));
+    expect(probe).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'remote' }),
+      expect.any(AbortSignal),
+    );
     expect(listTools).not.toHaveBeenCalled();
   });
 

@@ -27,7 +27,7 @@ function getBooleanField(input: Record<string, unknown>, key: string): boolean |
 }
 
 export function createDailyTool(deps: ObsidianToolDeps): ToolSpec {
-  const { cli, vault, vaultName, vaultPath } = deps;
+  const { cli, vaultName, vaultPath } = deps;
   return {
     name: TOOL_OBSIDIAN_DAILY,
     label: 'Daily note',
@@ -75,11 +75,12 @@ export function createDailyTool(deps: ObsidianToolDeps): ToolSpec {
 
       if (action === 'append' || action === 'prepend') {
         const dailyPath = (await cli.run({ vaultName, args: ['daily:path'] })).trim();
-        const resolved = dailyPath ? vault.resolveFile(undefined, dailyPath) : null;
-        if (!resolved) {
+        if (!dailyPath) {
           throw new Error('Daily note could not be resolved to an exact Vault path.');
         }
-        requireAgentVaultMutationPath(resolved.path, vaultPath);
+        // The daily CLI can create the note during append/prepend, so the path
+        // must be validated independently of the file's current existence.
+        requireAgentVaultMutationPath(dailyPath, vaultPath);
       }
 
       const subcommand = action === 'read' ? 'daily:read' : action === 'append' ? 'daily:append' : 'daily:prepend';

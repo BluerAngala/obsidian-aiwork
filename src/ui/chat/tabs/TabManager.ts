@@ -181,7 +181,10 @@ export class TabManager {
           input.selectionStart = tokenStart;
           input.selectionEnd = tokenStart;
         }
-        void this.createTab(undefined, undefined, { forceCreate: true });
+        void this.createTab(undefined, undefined, { forceCreate: true })
+          .then((newTab) => {
+            newTab?.dom.richInput?.focus();
+          });
       },
     });
 

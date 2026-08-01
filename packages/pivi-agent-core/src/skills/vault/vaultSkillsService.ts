@@ -12,6 +12,11 @@ import { loadVaultSkills, SKILL_DISABLED_MARKER } from './loadVaultSkills';
 import { PIVI_SKILLS_PATH } from './paths';
 import { resolvePinnedSkillsCli } from './resolvePinnedSkillsCli';
 import {
+  SkillPublicationTransaction,
+  type SkillsPublicationMetadata,
+  type SkillTransactionHooks as TransactionPublicationHooks,
+} from './skillPublicationTransaction';
+import {
   publishValidatedSkillTree,
   SkillStageValidationError,
   stageSkillTreeFromSource,
@@ -43,11 +48,13 @@ export interface InstallSkillsOptions {
    * Throwing rolls the publication back from retained backups.
    */
   afterPublish?: () => void | Promise<void>;
+  metadata?: SkillsPublicationMetadata;
 }
 
 export interface SkillsPublicationHooks {
   beforePublish?: () => void;
   afterPublish?: () => void | Promise<void>;
+  metadata?: SkillsPublicationMetadata;
 }
 
 export interface RemoteSkillEntry {
@@ -71,20 +78,6 @@ const SKILLS_CLI_SOURCE_ROOTS = [
 const SKILLS_STAGING_ROOT = path.join('.pivi', 'skills-staging');
 
 const SKILLS_CLI_METADATA_FILES = ['skills-lock.json', '.skills.json'] as const;
-
-/** Incomplete publication roots left under `.pivi/` for crash/restore recovery. */
-const SKILLS_TRANSACTION_DIR_PREFIX = '.skills-transaction-';
-const SKILLS_TRANSACTION_MANIFEST = 'manifest.json';
-
-type SkillsPublicationArtifact = 'skills' | typeof SKILLS_CLI_METADATA_FILES[number];
-
-interface SkillsTransactionManifest {
-  phase: 'prepared' | 'mutating' | 'published' | 'restoring' | 'restored' | 'restore-incomplete';
-  /** Immutable pre-publication inventory, recorded before the first live rename. */
-  originalArtifacts: SkillsPublicationArtifact[];
-  backedUpArtifacts: SkillsPublicationArtifact[];
-  publishedArtifacts: SkillsPublicationArtifact[];
-}
 
 const ANSI_CSI_PATTERN = new RegExp(`${String.fromCharCode(27)}[[][0-?]*[ -/]*[@-~]`, 'g');
 
@@ -272,7 +265,9 @@ export function syncCliSkillsIntoPivi(
 }
 
 export class VaultSkillsService {
+  private static readonly publicationTails = new Map<string, Promise<void>>();
   private cleanupFailurePending = false;
+  private metadataRecovery?: (metadata: SkillsPublicationMetadata) => void | Promise<void>;
   constructor(
     private readonly vaultPath: string,
     private readonly options: VaultSkillsServiceOptions = {},
@@ -285,11 +280,24 @@ export class VaultSkillsService {
   }
 
   /** Explicit startup-only preparation. Queries and construction are intentionally read-only. */
-  prepareWorkspace(): void {
+  async prepareWorkspace(
+    onPublishedWithoutMetadata?: (metadata: SkillsPublicationMetadata) => void | Promise<void>,
+  ): Promise<void> {
+    if (onPublishedWithoutMetadata) this.metadataRecovery = onPublishedWithoutMetadata;
+    await this.withPublicationLock(() => this.prepareWorkspaceWithoutLock());
+  }
+
+  private async prepareWorkspaceWithoutLock(): Promise<void> {
     const dir = path.join(this.vaultPath, '.pivi');
     fs.mkdirSync(dir, { recursive: true });
     this.migrateRootSkillsCliMetadata(dir);
-    this.recoverIncompleteTransactions(dir);
+    await new SkillPublicationTransaction({
+      vaultPath: this.vaultPath,
+      publicationRenameSync: this.options.publicationRenameSync,
+      onCleanupFailure: () => { this.cleanupFailurePending = true; },
+    }).recoverIncompleteTransactions({
+      onPublishedWithoutMetadata: this.metadataRecovery,
+    });
   }
 
   private get processEnv(): NodeJS.ProcessEnv {
@@ -328,8 +336,8 @@ export class VaultSkillsService {
     }
   }
 
-  async installFromSlug(slugInput: string): Promise<string[]> {
-    return this.installFromSource(slugInput);
+  async installFromSlug(slugInput: string, options?: InstallSkillsOptions): Promise<string[]> {
+    return this.installFromSource(slugInput, options);
   }
 
   async installFromSource(sourceInput: string, options?: InstallSkillsOptions): Promise<string[]> {
@@ -339,9 +347,11 @@ export class VaultSkillsService {
     const before = new Set(this.listDirNames(piviSkillsDir));
     return this.runIsolatedPublication(
       'install',
-      before,
-      undefined,
-      { beforePublish: options?.beforePublish, afterPublish: options?.afterPublish },
+      {
+        beforePublish: options?.beforePublish,
+        afterPublish: options?.afterPublish,
+        metadata: options?.metadata,
+      },
       async (operationRoot) => {
         await this.runSkillsAdd(source, skillNames, operationRoot, options?.signal);
         const synced = this.importOperationSkills(operationRoot, before, undefined, operationRoot);
@@ -388,8 +398,6 @@ export class VaultSkillsService {
 
     return this.runIsolatedPublication(
       'default-update',
-      new Set(),
-      new Set(bundleFolders),
       hooks,
       async operationRoot => {
         await this.runSkillsAdd(DEFAULT_VAULT_SKILLS_SLUG, [], operationRoot);
@@ -419,7 +427,7 @@ export class VaultSkillsService {
     }
     const liveTarget = path.join(this.vaultPath, PIVI_SKILLS_PATH, safeName);
     if (!fs.existsSync(liveTarget)) throw new Error(`Skill folder not found: ${safeName}`);
-    await this.runIsolatedPublication('remove', new Set(), undefined, hooks, async operationRoot => {
+    await this.runIsolatedPublication('remove', hooks, async operationRoot => {
       const stagedTarget = path.join(operationRoot, PIVI_SKILLS_PATH, safeName);
       fs.rmSync(stagedTarget, { recursive: true, force: true });
     });
@@ -428,7 +436,7 @@ export class VaultSkillsService {
   async updateAll(signal?: AbortSignal, hooks?: SkillsPublicationHooks | (() => void)): Promise<string[]> {
     const folders = new Set(this.listDirNames(path.join(this.vaultPath, PIVI_SKILLS_PATH)));
     const publicationHooks = typeof hooks === 'function' ? { beforePublish: hooks } : hooks;
-    return this.runIsolatedPublication('update-all', new Set(), folders, publicationHooks, async operationRoot => {
+    return this.runIsolatedPublication('update-all', publicationHooks, async operationRoot => {
       await this.runSkillsUpdate([], operationRoot, signal);
       return this.importOperationSkills(operationRoot, new Set(), folders, operationRoot);
     });
@@ -449,8 +457,6 @@ export class VaultSkillsService {
     const publicationHooks = typeof hooks === 'function' ? { beforePublish: hooks } : hooks;
     return this.runIsolatedPublication(
       'update',
-      new Set(),
-      new Set([safeFolderName]),
       publicationHooks,
       async operationRoot => {
         await this.runSkillsUpdate([normalizedSkillName], operationRoot, signal);
@@ -553,8 +559,12 @@ export class VaultSkillsService {
     }
   }
 
-  private async withOperationRoot<T>(name: string, operation: (root: string) => Promise<T>): Promise<T> {
-    this.prepareWorkspace();
+  private async withOperationRoot<T>(
+    name: string,
+    operation: (root: string) => Promise<T>,
+    prepare = true,
+  ): Promise<T> {
+    if (prepare) await this.prepareWorkspace();
     const root = fs.mkdtempSync(path.join(this.vaultPath, '.pivi', `skills-${name}-`));
     try {
       for (const fileName of SKILLS_CLI_METADATA_FILES) {
@@ -573,355 +583,42 @@ export class VaultSkillsService {
 
   private async runIsolatedPublication<T>(
     name: string,
-    _existingBefore: Set<string>,
-    _overwriteFolders: ReadonlySet<string> | undefined,
     hooks: SkillsPublicationHooks | (() => void) | undefined,
     operation: (root: string) => Promise<T>,
   ): Promise<T> {
-    const publicationHooks: SkillsPublicationHooks = typeof hooks === 'function'
+    const publicationHooks: TransactionPublicationHooks = typeof hooks === 'function'
       ? { beforePublish: hooks }
       : (hooks ?? {});
-    return this.withOperationRoot(name, async root => {
-      const skillsDir = path.join(this.vaultPath, PIVI_SKILLS_PATH);
-      const stagedSkills = path.join(root, PIVI_SKILLS_PATH);
-      if (fs.existsSync(skillsDir)) fs.cpSync(skillsDir, stagedSkills, { recursive: true });
-      const result = await operation(root);
-
-      const transactionRoot = path.join(
-        this.vaultPath, '.pivi', `${SKILLS_TRANSACTION_DIR_PREFIX}${process.pid}-${Date.now()}`,
-      );
-      const publication = path.join(transactionRoot, 'next');
-      const backup = path.join(transactionRoot, 'previous');
-      const renamePublicationArtifact = this.options.publicationRenameSync ?? fs.renameSync;
-      const artifacts = ['skills', ...SKILLS_CLI_METADATA_FILES] as const;
-      const originalArtifacts = artifacts.filter(artifact => (
-        fs.existsSync(this.liveArtifactPath(artifact, skillsDir))
-      ));
-      const backedUpArtifacts: SkillsPublicationArtifact[] = [];
-      const publishedArtifacts: SkillsPublicationArtifact[] = [];
-      let removeTransactionRoot = false;
-
-      // Entire publication lifecycle stays under cleanup control so beforePublish /
-      // rename / afterPublish faults cannot leak a transaction root or delete the sole backups.
-      try {
-        fs.mkdirSync(publication, { recursive: true });
-        fs.mkdirSync(backup, { recursive: true });
-        renamePublicationArtifact(stagedSkills, path.join(publication, 'skills'));
-        for (const fileName of SKILLS_CLI_METADATA_FILES) {
-          const produced = path.join(root, fileName);
-          if (fs.existsSync(produced)) fs.copyFileSync(produced, path.join(publication, fileName));
-        }
-        this.writeTransactionManifest(transactionRoot, {
-          phase: 'prepared',
-          originalArtifacts: [...originalArtifacts],
-          backedUpArtifacts: [],
-          publishedArtifacts: [],
-        });
-
-        // Publication boundary: no vault-owned live artifact changes before this check.
-        publicationHooks.beforePublish?.();
-
-        this.writeTransactionManifest(transactionRoot, {
-          phase: 'mutating',
-          originalArtifacts: [...originalArtifacts],
-          backedUpArtifacts: [],
-          publishedArtifacts: [],
-        });
-        for (const artifact of artifacts) {
-          const current = this.liveArtifactPath(artifact, skillsDir);
-          if (fs.existsSync(current)) {
-            renamePublicationArtifact(current, path.join(backup, artifact));
-            backedUpArtifacts.push(artifact);
-            this.writeTransactionManifest(transactionRoot, {
-              phase: 'mutating',
-              originalArtifacts: [...originalArtifacts],
-              backedUpArtifacts: [...backedUpArtifacts],
-              publishedArtifacts: [...publishedArtifacts],
-            });
-          }
-        }
-        for (const artifact of artifacts) {
-          const next = path.join(publication, artifact);
-          const destination = this.liveArtifactPath(artifact, skillsDir);
-          if (fs.existsSync(next)) {
-            renamePublicationArtifact(next, destination);
-            publishedArtifacts.push(artifact);
-            this.writeTransactionManifest(transactionRoot, {
-              phase: 'mutating',
-              originalArtifacts: [...originalArtifacts],
-              backedUpArtifacts: [...backedUpArtifacts],
-              publishedArtifacts: [...publishedArtifacts],
-            });
-          }
-        }
-        // Durable bookkeeping (default-bundle metadata) runs while backups still exist
-        // so a failure can restore the previous skill tree.
-        await publicationHooks.afterPublish?.();
-        this.writeTransactionManifest(transactionRoot, {
-          phase: 'published',
-          originalArtifacts: [...originalArtifacts],
-          backedUpArtifacts: [...backedUpArtifacts],
-          publishedArtifacts: [...publishedArtifacts],
-        });
-        removeTransactionRoot = true;
-        return result;
-      } catch (error) {
-        const restored = this.restorePublicationArtifacts({
-          skillsDir,
-          backup,
-          originalArtifacts,
-          backedUpArtifacts,
-          publishedArtifacts,
-          renamePublicationArtifact,
-          transactionRoot,
-        });
-        removeTransactionRoot = restored;
-        throw error;
-      } finally {
-        if (removeTransactionRoot && fs.existsSync(transactionRoot)) {
-          try {
-            fs.rmSync(transactionRoot, { recursive: true, force: true });
-          } catch {
-            // Publication is already durable. Retain the published manifest so
-            // prepareWorkspace can finish cleanup without misreporting the save.
-            this.cleanupFailurePending = true;
-          }
-        }
-      }
+    return this.withPublicationLock(async () => {
+      await this.prepareWorkspaceWithoutLock();
+      return this.withOperationRoot(name, async root => {
+        const skillsDir = path.join(this.vaultPath, PIVI_SKILLS_PATH);
+        const stagedSkills = path.join(root, PIVI_SKILLS_PATH);
+        if (fs.existsSync(skillsDir)) fs.cpSync(skillsDir, stagedSkills, { recursive: true });
+        const result = await operation(root);
+        return new SkillPublicationTransaction({
+          vaultPath: this.vaultPath,
+          publicationRenameSync: this.options.publicationRenameSync,
+          onCleanupFailure: () => { this.cleanupFailurePending = true; },
+        }).publish(stagedSkills, skillsDir, root, result, publicationHooks);
+      }, false);
     });
   }
 
-  private liveArtifactPath(artifact: SkillsPublicationArtifact, skillsDir: string): string {
-    return artifact === 'skills' ? skillsDir : path.join(this.vaultPath, '.pivi', artifact);
-  }
-
-  private writeTransactionManifest(transactionRoot: string, manifest: SkillsTransactionManifest): void {
-    const destination = path.join(transactionRoot, SKILLS_TRANSACTION_MANIFEST);
-    const temporary = `${destination}.tmp`;
-    const descriptor = fs.openSync(temporary, 'w');
+  private async withPublicationLock<T>(operation: () => Promise<T>): Promise<T> {
+    const previous = VaultSkillsService.publicationTails.get(this.vaultPath) ?? Promise.resolve();
+    let release!: () => void;
+    const current = previous.then(() => new Promise<void>(resolve => { release = resolve; }));
+    VaultSkillsService.publicationTails.set(this.vaultPath, current);
+    await previous;
     try {
-      fs.writeFileSync(descriptor, `${JSON.stringify(manifest)}\n`, 'utf8');
-      fs.fsyncSync(descriptor);
+      return await operation();
     } finally {
-      fs.closeSync(descriptor);
-    }
-    fs.renameSync(temporary, destination);
-    const directory = fs.openSync(transactionRoot, 'r');
-    try {
-      fs.fsyncSync(directory);
-    } finally {
-      fs.closeSync(directory);
-    }
-  }
-
-  private readTransactionManifest(transactionRoot: string): SkillsTransactionManifest | null {
-    const manifestPath = path.join(transactionRoot, SKILLS_TRANSACTION_MANIFEST);
-    if (!fs.existsSync(manifestPath)) return null;
-    try {
-      const parsed = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as Partial<SkillsTransactionManifest>;
-      if (!parsed || typeof parsed !== 'object') return null;
-      const backedUpArtifacts = Array.isArray(parsed.backedUpArtifacts)
-        ? parsed.backedUpArtifacts.filter((entry): entry is SkillsPublicationArtifact => (
-          entry === 'skills' || entry === 'skills-lock.json' || entry === '.skills.json'
-        ))
-        : [];
-      const originalArtifacts = Array.isArray(parsed.originalArtifacts)
-        ? parsed.originalArtifacts.filter((entry): entry is SkillsPublicationArtifact => (
-          entry === 'skills' || entry === 'skills-lock.json' || entry === '.skills.json'
-        ))
-        : [];
-      const publishedArtifacts = Array.isArray(parsed.publishedArtifacts)
-        ? parsed.publishedArtifacts.filter((entry): entry is SkillsPublicationArtifact => (
-          entry === 'skills' || entry === 'skills-lock.json' || entry === '.skills.json'
-        ))
-        : [];
-      const phase = parsed.phase;
-      if (
-        phase !== 'prepared'
-        && phase !== 'mutating'
-        && phase !== 'published'
-        && phase !== 'restoring'
-        && phase !== 'restored'
-        && phase !== 'restore-incomplete'
-      ) {
-        return { phase: 'mutating', originalArtifacts, backedUpArtifacts, publishedArtifacts };
+      release();
+      if (VaultSkillsService.publicationTails.get(this.vaultPath) === current) {
+        VaultSkillsService.publicationTails.delete(this.vaultPath);
       }
-      return { phase, originalArtifacts, backedUpArtifacts, publishedArtifacts };
-    } catch {
-      return null;
     }
-  }
-
-  /**
-   * Roll back a failed publication. Returns true only when every backed-up artifact
-   * is confirmed restored (or there was nothing to restore), so the transaction root
-   * may be deleted. Incomplete restore retains the root with the sole backups.
-   */
-  private restorePublicationArtifacts(args: {
-    skillsDir: string;
-    backup: string;
-    originalArtifacts: readonly SkillsPublicationArtifact[];
-    backedUpArtifacts: readonly SkillsPublicationArtifact[];
-    publishedArtifacts: readonly SkillsPublicationArtifact[];
-    renamePublicationArtifact: typeof fs.renameSync;
-    transactionRoot: string;
-  }): boolean {
-    const {
-      skillsDir,
-      backup,
-      originalArtifacts,
-      backedUpArtifacts,
-      publishedArtifacts,
-      renamePublicationArtifact,
-      transactionRoot,
-    } = args;
-
-    let remainingBackups = backedUpArtifacts.filter(artifact => (
-      fs.existsSync(path.join(backup, artifact))
-    ));
-    this.writeTransactionManifest(transactionRoot, {
-      phase: 'restoring',
-      originalArtifacts: [...originalArtifacts],
-      backedUpArtifacts: [...remainingBackups],
-      publishedArtifacts: [...publishedArtifacts],
-    });
-
-    try {
-      for (const artifact of publishedArtifacts) {
-        const destination = this.liveArtifactPath(artifact, skillsDir);
-        const hadPrevious = originalArtifacts.includes(artifact);
-        const previousStillHeld = remainingBackups.includes(artifact);
-        if (fs.existsSync(destination) && (!hadPrevious || previousStillHeld)) {
-          fs.rmSync(destination, { recursive: true, force: true });
-        }
-      }
-      for (const artifact of [...remainingBackups]) {
-        const previous = path.join(backup, artifact);
-        const destination = this.liveArtifactPath(artifact, skillsDir);
-        if (fs.existsSync(destination)) {
-          fs.rmSync(destination, { recursive: true, force: true });
-        }
-        renamePublicationArtifact(previous, destination);
-        remainingBackups = remainingBackups.filter(candidate => candidate !== artifact);
-        this.writeTransactionManifest(transactionRoot, {
-          phase: 'restoring',
-          originalArtifacts: [...originalArtifacts],
-          backedUpArtifacts: [...remainingBackups],
-          publishedArtifacts: [...publishedArtifacts],
-        });
-      }
-      this.writeTransactionManifest(transactionRoot, {
-        phase: 'restored',
-        originalArtifacts: [...originalArtifacts],
-        backedUpArtifacts: [...backedUpArtifacts],
-        publishedArtifacts: [],
-      });
-      return true;
-    } catch {
-      this.writeTransactionManifest(transactionRoot, {
-        phase: 'restore-incomplete',
-        originalArtifacts: [...originalArtifacts],
-        backedUpArtifacts: [...remainingBackups],
-        publishedArtifacts: [...publishedArtifacts],
-      });
-      return false;
-    }
-  }
-
-  private recoverIncompleteTransactions(piviDir: string): void {
-    let entries: string[];
-    try {
-      entries = fs.readdirSync(piviDir);
-    } catch {
-      return;
-    }
-    for (const name of entries) {
-      if (!name.startsWith(SKILLS_TRANSACTION_DIR_PREFIX)) continue;
-      const transactionRoot = path.join(piviDir, name);
-      try {
-        if (!fs.statSync(transactionRoot).isDirectory()) continue;
-      } catch {
-        continue;
-      }
-      this.recoverTransaction(transactionRoot);
-    }
-  }
-
-  private recoverTransaction(transactionRoot: string): void {
-    const skillsDir = path.join(this.vaultPath, PIVI_SKILLS_PATH);
-    const backup = path.join(transactionRoot, 'previous');
-    const manifest = this.readTransactionManifest(transactionRoot);
-    const renamePublicationArtifact = this.options.publicationRenameSync ?? fs.renameSync;
-
-    // Clean successful or never-mutated transactions.
-    if (!manifest) {
-      if (this.discoverBackupArtifacts(backup).length === 0) {
-        fs.rmSync(transactionRoot, { recursive: true, force: true });
-      }
-      return;
-    }
-    if (manifest.phase === 'prepared' || manifest.phase === 'published' || manifest.phase === 'restored') {
-      fs.rmSync(transactionRoot, { recursive: true, force: true });
-      return;
-    }
-
-    const backedUpArtifacts = [...new Set([
-      ...manifest.backedUpArtifacts,
-      ...this.discoverBackupArtifacts(backup),
-    ])];
-    const publication = path.join(transactionRoot, 'next');
-    const publishedArtifacts = [...new Set([
-      ...manifest.publishedArtifacts,
-      ...(['skills', ...SKILLS_CLI_METADATA_FILES] as const).filter(artifact => (
-        !manifest.originalArtifacts.includes(artifact)
-        && fs.existsSync(this.liveArtifactPath(artifact, skillsDir))
-        && !fs.existsSync(path.join(publication, artifact))
-      )),
-    ])];
-    if (backedUpArtifacts.length === 0 && publishedArtifacts.length === 0) {
-      fs.rmSync(transactionRoot, { recursive: true, force: true });
-      return;
-    }
-
-    // Prefer restoring any remaining backups when live state is missing those artifacts.
-    const needsRestore = backedUpArtifacts.some((artifact) => {
-      const previous = path.join(backup, artifact);
-      const live = this.liveArtifactPath(artifact, skillsDir);
-      return fs.existsSync(previous) && !fs.existsSync(live);
-    }) || manifest.phase === 'restore-incomplete' || manifest.phase === 'mutating' || manifest.phase === 'restoring';
-
-    if (!needsRestore) {
-      // Live artifacts present and backups still held: drop leftovers only when phase is safe.
-      if (manifest.phase === 'mutating' && backedUpArtifacts.every((artifact) => {
-        const previous = path.join(backup, artifact);
-        return !fs.existsSync(previous);
-      })) {
-        fs.rmSync(transactionRoot, { recursive: true, force: true });
-      }
-      return;
-    }
-
-    const restored = this.restorePublicationArtifacts({
-      skillsDir,
-      backup,
-      originalArtifacts: manifest.originalArtifacts,
-      backedUpArtifacts,
-      publishedArtifacts,
-      renamePublicationArtifact,
-      transactionRoot,
-    });
-    if (restored) {
-      fs.rmSync(transactionRoot, { recursive: true, force: true });
-    }
-  }
-
-  private discoverBackupArtifacts(backup: string): SkillsPublicationArtifact[] {
-    if (!fs.existsSync(backup)) return [];
-    const found: SkillsPublicationArtifact[] = [];
-    for (const artifact of ['skills', ...SKILLS_CLI_METADATA_FILES] as const) {
-      if (fs.existsSync(path.join(backup, artifact))) found.push(artifact);
-    }
-    return found;
   }
 
   private importOperationSkills(

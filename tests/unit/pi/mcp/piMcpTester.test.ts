@@ -64,4 +64,17 @@ describe('testPiMcpServer Agent-safe logging', () => {
     expect(warnings).toHaveBeenCalledWith('[Pivi:PiMcpTester] MCP test client close failed');
     warnings.mockRestore();
   });
+
+  it('reports an aborted listTools request as a failed test', async () => {
+    listTools.mockRejectedValue(new Error('aborted list request'));
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      testPiMcpServer(server, jest.fn(), {}, undefined, undefined, controller.signal),
+    ).resolves.toMatchObject({
+      success: false,
+      error: 'Connection aborted',
+    });
+  });
 });

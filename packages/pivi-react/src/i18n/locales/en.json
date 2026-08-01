@@ -796,7 +796,8 @@
           "remove": "{name} removed.",
           "enable": "{name} enabled.",
           "disable": "{name} disabled."
-        }
+        },
+        "partialFailure": "Skills were saved, but some follow-up work failed."
       },
       "notices": {
         "noRemote": "No remote skills found for this source.",

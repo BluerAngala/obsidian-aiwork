@@ -1,10 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import type { SlashCommand } from "@pivi/pivi-agent-core/foundation";
-import {
-  runSerializedSave,
-  writeFileAtomically,
-} from '@pivi/pivi-agent-core/foundation/configPublication';
+import { writeFileAtomically } from '@pivi/pivi-agent-core/foundation/configPublication';
 import { PluginLogger } from "@pivi/pivi-agent-core/foundation/pluginLogger";
 import type { FileStore } from "@pivi/pivi-agent-core/ports";
 import type {
@@ -33,9 +30,6 @@ import type { TAbstractFile } from "obsidian";
 
 import { t } from '@/app/i18n';
 
-import {
-  recoverCommandRemovalTransactions,
-} from "./commandRemovalTransaction";
 import type { PiviWorkspaceHost } from "./serviceContracts";
 import {
   PiviCommandsManagementError,
@@ -47,7 +41,6 @@ export { PiviCommandsManagementError } from './WorkspaceCommandsCoordinator';
 const COMMANDS_DIR = ".pivi/commands";
 const LEGACY_TEMPLATES_DIR = ".pivi/templates";
 const logger = new PluginLogger('PiSlashCommandCatalog');
-const COMMANDS_MUTATION_KEY = '.pivi/commands/*';
 
 export interface PiSlashCommandCatalogOptions {
   isImageGenerationEnabled?: () => boolean;
@@ -61,11 +54,9 @@ export interface WorkspaceCommandCatalogSnapshot {
 }
 
 export class PiSlashCommandCatalog implements SlashCommandCatalog {
-  private workspaceEntries: SlashCatalogEntry[] = [];
   private runtimeCommands: SlashCatalogEntry[] = [];
   private isWatching = false;
   private loaded = false;
-  private catalogRevision = 0;
   private readonly generatedIntegrationKeys = new Map<string, string>();
   private readonly reportedReservedPaths = new Set<string>();
   readonly commandsCoordinator: WorkspaceCommandsCoordinator;
@@ -79,8 +70,9 @@ export class PiSlashCommandCatalog implements SlashCommandCatalog {
       plugin,
       adapter,
       () => this.createIntegrationKey(),
+      () => this.scanWorkspaceCommands(),
+      entries => this.options.onWorkspaceEntriesChanged?.(entries.map(entry => ({ ...entry }))),
     );
-    this.commandsCoordinator.connectCatalog(() => this.refreshUnlocked());
     this.registerVaultWatcher();
   }
 
@@ -130,7 +122,7 @@ export class PiSlashCommandCatalog implements SlashCommandCatalog {
     if (!this.loaded) {
       await this.refresh();
     }
-    const combined = [...this.workspaceEntries];
+    const combined = this.commandsCoordinator.currentEntries();
 
     if (this.options.isImageGenerationEnabled?.()) {
       combined.push({
@@ -187,11 +179,13 @@ export class PiSlashCommandCatalog implements SlashCommandCatalog {
     if (!this.loaded) {
       await this.refresh();
     }
-    return this.workspaceEntries.map(entry => ({ ...entry }));
+    return this.commandsCoordinator.currentEntries();
   }
 
   async getWorkspaceSnapshot(): Promise<WorkspaceCommandCatalogSnapshot> {
-    return this.commandsCoordinator.snapshot();
+    const snapshot = await this.commandsCoordinator.snapshot();
+    this.loaded = true;
+    return snapshot;
   }
 
   async saveWorkspaceEntry(entry: SlashCatalogEntry, catalogRevision: number): Promise<void> {
@@ -271,13 +265,13 @@ export class PiSlashCommandCatalog implements SlashCommandCatalog {
   }
 
   async refresh(): Promise<void> {
-    await runSerializedSave(COMMANDS_MUTATION_KEY, () => this.refreshUnlocked());
+    await this.commandsCoordinator.refresh();
+    this.loaded = true;
   }
 
   async prepareWorkspace(): Promise<void> {
-    await runSerializedSave(COMMANDS_MUTATION_KEY, async () => {
+    await this.commandsCoordinator.withMutationLock(async () => {
       await this.adapter.ensureFolder(COMMANDS_DIR);
-      await recoverCommandRemovalTransactions(this.adapter);
       const files = (await Promise.all([COMMANDS_DIR, LEGACY_TEMPLATES_DIR]
         .map(dir => this.adapter.listFiles(dir)))).flat().filter(path => isCatalogCommandPath(path));
       for (const file of files) {
@@ -298,99 +292,100 @@ export class PiSlashCommandCatalog implements SlashCommandCatalog {
           icon: parsed.icon, integrationKey, content: parsed.promptContent,
         }, parsed.promptContent));
       }
-      await this.refreshUnlocked();
+      await this.commandsCoordinator.refreshWithoutLock();
+      this.loaded = true;
     });
   }
 
-  private async refreshUnlocked(): Promise<void> {
-      await recoverCommandRemovalTransactions(this.adapter);
-      const byId = new Map<string, SlashCatalogEntry>();
-      const authoritativeBytes: Array<[string, string, string]> = [];
+  private async scanWorkspaceCommands(): Promise<{
+    readonly entries: readonly SlashCatalogEntry[];
+    readonly fingerprint: string;
+  }> {
+    const byId = new Map<string, SlashCatalogEntry>();
+    const authoritativeBytes: Array<[string, string, string]> = [];
 
-      for (const dir of [LEGACY_TEMPLATES_DIR, COMMANDS_DIR]) {
-        const files = await this.adapter.listFiles(dir);
-        const mdFiles = files.filter((f) => isCatalogCommandPath(f));
-
-        for (const file of mdFiles) {
-          try {
-            const id = commandIdFromPath(file);
-            if (isReservedCommandId(id)) {
-              this.reportReservedWorkspaceFile(file, id);
-              continue;
-            }
-            const content = await this.adapter.read(file);
-            const parsed = parseSlashCommandContent(content);
-            authoritativeBytes.push([dir, file, content]);
-
-            const parts = file.split("/");
-            const filename = parts.at(-1);
-            if (!filename) {
-              logger.error(`Custom command has no filename: ${file}`);
-              continue;
-            }
-            const integrationKey = typeof parsed.integrationKey === 'string'
-              && /^[a-z0-9][a-z0-9-]{0,127}$/i.test(parsed.integrationKey)
-              ? parsed.integrationKey
-              : this.generatedIntegrationKeys.get(id) ?? this.createIntegrationKey();
-            this.generatedIntegrationKeys.set(id, integrationKey);
-
-            byId.set(id, {
-              id,
-              kind: "command",
-              name: id,
-              description:
-                parsed.description ?? `Custom command from ${filename}`,
-              content: parsed.promptContent,
-              argumentHint: parsed.argumentHint || id,
-              icon: parsed.icon,
-              integrationKey,
-              scope: "workspace",
-              source: "user",
-              isEditable: true,
-              isDeletable: true,
-              displayPrefix: "/",
-              insertPrefix: "/",
-              persistenceKey:
-                dir === LEGACY_TEMPLATES_DIR
-                  ? `legacy-template:${id}`
-                  : `vault:${id}`,
-            });
-          } catch (e) {
-            logger.error(`Failed to parse custom command ${file}`, e);
-            throw e;
+    for (const dir of [LEGACY_TEMPLATES_DIR, COMMANDS_DIR]) {
+      const files = await this.adapter.listFiles(dir);
+      for (const file of files.filter(isCatalogCommandPath)) {
+        try {
+          const id = commandIdFromPath(file);
+          if (isReservedCommandId(id)) {
+            this.reportReservedWorkspaceFile(file, id);
+            continue;
           }
+          const content = await this.adapter.read(file);
+          const parsed = parseSlashCommandContent(content);
+          authoritativeBytes.push([dir, file, content]);
+
+          const filename = file.split("/").at(-1);
+          if (!filename) {
+            logger.error(`Custom command has no filename: ${file}`);
+            continue;
+          }
+          const integrationKey = typeof parsed.integrationKey === 'string'
+            && /^[a-z0-9][a-z0-9-]{0,127}$/i.test(parsed.integrationKey)
+            ? parsed.integrationKey
+            : this.generatedIntegrationKeys.get(id) ?? this.createIntegrationKey();
+          this.generatedIntegrationKeys.set(id, integrationKey);
+
+          byId.set(id, {
+            id,
+            kind: "command",
+            name: id,
+            description: parsed.description ?? `Custom command from ${filename}`,
+            content: parsed.promptContent,
+            argumentHint: parsed.argumentHint || id,
+            icon: parsed.icon,
+            integrationKey,
+            scope: "workspace",
+            source: "user",
+            isEditable: true,
+            isDeletable: true,
+            displayPrefix: "/",
+            insertPrefix: "/",
+            persistenceKey: dir === LEGACY_TEMPLATES_DIR
+              ? `legacy-template:${id}`
+              : `vault:${id}`,
+          });
+        } catch (error) {
+          logger.error(`Failed to parse custom command ${file}`, error);
+          throw error;
         }
       }
-      const order = this.plugin.settings.workspaceCommandOrder ?? [];
-      const rank = new Map(order.map((id, index) => [id, index]));
-      const entries = [...byId.values()].sort((a, b) => {
-        const rankA = rank.get(a.id) ?? Number.MAX_SAFE_INTEGER;
-        const rankB = rank.get(b.id) ?? Number.MAX_SAFE_INTEGER;
-        return rankA - rankB;
-      });
-      const fingerprint = JSON.stringify({
+    }
+    const order = this.plugin.settings.workspaceCommandOrder ?? [];
+    const rank = new Map(order.map((id, index) => [id, index]));
+    const entries = [...byId.values()].sort((a, b) => {
+      const rankA = rank.get(a.id) ?? Number.MAX_SAFE_INTEGER;
+      const rankB = rank.get(b.id) ?? Number.MAX_SAFE_INTEGER;
+      return rankA - rankB;
+    });
+    return {
+      entries,
+      fingerprint: JSON.stringify({
         files: authoritativeBytes,
         identities: entries.map(entry => [entry.id, entry.integrationKey]),
         order,
-      });
-      const revisionChanged = this.commandsCoordinator.acceptCatalogScan(entries, fingerprint);
-      const changed = !this.loaded || revisionChanged;
-      this.workspaceEntries = entries;
-      this.catalogRevision = this.commandsCoordinator.currentRevision();
-      this.loaded = true;
-      if (changed) this.options.onWorkspaceEntriesChanged?.(entries.map(entry => ({ ...entry })));
+      }),
+    };
   }
 
   private async agentList(): Promise<PiviCommandsListResult> {
     await this.refresh();
-    return { commands: this.workspaceEntries.map(toAgentSummary), catalogRevision: this.catalogRevision };
+    return {
+      commands: this.commandsCoordinator.currentEntries().map(toAgentSummary),
+      catalogRevision: this.commandsCoordinator.currentRevision(),
+    };
   }
 
   private async agentGet(id: string): Promise<PiviCommandsGetResult> {
     await this.refresh();
-    const entry = this.workspaceEntries.find(candidate => candidate.id === id);
+    const entry = this.commandsCoordinator.currentEntries().find(candidate => candidate.id === id);
     if (!entry) throw new PiviCommandsManagementError('not_found', `Command /${id} was not found.`);
-    return { command: { ...toAgentSummary(entry), content: entry.content }, catalogRevision: this.catalogRevision };
+    return {
+      command: { ...toAgentSummary(entry), content: entry.content },
+      catalogRevision: this.commandsCoordinator.currentRevision(),
+    };
   }
 
   private createIntegrationKey(): string {
@@ -418,7 +413,8 @@ function isCatalogCommandPath(path: string): boolean {
   const slash = path.lastIndexOf('/');
   const filename = slash >= 0 ? path.slice(slash + 1) : path;
   if (filename.includes('.')) {
-    // Require exactly one trailing `.md` extension (no `.md.remove-*`, `.tmp`, …).
+    // Preserve the legacy discovery contract: exactly one trailing `.md`
+    // extension, excluding removal and temporary artifacts.
     if (filename.slice(0, -3).includes('.')) return false;
   }
   return path.startsWith(`${COMMANDS_DIR}/`) || path.startsWith(`${LEGACY_TEMPLATES_DIR}/`);

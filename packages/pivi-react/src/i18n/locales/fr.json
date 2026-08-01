@@ -790,7 +790,8 @@
           "remove": "{name} supprimée.",
           "enable": "{name} activée.",
           "disable": "{name} désactivée."
-        }
+        },
+        "partialFailure": "Les skills ont été enregistrées, mais certaines opérations de suivi ont échoué."
       }
     },
     "slashCommandsUi": {
