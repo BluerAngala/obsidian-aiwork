@@ -20,6 +20,7 @@ import {
   publishValidatedSkillTree,
   SkillStageValidationError,
   stageSkillTreeFromSource,
+  validateStagedSkillCollection,
 } from './skillStagePublish';
 
 export interface VaultSkillsServiceOptions {
@@ -594,7 +595,13 @@ export class VaultSkillsService {
       return this.withOperationRoot(name, async root => {
         const skillsDir = path.join(this.vaultPath, PIVI_SKILLS_PATH);
         const stagedSkills = path.join(root, PIVI_SKILLS_PATH);
-        if (fs.existsSync(skillsDir)) fs.cpSync(skillsDir, stagedSkills, { recursive: true });
+        if (fs.existsSync(skillsDir)) {
+          // Validate before copying because Windows may dereference directory
+          // junctions during cpSync, which would hide a symlink from the
+          // staged-tree validator.
+          validateStagedSkillCollection(skillsDir);
+          fs.cpSync(skillsDir, stagedSkills, { recursive: true });
+        }
         const result = await operation(root);
         return new SkillPublicationTransaction({
           vaultPath: this.vaultPath,
