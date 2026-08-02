@@ -15,6 +15,8 @@
 
 ### Bug Fixes
 
+* **skills:** support Windows publication transactions ([5cec2fb](https://github.com/shuuul/obsidian-pivi/commit/5cec2fb23f84d67f8aa45ef859184e01806e15f))
+* **skills:** validate the live tree before staging ([b3d842f](https://github.com/shuuul/obsidian-pivi/commit/b3d842fa89da13dbc56e54c9f0eaad294fc17006))
 * **management:** harden configuration transactions ([924fa85](https://github.com/shuuul/obsidian-pivi/commit/924fa85af89ce10b9b63b083539e2526379ea035))
 * **tools:** harden Bash grants, command transactions, and tool ownership ([f014ca7](https://github.com/shuuul/obsidian-pivi/commit/f014ca7260524ddd5cef12ff508b15111a3ff1fd))
 * **runtime:** harden provider and session lifecycle ([c08d703](https://github.com/shuuul/obsidian-pivi/commit/c08d70333f1c1ff683eee424d69c604ea0d3b9f0))
