@@ -38,6 +38,7 @@
     "messageActions": {
       "copyAriaLabel": "Nachricht kopieren",
       "copyAgentResponseAriaLabel": "Diese Agentenantwort kopieren",
+      "copyConversationAsMarkdownAriaLabel": "Unterhaltung bis zu diesem Turn als Markdown kopieren",
       "scrollToRecentUserAriaLabel": "Zur neuesten Benutzernachricht scrollen"
     },
     "messageImages": {
@@ -64,6 +65,17 @@
       "stopTitle": "Stoppen",
       "sendEmptyTitle": "Nachricht eingeben"
     },
+    "piviManagementApproval": {
+      "title": "Pivi-Änderung bestätigen",
+      "confirm": "Bestätigen",
+      "deny": "Ablehnen",
+      "management": {
+        "titles": { "mcp": { "upsert": "MCP-Server „{name}“ aktualisieren", "enable": "MCP-Server „{name}“ aktivieren", "disable": "MCP-Server „{name}“ deaktivieren", "remove": "MCP-Server „{name}“ entfernen" }, "skills": { "install": "Skills aus „{source}“ installieren", "enable": "Skill „{name}“ aktivieren", "disable": "Skill „{name}“ deaktivieren", "update": "Skill „{name}“ aktualisieren", "updateAll": "Alle paketverwalteten Skills aktualisieren", "remove": "Skill „{name}“ entfernen" }, "commands": { "upsert": "Befehl {command} speichern", "remove": "Befehl {command} entfernen", "move": "Befehl {command} verschieben" } },
+        "changes": { "mcpUpsert": "Die geplante MCP-Serverkonfiguration anwenden.", "mcpEnable": "Diesen MCP-Server aktivieren.", "mcpDisable": "Diesen MCP-Server deaktivieren.", "mcpRemove": "Diesen MCP-Server und seine Zugangsdaten entfernen.", "skillsInstall": "Skills über den festgelegten Paketablauf installieren.", "skillsEnable": "Diesen Skill aktivieren.", "skillsDisable": "Diesen Skill deaktivieren.", "skillsUpdate": "Diesen Skill aus seiner Paketquelle aktualisieren.", "skillsUpdateAll": "Alle paketverwalteten Skills aktualisieren.", "skillsRemove": "Diesen Skill aus dem Arbeitsbereich entfernen.", "commandsUpsert": "Diesen Arbeitsbereichsbefehl erstellen oder aktualisieren.", "commandsRemove": "Diesen Arbeitsbereichsbefehl löschen.", "commandsMove": "Diesen Arbeitsbereichsbefehl neu anordnen." },
+        "fields": { "server": "Server", "enabled": "Aktiviert", "type": "Typ", "command": "Befehl", "args": "Argumente", "envNames": "Umgebungsvariablen", "url": "URL", "auth": "Authentifizierung", "headerNames": "Headernamen", "bearerToken": "Bearer-Token", "oauth": "OAuth", "oauthGrant": "OAuth-Grant", "oauthClientId": "OAuth-Client-ID", "oauthScope": "OAuth-Bereich", "oauthClientSecret": "OAuth-Client-Secret", "contextSaving": "Kontextspeicherung", "disabledTools": "Deaktivierte Werkzeuge", "source": "Quelle", "skills": "Skills", "skill": "Skill", "catalogRevision": "Katalogrevision", "icon": "Symbol", "prompt": "Prompt", "before": "Vor", "after": "Nach" },
+        "values": { "yes": "Ja", "no": "Nein", "clear": "Löschen", "disabled": "Deaktiviert", "updated": "Aktualisiert" }
+      }
+    },
     "capabilityApproval": {
       "title": "Berechtigung erforderlich",
       "scopeQuestion": "Wie lange soll Pivi dies erlauben?",
@@ -86,7 +98,7 @@
       "restoreTab": "{title} wiederherstellen",
       "editTitle": "Titel für {title} bearbeiten",
       "editTitleInputLabel": "Tabtitel",
-      "closeTab": "{title} schließen",
+      "deleteTab": "{title} löschen",
       "archived": "Archiviert",
       "revealArchived": "Archivierte Tabs anzeigen",
       "failedCreateChat": "Chat konnte nicht erstellt werden",
@@ -126,7 +138,7 @@
       "externalRemove": "Pfad entfernen",
       "externalActiveTitle": "{count} externe(r) Kontext(e) (klicken zum Hinzufügen)",
       "externalIdleTitle": "Externe Kontexte hinzufügen (klicken)",
-    "contextOverLimit": "Der Kontext (~{tokens}) überschreitet das {limit}-Fenster des gewählten Modells. Wechsle zu einem Modell mit größerem Kontextfenster oder starte eine neue Sitzung."
+      "contextOverLimit": "Der Kontext (~{tokens}) überschreitet das {limit}-Fenster des gewählten Modells. Wechsle zu einem Modell mit größerem Kontextfenster oder starte eine neue Sitzung."
     },
     "selection": {
       "linesSelected": "{count} {lines} ausgewählt",
@@ -164,14 +176,12 @@
       "expand": "Aufgabenliste ausklappen – {completed} von {total} erledigt"
     },
     "activity": {
-      "backgroundTask": "Hintergrundaufgabe",
       "subagentTask": "Unteragentenaufgabe",
       "expand": "Zum Erweitern klicken",
       "collapse": "Zum Einklappen klicken",
       "prompt": "Prompt",
       "result": "Ergebnis",
       "noPrompt": "Kein Prompt angegeben",
-      "sessionEnded": "Die Sitzung endete vor Abschluss der Aufgabe",
       "done": "Erledigt",
       "error": "Fehler"
     },
@@ -252,6 +262,7 @@
       "kindTool": "Werkzeug",
       "kindMcpServer": "MCP-Server",
       "kindMcpTool": "MCP-Tool",
+      "newSessionDescription": "Neuen Sitzungs-Tab öffnen",
       "mcpServerDetail": "MCP-Server: {server}",
       "mcpToolDetail": "MCP-Server: {server} · Tool: {tool}"
     },
@@ -261,6 +272,8 @@
       "skillTooltip": "Skill: {skill}",
       "toolTooltip": "Tool: {tool}",
       "agentTooltip": "Agent: {agent}",
+      "sessionTooltip": "Sitzung: {session}",
+      "sessionAriaLabel": "Referenzierte Sitzung: {session}",
       "selectedText": "Ausgewählter Text",
       "selectedTextTemplateTooltip": "Ausgewählter Text beim Ausführen dieses Befehls",
       "removeSelectedTextTemplate": "Variable für ausgewählten Text entfernen",
@@ -497,14 +510,18 @@
     },
     "sessionFiles": {
       "heading": "Sitzungsdateien",
+      "retention": {
+        "name": "Entfernte Sitzungen aufbewahren für",
+        "desc": "Tage bis entfernte Sitzungsdateien endgültig gelöscht werden."
+      },
       "deleteRemoved": {
-        "name": "Entfernte Sitzungsdateien löschen",
-        "desc": "Löscht dauerhaft nur Sitzungsdateien, die aus dem Verlauf entfernt wurden und weder archiviert noch geöffnet sind.",
-        "button": "Löschen",
-        "success": "{count} entfernte Sitzungsdatei(en) gelöscht.",
-        "failed": "Entfernte Sitzungsdateien konnten nicht gelöscht werden",
-        "confirmTitle": "Entfernte Sitzungsdateien löschen?",
-        "confirmDescription": "Dies löscht dauerhaft nur Sitzungsdateien, die aus dem Verlauf entfernt wurden und weder archiviert noch geöffnet sind."
+        "name": "Entfernte Sitzungen endgültig löschen",
+        "desc": "Löscht über die Aktion „Löschen“ entfernte Sitzungen. Geöffnete und archivierte Sitzungen bleiben erhalten.",
+        "button": "Endgültig löschen",
+        "success": "{count} entfernte Sitzungsdatei(en) endgültig gelöscht.",
+        "failed": "Entfernte Sitzungen konnten nicht endgültig gelöscht werden",
+        "confirmTitle": "Entfernte Sitzungen endgültig löschen?",
+        "confirmDescription": "Dies löscht über die Aktion „Löschen“ entfernte Sitzungen. Geöffnete und archivierte Sitzungen bleiben erhalten."
       }
     },
     "sharedEnvironment": {
@@ -528,6 +545,12 @@
         "mcp": "MCP-Server"
       },
       "heading": "Tool-Schalter",
+      "groups": {
+        "workspace": "{workspaceName}",
+        "hostCli": "{hostName}-CLI",
+        "pivi": "Pivi",
+        "additional": "Zusätzlicher Zugriff"
+      },
       "intro": "{hostName}-Tools für den Agenten ein- oder ausschalten. Änderungen gelten für neue Turns nach Prompt-Aktualisierung.",
       "unavailableOfficialCli": "Erfordert die offizielle Obsidian-CLI.",
       "unavailableExternalRead": "Erfordert externen Lesezugriff und mindestens ein erlaubtes Verzeichnis.",
@@ -767,7 +790,8 @@
           "remove": "{name} entfernt.",
           "enable": "{name} aktiviert.",
           "disable": "{name} deaktiviert."
-        }
+        },
+        "partialFailure": "Skills wurden gespeichert, aber einige Folgearbeiten sind fehlgeschlagen."
       }
     },
     "slashCommandsUi": {
@@ -926,6 +950,14 @@
       "write": "Schreiben",
       "writeDesc": "Notizen erstellen, anhängen/voranstellen oder absichtlich vollständig überschreiben.",
       "search": "Suchen",
+      "sessions": "Pivi Sessions",
+      "sessionsDesc": "Dauerhafte Sitzungen lesen, wiederherstellbare gelöschte Sitzungen auflisten oder eine in einem sichtbaren Pivi-Tab wiederherstellen.",
+      "piviMcp": "Pivi MCP",
+      "piviMcpDesc": "Verwaltet gespeicherte MCP-Server nach Bestätigung durch den Haupt-Agenten.",
+      "piviSkills": "Pivi Skills",
+      "piviSkillsDesc": "Installiert, aktualisiert, aktiviert, deaktiviert und entfernt verwaltete Skills nach Bestätigung durch den Haupt-Agenten.",
+      "piviCommands": "Pivi Commands",
+      "piviCommandsDesc": "Verwaltet Workspace-Befehle nach Bestätigung durch den Haupt-Agenten.",
       "searchDesc": "Notiztext, Tags suchen oder Markdown-Dateien in Ordnern auflisten.",
       "noteInfo": "Notizinfo",
       "noteInfoDesc": "Metadaten, Tags, ausgehende Links und Frontmatter lesen.",

@@ -50,6 +50,7 @@ export async function initializeTabService(
 
     service = ports.runtime.createChatService({
       capabilityApproval: tab.capabilityApproval?.getPort() ?? null,
+      piviManagementApproval: tab.piviManagementApproval ?? null,
     });
     subscriptions = registerServiceSubscriptions(tab, service);
 

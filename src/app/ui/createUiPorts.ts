@@ -24,6 +24,7 @@ import type {
 import type { PiChatService } from '@pivi/pivi-agent-core/runtime/piChatService';
 import type { SessionMessagePage } from '@pivi/pivi-agent-core/session';
 import { providerApiKeyEnvVar, TOOL_OBSIDIAN_BASH } from '@pivi/pivi-agent-core/tools';
+import type { PiviManagementApprovalPort } from '@pivi/pivi-agent-core/tools/piviManagement';
 import type { SettingsPorts } from '@pivi/pivi-react/ports';
 import type {
   SettingsGeneralSnapshot,
@@ -46,6 +47,8 @@ import { createSettingsSkillsPort } from './createSettingsSkillsPort';
 import {
   appendBashAllowlistEntry as persistBashAllowlistEntry,
   appendExternalReadDirectory as persistExternalReadDirectory,
+  cloneChatCustomProviders,
+  invalidateSlashCatalog,
   normalizeMaxConcurrentSubagents,
   requireWorkspace,
 } from './createUiPortHelpers';
@@ -69,10 +72,8 @@ import {
 /** Composition-only plugin capabilities adapted into core-owned chat ports. */
 export type ChatUiCompositionHost = PiviChatCompositionHost & {
   getChatPerfRecorder(): ChatPerfRecorder;
-  createChatService(): PiChatService;
-  createChatService(options?: {
-    capabilityApproval?: CapabilityApprovalPort | null;
-  }): PiChatService;
+  createChatService(options?: { capabilityApproval?: CapabilityApprovalPort | null;
+    piviManagementApproval?: PiviManagementApprovalPort | null }): PiChatService;
   createAuxQueryRunner(): AuxQueryRunner;
   getSessionList(): SessionSummary[];
   getOpenSessionSync(id: string): OpenSessionState | null;
@@ -89,6 +90,7 @@ export type ChatUiCompositionHost = PiviChatCompositionHost & {
   }): Promise<OpenSessionState>;
   openSessionByFile(sessionFile: string): Promise<OpenSessionState>;
   deleteSession(id: string): Promise<void>;
+  deleteSessionFile(sessionFile: string, id?: string | null): Promise<void>;
   renameSession(
     id: string,
     title: string,
@@ -100,16 +102,6 @@ export type ChatUiCompositionHost = PiviChatCompositionHost & {
     atEntryId: string,
   ): Promise<{ sessionFile: string; sessionId: string } | null>;
 };
-
-function cloneChatCustomProviders(
-  providers: ChatSettingsSnapshot['modelCatalog']['customProviders'],
-): ChatSettingsSnapshot['modelCatalog']['customProviders'] {
-  return providers.map((provider) => ({
-    ...provider,
-    ...(provider.headers ? { headers: { ...provider.headers } } : {}),
-    models: provider.models.map((model) => ({ ...model })),
-  }));
-}
 
 export function createChatUiPorts(
   host: ChatUiCompositionHost,
@@ -193,6 +185,7 @@ export function createChatUiPorts(
       createSession: (options) => host.createOpenSession(options),
       openSessionFile: (sessionFile) => host.openSessionByFile(sessionFile),
       deleteSession: (id) => host.deleteSession(id),
+      deleteSessionFile: (file, id) => host.deleteSessionFile(file, id),
       renameSession: (id, title, titleSource) => host.renameSession(id, title, titleSource),
       updateSession: (id, updates) => host.updateSession(id, updates),
       forkSession: (openSession, atEntryId) => host.forkSessionAt(openSession, atEntryId),
@@ -201,6 +194,10 @@ export function createChatUiPorts(
       listMcpServers: () => ws().mcpServerManager.getServers(),
       listContextSavingMcpServers: () => ws().mcpServerManager.getContextSavingServers(),
       listMcpTools: (serverName) => ws().mcpToolProvider.listTools(serverName),
+      listMcpInventoryTools: (serverName) => {
+        const provider = ws().mcpToolProvider;
+        return provider.listInventoryTools?.(serverName) ?? provider.listTools(serverName);
+      },
       listSkills: () => ws().skillProvider.listSkills(),
       listSlashEntries: (includeBuiltIns) => (
         ws().slashCommandCatalog.listDropdownEntries({ includeBuiltIns })
@@ -300,6 +297,7 @@ export function createSettingsUiPorts(
         enableAutoTitleGeneration: settings.enableAutoTitleGeneration,
         userName: settings.userName,
         excludedTags: settings.excludedTags,
+        deletedSessionRetentionDays: settings.deletedSessionRetentionDays ?? 30,
         requireCommandOrControlEnterToSend: settings.requireCommandOrControlEnterToSend ?? false,
         keyboardNavigation: {
           scrollUpKey: host.settings.keyboardNavigation.scrollUpKey,
@@ -328,6 +326,9 @@ export function createSettingsUiPorts(
     host.settings.enableAutoTitleGeneration = next.enableAutoTitleGeneration;
     host.settings.userName = next.userName;
     host.settings.excludedTags = [...next.excludedTags];
+    host.settings.deletedSessionRetentionDays = Math.max(1, Math.min(
+      3650, Math.trunc(next.deletedSessionRetentionDays ?? 30),
+    ));
     host.settings.requireCommandOrControlEnterToSend = next.requireCommandOrControlEnterToSend;
     host.settings.keyboardNavigation = {
       scrollUpKey: next.keyboardNavigation.scrollUpKey,
@@ -340,6 +341,7 @@ export function createSettingsUiPorts(
       }
     }
     await host.saveSettings();
+    if (patch.deletedSessionRetentionDays !== undefined) await host.purgeExpiredDeletedSessionFiles();
   };
   const saveEditorSelectionToolbar = async (
     settings: EditorSelectionToolbarSettings,
@@ -399,7 +401,7 @@ export function createSettingsUiPorts(
   return {
     complex: {
       models: createSettingsModelsPort(host, uiFacades, ws),
-      skills: createSettingsSkillsPort(host),
+      skills: createSettingsSkillsPort(host, ws.skillsManagement),
       tools: {
         getSettings: () => {
           const settings = getObsidianToolsSettingsFromBag(host.settings);
@@ -482,10 +484,10 @@ export function createSettingsUiPorts(
       commands: {
         refresh: () => ws.slashCommandCatalog.refresh(),
         listIconNames: () => getIconIds(),
-        listWorkspaceEntries: () => ws.slashCommandCatalog.listWorkspaceEntries(),
+        loadWorkspaceCatalog: () => ws.slashCommandCatalog.getWorkspaceSnapshot(),
         listDropdownEntries: () => ws.slashCommandCatalog.listDropdownEntries({ includeBuiltIns: true }),
-        async saveWorkspaceEntry(entry) {
-          await ws.slashCommandCatalog.saveWorkspaceEntry(entry);
+        async saveWorkspaceEntry(entry, catalogRevision) {
+          await ws.slashCommandCatalog.saveWorkspaceEntry(entry, catalogRevision);
           const saved = (await ws.slashCommandCatalog.listWorkspaceEntries())
             .find(candidate => candidate.id === entry.id);
           if (!saved) {
@@ -512,31 +514,30 @@ export function createSettingsUiPorts(
             };
             await host.saveSettings();
           }
-          for (const view of host.getAllViews()) {
-            view.getChatHandle()?.maintenance.invalidateSlashCatalog();
-          }
+          invalidateSlashCatalog(host);
           return saved;
         },
-        async deleteWorkspaceEntry(entry) {
-          await ws.slashCommandCatalog.deleteWorkspaceEntry(entry);
-          for (const view of host.getAllViews()) {
-            view.getChatHandle()?.maintenance.invalidateSlashCatalog();
-          }
+        async renameWorkspaceEntry(previous, entry, catalogRevision) {
+          await ws.slashCommandCatalog.renameWorkspaceEntry(previous, entry, catalogRevision);
+          const saved = (await ws.slashCommandCatalog.listWorkspaceEntries()).find(
+            candidate => candidate.id === entry.id);
+          if (!saved) throw new Error(`Renamed workspace command /${entry.name} was not found`);
+          invalidateSlashCatalog(host);
+          return saved;
         },
-        async saveWorkspaceOrder(ids) {
-          host.settings.workspaceCommandOrder = [...ids];
-          await host.saveSettings();
-          await ws.slashCommandCatalog.refresh();
-          for (const view of host.getAllViews()) {
-            view.getChatHandle()?.maintenance.invalidateSlashCatalog();
-          }
+        async deleteWorkspaceEntry(entry, catalogRevision) {
+          const result = await ws.slashCommandCatalog.deleteWorkspaceEntry(entry, catalogRevision);
+          invalidateSlashCatalog(host);
+          return result;
+        },
+        async saveWorkspaceOrder(ids, catalogRevision) {
+          await ws.slashCommandCatalog.saveWorkspaceOrder(ids, catalogRevision);
+          invalidateSlashCatalog(host);
         },
       },
       mcp: createMcpSettingsPort(host, ws),
     },
-    feedback: {
-      notify: message => { host.notify(message); },
-    },
+    feedback: { notify: message => { host.notify(message); } },
     snapshot: { getSnapshot: snapshot },
     actions: {
       saveGeneral,

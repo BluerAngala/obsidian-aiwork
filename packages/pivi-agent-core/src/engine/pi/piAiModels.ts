@@ -33,6 +33,7 @@ import {
 } from '../../auth/piProviderCredentials';
 import type { CustomProviderConfig } from '../../foundation/customProviders';
 import { PluginLogger } from '../../foundation/pluginLogger';
+import type { FetchCompatible } from '../../ports';
 import { createGrokBuildProvider } from './grokBuildProvider';
 import {
   buildCustomPiProvider,
@@ -40,12 +41,15 @@ import {
   installCustomProviders,
 } from './installPiCustomProviders';
 import { cachePiAiRegistryModels } from './piModelRegistry';
+import { withScopedGoogleTransport } from './scopedGoogleProvider';
 import {
   createApiKeyOnlyProvider,
   createSubscriptionOAuthProvider,
 } from './splitProviderAuth';
 
 const logger = new PluginLogger('PiAiModels');
+
+let providerFetch: FetchCompatible | undefined;
 
 /**
  * pi-ai's codex WebSocket transport builds `new WebSocket(url, { headers })` Node-`ws`-style.
@@ -58,9 +62,13 @@ export function streamPiAiModelsSimple(
   context: Context,
   options?: SimpleStreamOptions,
 ): AssistantMessageEventStream {
-  const pinned = model.provider === 'openai-codex' && options?.transport === undefined
-    ? { ...options, transport: 'sse' as const }
-    : options;
+  const pinned = {
+    ...options,
+    ...(options?.fetch === undefined && providerFetch ? { fetch: providerFetch } : {}),
+    ...(model.provider === 'openai-codex' && options?.transport === undefined
+      ? { transport: 'sse' as const }
+      : {}),
+  };
   return piAiModels.streamSimple(model, context, pinned);
 }
 
@@ -93,7 +101,7 @@ function installSupportedProviders(models: MutableModels): void {
     'Claude',
   ));
   models.setProvider(deepseekProvider());
-  models.setProvider(googleProvider());
+  models.setProvider(withScopedGoogleTransport(googleProvider(), () => providerFetch));
   models.setProvider(kimiCodingProvider());
   models.setProvider(minimaxProvider());
   models.setProvider(minimaxCnProvider());
@@ -101,7 +109,7 @@ function installSupportedProviders(models: MutableModels): void {
   models.setProvider(moonshotaiCnProvider());
   models.setProvider(openaiProvider());
   models.setProvider(openaiCodexProvider());
-  models.setProvider(opencodeProvider());
+  models.setProvider(withScopedGoogleTransport(opencodeProvider(), () => providerFetch));
   models.setProvider(opencodeGoProvider());
   models.setProvider(openrouterProvider());
   models.setProvider(createApiKeyOnlyProvider(xai));
@@ -117,10 +125,12 @@ installSupportedProviders(piAiModels);
 export function configurePiAiModels(options: {
   credentials?: CredentialStore;
   authContext?: AuthContext;
+  providerFetch?: FetchCompatible;
   customProviders?: readonly CustomProviderConfig[];
   httpGet?: CustomProviderHttpGet;
   getApiKey?: (providerId: string) => string | undefined;
 }): void {
+  providerFetch = options.providerFetch;
   customProviderRuntime.reset(options);
   piAiModels = createModels({
     credentials: options.credentials,

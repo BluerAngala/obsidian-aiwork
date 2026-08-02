@@ -38,6 +38,7 @@
     "messageActions": {
       "copyAriaLabel": "复制消息",
       "copyAgentResponseAriaLabel": "复制这条助手回复",
+      "copyConversationAsMarkdownAriaLabel": "将截至此轮的对话复制为 Markdown",
       "scrollToRecentUserAriaLabel": "滚动到最近的用户消息"
     },
     "inlineContext": {
@@ -58,6 +59,17 @@
       "queueTitle": "加入队列",
       "stopTitle": "停止",
       "sendEmptyTitle": "请输入消息"
+    },
+    "piviManagementApproval": {
+      "title": "确认 Pivi 更改",
+      "confirm": "确认",
+      "deny": "拒绝",
+      "management": {
+        "titles": { "mcp": { "upsert": "更新 MCP 服务器“{name}”", "enable": "启用 MCP 服务器“{name}”", "disable": "停用 MCP 服务器“{name}”", "remove": "移除 MCP 服务器“{name}”" }, "skills": { "install": "从“{source}”安装 Skills", "enable": "启用 Skill“{name}”", "disable": "停用 Skill“{name}”", "update": "更新 Skill“{name}”", "updateAll": "更新所有由软件包管理的 Skills", "remove": "移除 Skill“{name}”" }, "commands": { "upsert": "保存命令 {command}", "remove": "移除命令 {command}", "move": "移动命令 {command}" } },
+        "changes": { "mcpUpsert": "应用计划的 MCP 服务器配置。", "mcpEnable": "启用此 MCP 服务器。", "mcpDisable": "停用此 MCP 服务器。", "mcpRemove": "移除此 MCP 服务器及其凭据。", "skillsInstall": "通过锁定的软件包流程安装 Skills。", "skillsEnable": "启用此 Skill。", "skillsDisable": "停用此 Skill。", "skillsUpdate": "从软件包来源更新此 Skill。", "skillsUpdateAll": "更新所有由软件包管理的 Skills。", "skillsRemove": "从工作区移除此 Skill。", "commandsUpsert": "创建或更新此工作区命令。", "commandsRemove": "删除此工作区命令。", "commandsMove": "重新排序此工作区命令。" },
+        "fields": { "server": "服务器", "enabled": "已启用", "type": "类型", "command": "命令", "args": "参数", "envNames": "环境变量名", "url": "URL", "auth": "身份验证", "headerNames": "请求头名称", "bearerToken": "Bearer 令牌", "oauth": "OAuth", "oauthGrant": "OAuth 授权", "oauthClientId": "OAuth 客户端 ID", "oauthScope": "OAuth 范围", "oauthClientSecret": "OAuth 客户端密钥", "contextSaving": "上下文节省", "disabledTools": "已停用工具", "source": "来源", "skills": "Skills", "skill": "Skill", "catalogRevision": "目录修订版本", "icon": "图标", "prompt": "提示词", "before": "之前", "after": "之后" },
+        "values": { "yes": "是", "no": "否", "clear": "清除", "disabled": "已停用", "updated": "已更新" }
+      }
     },
     "capabilityApproval": {
       "title": "需要权限",
@@ -81,7 +93,7 @@
       "restoreTab": "恢复 {title}",
       "editTitle": "编辑 {title} 的标题",
       "editTitleInputLabel": "标签页标题",
-      "closeTab": "关闭 {title}",
+      "deleteTab": "删除 {title}",
       "archived": "已归档",
       "revealArchived": "显示已归档标签页",
       "failedCreateChat": "创建聊天失败",
@@ -121,7 +133,7 @@
       "externalRemove": "移除路径",
       "externalActiveTitle": "{count} 个外部上下文（点击添加更多）",
       "externalIdleTitle": "添加外部上下文（点击）",
-    "contextOverLimit": "当前上下文（约 {tokens}）已超出所选模型的 {limit} 上下文窗口。请切换到上下文窗口更大的模型，或新建会话。"
+      "contextOverLimit": "当前上下文（约 {tokens}）已超出所选模型的 {limit} 上下文窗口。请切换到上下文窗口更大的模型，或新建会话。"
     },
     "selection": {
       "linesSelected": "已选中 {count} {lines}",
@@ -159,14 +171,12 @@
       "expand": "展开任务列表 — 已完成 {completed}/{total}"
     },
     "activity": {
-      "backgroundTask": "后台任务",
       "subagentTask": "子代理任务",
       "expand": "点击展开",
       "collapse": "点击折叠",
       "prompt": "提示词",
       "result": "结果",
       "noPrompt": "未提供提示词",
-      "sessionEnded": "会话在任务完成前已结束",
       "done": "完成",
       "error": "错误"
     },
@@ -247,6 +257,7 @@
       "kindTool": "工具",
       "kindMcpServer": "MCP 服务器",
       "kindMcpTool": "MCP 工具",
+      "newSessionDescription": "打开新的会话标签页",
       "mcpServerDetail": "MCP 服务器：{server}",
       "mcpToolDetail": "MCP 服务器：{server} · 工具：{tool}"
     },
@@ -256,6 +267,8 @@
       "skillTooltip": "技能：{skill}",
       "toolTooltip": "工具：{tool}",
       "agentTooltip": "智能体：{agent}",
+      "sessionTooltip": "会话：{session}",
+      "sessionAriaLabel": "引用的会话：{session}",
       "selectedText": "所选文本",
       "selectedTextTemplateTooltip": "运行此命令时的所选文本",
       "removeSelectedTextTemplate": "移除所选文本变量",
@@ -497,14 +510,18 @@
     },
     "sessionFiles": {
       "heading": "会话文件",
+      "retention": {
+        "name": "保留已移除会话",
+        "desc": "永久删除会话文件前保留的天数。"
+      },
       "deleteRemoved": {
-        "name": "删除已移除的会话文件",
-        "desc": "仅永久删除已从历史中移除、且未归档或当前未打开的会话文件。",
-        "button": "删除",
-        "success": "已删除 {count} 个已移除的会话文件。",
-        "failed": "删除已移除的会话文件失败",
-        "confirmTitle": "删除已移除的会话文件？",
-        "confirmDescription": "这将永久删除已从历史记录中移除且未归档或当前未打开的会话文件。"
+        "name": "永久删除已移除的会话",
+        "desc": "删除通过“删除”操作移除的会话。已打开和已归档的会话不受影响。",
+        "button": "永久删除",
+        "success": "已永久删除 {count} 个已移除的会话文件。",
+        "failed": "永久删除已移除的会话失败",
+        "confirmTitle": "永久删除已移除的会话？",
+        "confirmDescription": "这将删除通过“删除”操作移除的会话。已打开和已归档的会话不会受影响。"
       }
     },
     "sharedEnvironment": {
@@ -528,6 +545,12 @@
         "mcp": "MCP 服务器"
       },
       "heading": "工具开关",
+      "groups": {
+        "workspace": "{workspaceName}",
+        "hostCli": "{hostName} CLI",
+        "pivi": "Pivi",
+        "additional": "附加访问"
+      },
       "intro": "启用或禁用向智能体暴露的 {hostName} 工具。更改在提示刷新后的新回合生效。",
       "unavailableOfficialCli": "需要官方 Obsidian CLI。",
       "unavailableExternalRead": "需要外部读取权限且至少有一个允许的目录。",
@@ -767,7 +790,8 @@
           "remove": "{name} 已移除。",
           "enable": "{name} 已启用。",
           "disable": "{name} 已禁用。"
-        }
+        },
+        "partialFailure": "技能已保存，但部分后续操作失败。"
       }
     },
     "slashCommandsUi": {
@@ -926,6 +950,14 @@
       "write": "写入",
       "writeDesc": "创建笔记、追加/前置内容，或有意覆盖整篇笔记。",
       "search": "搜索",
+      "sessions": "Pivi Sessions",
+      "sessionsDesc": "读取持久化会话、列出可恢复的已删除会话，或将其恢复到可见的 Pivi 标签页。",
+      "piviMcp": "Pivi MCP",
+      "piviMcpDesc": "经主 Agent 确认后管理已保存的 MCP 服务器。",
+      "piviSkills": "Pivi Skills",
+      "piviSkillsDesc": "经主 Agent 确认后安装、更新、启用、停用或移除托管 Skills。",
+      "piviCommands": "Pivi Commands",
+      "piviCommandsDesc": "经主 Agent 确认后管理工作区 Commands。",
       "searchDesc": "搜索笔记文本、标签，或列出文件夹中的 Markdown 文件。",
       "noteInfo": "笔记信息",
       "noteInfoDesc": "读取元数据、标签、出链和 frontmatter。",

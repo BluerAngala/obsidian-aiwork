@@ -1,8 +1,13 @@
 import { getObsidianToolsSettingsFromBag } from '@pivi/pivi-agent-core/foundation/settings';
 import { parseEnvironmentVariables } from '@pivi/pivi-agent-core/foundation/settingsEnv';
+import type { ChatSettingsSnapshot } from '@pivi/pivi-agent-core/runtime/chatPorts';
 import type { SettingsSubagentsSnapshot } from '@pivi/pivi-react/settings';
 
-import type { PiviChatCompositionHost, PiviPluginWorkspace } from '@/app/hostContracts';
+import type {
+  PiviChatCompositionHost,
+  PiviPluginWorkspace,
+  PiviSettingsHost,
+} from '@/app/hostContracts';
 
 import { validateDirectoryPath } from './externalDirectory';
 
@@ -81,4 +86,18 @@ export async function appendExternalReadDirectory(
     await view.getChatHandle()?.maintenance.refreshRuntimePrompt();
     view.getChatHandle()?.maintenance.syncExternalReadDirectories(externalReadDirectories);
   }
+}
+
+export function cloneChatCustomProviders(
+  providers: ChatSettingsSnapshot['modelCatalog']['customProviders'],
+): ChatSettingsSnapshot['modelCatalog']['customProviders'] {
+  return providers.map((provider) => ({
+    ...provider,
+    ...(provider.headers ? { headers: { ...provider.headers } } : {}),
+    models: provider.models.map((model) => ({ ...model })),
+  }));
+}
+
+export function invalidateSlashCatalog(host: PiviSettingsHost): void {
+  for (const view of host.getAllViews()) view.getChatHandle()?.maintenance.invalidateSlashCatalog();
 }

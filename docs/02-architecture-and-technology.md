@@ -19,6 +19,7 @@ flowchart TD
   App -- "uses" --> Tools["@pivi/obsidian-tools"]
   Tools -- "uses" --> Host
   Tools -- "implements" --> ToolSpec["core/tools ToolSpec"]
+  App -- "adds core session tool" --> ToolSpec
   Engine -- "implements" --> Runtime
 ```
 
@@ -26,8 +27,10 @@ flowchart TD
 
 - `src/ui/**` uses injected `ChatPorts`, `PiChatService`, and `AuxQueryRunner`; it does not import the Pi engine, app workspace implementations, or concrete host/tool packages.
 - `@pivi/pivi-react` consumes presentation-safe core models and its own ports. It does not receive `ChatPorts`, runtime objects, Obsidian APIs, or application implementations.
-- `@pivi/obsidian-host` implements host ports. It does not import UI, tools, or the Pi engine.
-- `@pivi/obsidian-tools` implements Pivi `ToolSpec` values using host contracts.
+- `@pivi/obsidian-host` implements host ports and owns the canonical vault-edit occurrence matcher used by `ObsidianVaultApi`. It does not import UI, tools, or the Pi engine.
+- `@pivi/obsidian-tools` implements Obsidian-native and CLI-backed `ToolSpec` values using host contracts. Host-neutral `pivi_sessions` and its recovery port live in core; app composition adds that tool to the shared base provider so main Agents and subagents receive the same inventory.
+- `src/app/workspace/WorkspaceCommandsCoordinator.ts` owns workspace-command validation, revisions, persistence, and ordering. `PiSlashCommandCatalog` owns watching and catalog composition only.
+- Core Skills owns skill/command frontmatter parsing; there is no parallel parser in the concrete tools package.
 - Raw `@earendil-works/*` use belongs in `packages/pivi-agent-core/src/engine/pi/`.
 
 The build enforces important edges through `scripts/check-architecture-boundaries.mjs`. Treat `npm run check:boundaries` as an architecture test, not a style check.
@@ -107,7 +110,8 @@ Prefer the narrowest exported subpath:
 | Auxiliary queries | `@pivi/pivi-agent-core/runtime/auxQueryRunner` |
 | Messages, settings, session identities | Core `foundation` and `session` subpaths |
 | Prompt construction | `@pivi/pivi-agent-core/prompt` |
-| Tool protocol and display models | `@pivi/pivi-agent-core/tools` |
+| Tool protocol, prompt-usage descriptors, display models, and host-neutral session tool | `@pivi/pivi-agent-core/tools` |
+| Session recovery capability | `@pivi/pivi-agent-core/session` |
 | React snapshots | `@pivi/pivi-react/store` |
 | Context badge presentation | `@pivi/pivi-react/context-badges` |
 | Concrete Pi construction | `@pivi/pivi-agent-core/engine/pi`, app composition only |

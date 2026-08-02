@@ -7,7 +7,7 @@ import type { SlashCatalogEntry } from '@pivi/pivi-agent-core/skills/commands/sl
 import { withTestPresentationPlatform } from '../helpers/presentationPlatform';
 
 const snapshot: SettingsUiSnapshotData = {
-  general: { locale: 'en', chatViewPlacement: 'right-sidebar', tabBarPosition: 'input', enableAutoScroll: true, deferMathRenderingDuringStreaming: true, enableAutoTitleGeneration: false, userName: '', excludedTags: [], requireCommandOrControlEnterToSend: false, keyboardNavigation: { scrollUpKey: 'w', scrollDownKey: 's', focusInputKey: 'i' }, editorSelectionToolbar: { enabled: true, shortcuts: [] } },
+  general: { locale: 'en', chatViewPlacement: 'right-sidebar', tabBarPosition: 'input', enableAutoScroll: true, deferMathRenderingDuringStreaming: true, enableAutoTitleGeneration: false, userName: '', excludedTags: [], deletedSessionRetentionDays: 30, requireCommandOrControlEnterToSend: false, keyboardNavigation: { scrollUpKey: 'w', scrollDownKey: 's', focusInputKey: 'i' }, editorSelectionToolbar: { enabled: true, shortcuts: [] } },
   subagents: { enabled: true, allowBackground: false, maxConcurrentSubagents: 2 },
 };
 
@@ -44,14 +44,18 @@ function createPorts(entries: readonly SlashCatalogEntry[], overrides: Partial<S
       commands: {
         refresh: async () => undefined,
         listIconNames: () => ['list-collapse', 'message-square', 'sparkles'],
-        listWorkspaceEntries: async () => entries,
+        loadWorkspaceCatalog: async () => ({ entries, catalogRevision: 1 }),
         listDropdownEntries: async () => entries,
-        saveWorkspaceEntry: async entry => entry,
+        saveWorkspaceEntry: async (entry: SlashCatalogEntry) => entry,
+        renameWorkspaceEntry: async (
+          _previous: SlashCatalogEntry,
+          entry: SlashCatalogEntry,
+        ) => entry,
         deleteWorkspaceEntry: async () => undefined,
         saveWorkspaceOrder: async () => undefined,
         ...overrides,
       },
-    } as SettingsPorts['complex'],
+    } as unknown as SettingsPorts['complex'],
     persistence: { getSettingsSnapshot: () => ({} as never), commitSettingsSnapshot: async () => undefined },
     environment: { getActiveEnvironmentVariables: () => '', getEnvironmentVariables: () => '', applyEnvironmentVariables: async () => undefined, applyEnvironmentVariablesBatch: async () => undefined, importEnvironmentText: async () => undefined, listEntries: () => [], getReviewKeys: () => [] },
     hotkeys: { listHotkeys: () => [], openHotkeySettings: () => undefined },
@@ -87,8 +91,24 @@ describe('React commands settings', () => {
 
   it('reorders custom commands with the keyboard and saves the id order once on drop', async () => {
     const second: SlashCatalogEntry = { ...command, id: 'explain', name: 'explain', integrationKey: 'explain-key', persistenceKey: 'commands/explain.md' };
-    const saveWorkspaceOrder = jest.fn(async () => undefined);
-    renderCommands(createPorts([command, second], { saveWorkspaceOrder }));
+    let currentEntries: readonly SlashCatalogEntry[] = [command, second];
+    let currentRevision = 1;
+    const saveWorkspaceOrder = jest.fn(async (_ids: readonly string[], _revision: number) => undefined);
+    const saveWorkspaceEntry = jest.fn(async (entry: SlashCatalogEntry) => entry);
+    const loadWorkspaceCatalog = jest.fn(async () => ({
+      entries: currentEntries,
+      catalogRevision: currentRevision,
+    }));
+    const ports = createPorts([command, second], {
+      saveWorkspaceOrder: async (ids, revision) => {
+        saveWorkspaceOrder(ids, revision);
+        currentEntries = ids.map(id => currentEntries.find(entry => entry.id === id)!);
+        currentRevision = 2;
+      },
+      saveWorkspaceEntry,
+      loadWorkspaceCatalog,
+    });
+    renderCommands(ports);
 
     const handle = await screen.findByRole('button', { name: 'Reorder /review, currently position 1' });
     fireEvent.keyDown(handle, { key: ' ' });
@@ -98,8 +118,17 @@ describe('React commands settings', () => {
     await act(async () => undefined);
 
     expect(saveWorkspaceOrder).toHaveBeenCalledTimes(1);
-    expect(saveWorkspaceOrder).toHaveBeenCalledWith(['explain', 'review']);
+    expect(saveWorkspaceOrder).toHaveBeenCalledWith(['explain', 'review'], 1);
     expect(screen.getByRole('button', { name: 'Reorder /review, currently position 2' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Edit command review'));
+    const card = screen.getByLabelText('Edit command review').closest('details') as HTMLElement;
+    fireEvent.change(card.querySelector('textarea')!, { target: { value: 'Updated after reorder' } });
+    fireEvent.click(within(card).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(saveWorkspaceEntry).toHaveBeenCalledWith(
+      expect.objectContaining({ content: 'Updated after reorder' }),
+      2,
+    ));
   });
 
   it('rolls the command order back when saving the order fails', async () => {
@@ -138,7 +167,7 @@ describe('React commands settings', () => {
       name: 'mycommand',
       argumentHint: 'mycommand',
       content: 'Use this.',
-    })));
+    }), 1));
     await waitFor(() => expect(screen.queryByLabelText('Create custom slash command')).not.toBeInTheDocument());
 
     fireEvent.click(screen.getByRole('button', { name: 'Add custom command' }));
@@ -221,7 +250,7 @@ describe('React commands settings', () => {
     fireEvent.click(within(card).getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(saveWorkspaceEntry).toHaveBeenCalledWith(expect.objectContaining({
       content: 'Updated prompt',
-    })));
+    }), 1));
     expect(card).not.toHaveAttribute('open');
   });
 
@@ -265,11 +294,13 @@ describe('React commands settings', () => {
 
   it('does not update state after the tab unmounts during its initial load', async () => {
     let resolve!: (entries: readonly SlashCatalogEntry[]) => void;
-    const listWorkspaceEntries = jest.fn(() => new Promise<readonly SlashCatalogEntry[]>((done) => { resolve = done; }));
-    const { unmount } = render(withTestPresentationPlatform(<I18nProvider i18n={createI18n()}><SettingsRoot ports={createPorts([], { listWorkspaceEntries })} initialTab="commands" /></I18nProvider>));
-    await waitFor(() => expect(listWorkspaceEntries).toHaveBeenCalledTimes(1));
+    const loadWorkspaceCatalog = jest.fn(() => new Promise<{ entries: readonly SlashCatalogEntry[]; catalogRevision: number }>((done) => {
+      resolve = entries => done({ entries, catalogRevision: 1 });
+    }));
+    const { unmount } = render(withTestPresentationPlatform(<I18nProvider i18n={createI18n()}><SettingsRoot ports={createPorts([], { loadWorkspaceCatalog })} initialTab="commands" /></I18nProvider>));
+    await waitFor(() => expect(loadWorkspaceCatalog).toHaveBeenCalledTimes(1));
     unmount();
     await act(async () => resolve([command]));
-    expect(listWorkspaceEntries).toHaveBeenCalledTimes(1);
+    expect(loadWorkspaceCatalog).toHaveBeenCalledTimes(1);
   });
 });

@@ -6,6 +6,7 @@ import {
 } from './mainAgent';
 
 export interface PiSystemPromptToolRegistry {
+  registeredToolNames: string[];
   registeredToolsSection: string;
   contextAppendices: string[];
 }
@@ -18,11 +19,12 @@ export function buildPiSystemPromptSettings(
 }
 
 function buildPiSystemPromptOptions(
-  toolRegistry?: Pick<PiSystemPromptToolRegistry, 'registeredToolsSection' | 'contextAppendices'>,
+  toolRegistry?: Pick<PiSystemPromptToolRegistry, 'registeredToolNames' | 'registeredToolsSection' | 'contextAppendices'>,
 ): SystemPromptBuildOptions {
   return {
     currentDateIso: new Date().toISOString().slice(0, 10),
     registeredToolsSection: toolRegistry?.registeredToolsSection,
+    registeredToolNames: toolRegistry?.registeredToolNames,
     appendices: toolRegistry?.contextAppendices,
   };
 }
@@ -30,7 +32,7 @@ function buildPiSystemPromptOptions(
 export function buildPiSystemPrompt(
   vaultPath: string | undefined,
   userName: string | undefined,
-  toolRegistry?: Pick<PiSystemPromptToolRegistry, 'registeredToolsSection' | 'contextAppendices'>,
+  toolRegistry?: Pick<PiSystemPromptToolRegistry, 'registeredToolNames' | 'registeredToolsSection' | 'contextAppendices'>,
 ): string {
   return buildSystemPrompt(
     buildPiSystemPromptSettings(vaultPath, userName),
@@ -41,7 +43,7 @@ export function buildPiSystemPrompt(
 export function computePiSystemPromptKey(
   vaultPath: string | undefined,
   userName: string | undefined,
-  toolRegistry?: Pick<PiSystemPromptToolRegistry, 'registeredToolsSection' | 'contextAppendices'>,
+  toolRegistry?: Pick<PiSystemPromptToolRegistry, 'registeredToolNames' | 'registeredToolsSection' | 'contextAppendices'>,
 ): string {
   return computeSystemPromptKey(
     buildPiSystemPromptSettings(vaultPath, userName),

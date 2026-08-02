@@ -3,21 +3,15 @@ import { createObsidianTools } from './createObsidianTools';
 export {
   buildEffectiveBashAllowlist,
   DEFAULT_SAFE_BASH_ALLOWLIST,
-  matchBashAllowlist,
   matchBashCommandAllowlist,
-  parseBashAllowlistEntry,
-  resolveExecutablePath,
-  tokenizeArgv,
 } from './bashAllowlist';
 export {
   CAPABILITY_TOOL_NAMES,
   ensureBashCommandAllowed,
   ensureExternalDirectoryAccess,
-  isCapabilityDeniedError,
   resolveExternalDirectoryRoot,
 } from './capabilityApprovalGate';
 export { createObsidianTools } from './createObsidianTools';
-export * from './frontmatter';
 export { buildLoginShellInvocation, resolveLoginShellPath } from './loginShell';
 export { createAttachmentTool } from './obsidian/attachment';
 export { createBaseTool } from './obsidian/base';
@@ -47,6 +41,5 @@ export { createTagsTool } from './obsidian/tags';
 export { createTasksTool } from './obsidian/tasks';
 export { createWriteNoteTool } from './obsidian/writeNote';
 export * from './settings';
-export * from './vaultEditMatch';
 
 export default createObsidianTools;

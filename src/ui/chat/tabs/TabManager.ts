@@ -1,5 +1,6 @@
 import type { PiChatService } from '@pivi/pivi-agent-core/runtime';
 import type { ChatPorts } from '@pivi/pivi-agent-core/runtime/chatPorts';
+import { NEW_SESSION_COMMAND_ID } from '@pivi/pivi-agent-core/skills/commands/slashCommandIds';
 import {
   type ChatPerfRecorder,
   NOOP_CHAT_PERF_RECORDER,
@@ -46,6 +47,7 @@ type CreateTabOptions = {
   sessionFile?: string | null;
   isArchived?: boolean;
   needsAttention?: boolean;
+  forceCreate?: boolean;
 };
 
 type OpenSessionOptions = {
@@ -165,7 +167,26 @@ export class TabManager {
     });
 
     // Initialize UI components with provider catalog
-    initializeTabUI(tab, this.plugin, { ports: this.ports, getSlashCatalogConfig });
+    initializeTabUI(tab, this.plugin, {
+      ports: this.ports,
+      getSlashCatalogConfig,
+      onSlashCommandSelect: (command) => {
+        if (command.id !== NEW_SESSION_COMMAND_ID) return;
+        const input = tab.dom.richInput;
+        const insertedToken = `/${NEW_SESSION_COMMAND_ID} `;
+        const cursor = input.selectionStart ?? input.value.length;
+        const tokenStart = cursor - insertedToken.length;
+        if (tokenStart >= 0 && input.value.slice(tokenStart, cursor).toLowerCase() === insertedToken) {
+          input.value = input.value.slice(0, tokenStart) + input.value.slice(cursor);
+          input.selectionStart = tokenStart;
+          input.selectionEnd = tokenStart;
+        }
+        void this.createTab(undefined, undefined, { forceCreate: true })
+          .then((newTab) => {
+            newTab?.dom.richInput?.focus();
+          });
+      },
+    });
 
     initializeTabControllers(
       tab,
@@ -198,7 +219,14 @@ export class TabManager {
     tabId: TabId | undefined,
     options: CreateTabOptions,
   ): boolean {
-    if (this.isRestoringState || tabId || openSessionId || options.sessionFile || options.isArchived) {
+    if (
+      this.isRestoringState
+      || tabId
+      || openSessionId
+      || options.sessionFile
+      || options.isArchived
+      || options.forceCreate
+    ) {
       return false;
     }
 
@@ -557,6 +585,22 @@ export class TabManager {
     for (const tab of this.tabs.values()) {
       void tab.ui?.slashCommandDropdown?.prefetchCaches();
     }
+  }
+
+  async refreshSlashCommandCachesStrict(): Promise<readonly { target: string; message: string }[]> {
+    const targets = [...this.tabs.values()]
+      .flatMap((tab, index) => tab.ui?.slashCommandDropdown
+        ? [{
+          target: `tab:${tab.id || String(index + 1)}`,
+          dropdown: tab.ui.slashCommandDropdown,
+        }]
+        : []);
+    const settled = await Promise.allSettled(
+      targets.map(({ dropdown }) => dropdown.prefetchCachesStrict()),
+    );
+    return settled.flatMap((result, index) => result.status === 'rejected'
+      ? [{ target: targets[index]!.target, message: 'Cache refresh failed.' }]
+      : []);
   }
 
   // ============================================

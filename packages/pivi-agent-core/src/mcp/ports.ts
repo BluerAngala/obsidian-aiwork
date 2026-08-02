@@ -34,16 +34,23 @@ export interface AppMcpToolSummary {
 
 export interface AppMcpToolProvider {
   listTools(serverName: string): Promise<AppMcpToolSummary[]>;
+  /**
+   * Read-only inventory for automatic slash/settings warmup.
+   * Must not start stdio, must not create/refresh/persist OAuth, and may only
+   * use already-configured non-interactive credentials (headers/bearer).
+   * Explicit Settings auth remains the interactive OAuth path.
+   */
+  listInventoryTools?(serverName: string): Promise<AppMcpToolSummary[]>;
   getCachedTools(serverName: string): AppMcpToolSummary[];
   cacheTools(serverName: string, tools: readonly AppMcpToolSummary[]): void;
   dispose(): Promise<void>;
   invalidate?(serverName?: string): void;
   invalidateAll?(): void;
-  prefetchEnabledServers?(): Promise<void>;
+  prefetchEnabledServers?(signal?: AbortSignal): Promise<void>;
 }
 
 export interface AppMcpDiagnostics {
-  testConnection(server: ManagedMcpServer): Promise<McpTestResult>;
+  testConnection(server: ManagedMcpServer, signal?: AbortSignal): Promise<McpTestResult>;
   dispose(): Promise<void>;
 }
 
@@ -56,5 +63,5 @@ export interface AppMcpServerProbeProvider {
 }
 
 export interface AppMcpServerTester {
-  testServer(server: ManagedMcpServer): Promise<McpTestResult>;
+  testServer(server: ManagedMcpServer, signal?: AbortSignal): Promise<McpTestResult>;
 }

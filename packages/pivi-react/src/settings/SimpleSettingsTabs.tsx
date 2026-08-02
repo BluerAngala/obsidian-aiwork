@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 
 import type { Locale, TranslationKey } from '../i18n';
 import { useI18n, useT } from '../i18n';
@@ -19,6 +19,7 @@ import { EditorToolbarSection } from './EditorToolbarSection';
 import { buildNavMappingText, parseNavMappings } from './keyboardNavigation';
 import type { SettingsUiStore } from './SettingsUiStore';
 import { useSettingsUiSnapshot } from './SettingsUiStore';
+import type { SettingsGeneralSnapshot } from './types';
 
 async function saveGeneral(
   store: SettingsUiStore,
@@ -73,6 +74,8 @@ function EnvironmentSection({ environment, feedback }: {
   readonly feedback: SettingsFeedbackPort;
 }) {
   const t = useT();
+  const nameId = useId();
+  const descriptionId = `${nameId}-desc`;
   const [entries, setEntries] = useState(() => environment.listEntries('shared'));
   const [value, setValue] = useState(() => environmentEntriesToSafeText(environment.listEntries('shared')));
   const [savedValue, setSavedValue] = useState(value);
@@ -142,23 +145,32 @@ function EnvironmentSection({ environment, feedback }: {
           ))}
         </div>
       ) : null}
-      <SettingRow name={t('settings.sharedEnvironment.name')} description={t('settings.sharedEnvironment.desc')}>
-        <textarea
-          className="pivi-settings-control pivi-settings-control--fill pivi-settings-env-textarea"
-          rows={6}
-          placeholder={t('settings.sharedEnvironment.placeholder')}
-          value={value}
-          onChange={(event) => {
-            setValue(event.target.value);
-            setApplyFeedback(null);
-          }}
-          aria-label={t('settings.sharedEnvironment.name')}
-        />
-        <button type="button" className="pivi-button--primary" disabled={!isDirty || applying} onClick={apply}>
-          {t('settings.sharedEnvironment.apply')}
-        </button>
-        <SettingsActionFeedback feedback={applyFeedback} />
-      </SettingRow>
+      <div className="pivi-setting-row pivi-environment-setting">
+        <div className="pivi-setting-row__info">
+          <div className="pivi-setting-row__name" id={nameId}>{t('settings.sharedEnvironment.name')}</div>
+          <div className="pivi-setting-description" id={descriptionId}>{t('settings.sharedEnvironment.desc')}</div>
+          <div className="pivi-settings-action-group pivi-environment-setting__actions">
+            <button type="button" className="pivi-button--primary" disabled={!isDirty || applying} onClick={apply}>
+              {t('settings.sharedEnvironment.apply')}
+            </button>
+            <SettingsActionFeedback feedback={applyFeedback} />
+          </div>
+        </div>
+        <div className="pivi-setting-row__control">
+          <textarea
+            className="pivi-settings-control pivi-settings-control--fill pivi-settings-env-textarea"
+            rows={6}
+            placeholder={t('settings.sharedEnvironment.placeholder')}
+            value={value}
+            onChange={(event) => {
+              setValue(event.target.value);
+              setApplyFeedback(null);
+            }}
+            aria-labelledby={nameId}
+            aria-describedby={descriptionId}
+          />
+        </div>
+      </div>
     </SettingsSection>
   );
 }
@@ -351,7 +363,12 @@ export function GeneralSettingsTab({
           />
         </SettingRow>
       </SettingsSection>
-      <SessionFilesSettingsSection actions={actions} feedback={feedback} />
+      <SessionFilesSettingsSection
+        actions={actions}
+        feedback={feedback}
+        general={general}
+        saveGeneral={async (patch) => { await save(patch); }}
+      />
       <SettingsSection title={t('settings.personalizationContext')}>
         <SettingRow name={t('settings.userName.name')} description={t('settings.userName.desc')}>
           <input
@@ -467,14 +484,32 @@ export function SubagentsSettingsTab({
   );
 }
 
-export function SessionFilesSettingsSection({ actions, feedback }: {
+export function SessionFilesSettingsSection({ actions, feedback, general, saveGeneral }: {
   readonly actions: SettingsActionsPort;
   readonly feedback: SettingsFeedbackPort;
+  readonly general: SettingsGeneralSnapshot;
+  readonly saveGeneral: (patch: Partial<SettingsGeneralSnapshot>) => Promise<void>;
 }) {
   const t = useT();
   const [pending, setPending] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [retentionText, setRetentionText] = useState(String(general.deletedSessionRetentionDays ?? 30));
   const mounted = useMountedRef();
+  useEffect(() => {
+    setRetentionText(String(general.deletedSessionRetentionDays ?? 30));
+  }, [general.deletedSessionRetentionDays]);
+  const commitRetention = () => {
+    const parsed = Number(retentionText.trim());
+    if (!Number.isFinite(parsed) || !Number.isInteger(parsed)) {
+      setRetentionText(String(general.deletedSessionRetentionDays ?? 30));
+      return;
+    }
+    const value = Math.max(1, Math.min(3650, parsed));
+    setRetentionText(String(value));
+    if (value !== general.deletedSessionRetentionDays) {
+      void saveGeneral({ deletedSessionRetentionDays: value });
+    }
+  };
   const clean = async () => {
     setPending(true);
     try {
@@ -491,7 +526,26 @@ export function SessionFilesSettingsSection({ actions, feedback }: {
   };
   return (
     <SettingsSection title={t('settings.sessionFiles.heading')}>
-      <SettingRow name={t('settings.sessionFiles.deleteRemoved.name')} description={t('settings.sessionFiles.deleteRemoved.desc')}>
+      <SettingRow name={t('settings.sessionFiles.retention.name')} description={t('settings.sessionFiles.retention.desc')}>
+        <input
+          className="pivi-settings-control"
+          type="number"
+          aria-label={t('settings.sessionFiles.retention.name')}
+          min={1}
+          max={3650}
+          value={retentionText}
+          onChange={(event) => setRetentionText(event.currentTarget.value)}
+          onBlur={commitRetention}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') event.currentTarget.blur();
+          }}
+        />
+      </SettingRow>
+      <SettingRow
+        className="pivi-setting-row--centered"
+        name={t('settings.sessionFiles.deleteRemoved.name')}
+        description={t('settings.sessionFiles.deleteRemoved.desc')}
+      >
         <button className="pivi-button--danger" type="button" disabled={pending} onClick={() => setConfirmOpen(true)}>
           {t('settings.sessionFiles.deleteRemoved.button')}
         </button>
@@ -579,30 +633,32 @@ export function IntegrationsSettingsSection({
       <>
         <SettingsActionFeedback feedback={loadFeedback} />
         {sections.map((section) => (
-          <SettingsSection key={section.id} title={section.heading}>
-            <p className="pivi-setting-description">{section.description}</p>
-            <div className="pivi-settings-action-group">
-              {section.actions.map((action) => (
-                <span className="pivi-settings-action-group" key={action.id}>
-                  <button
-                    type="button"
-                    disabled={pending || action.disabled}
-                    title={action.disabledReason}
-                    onClick={() => { void run(action.id); }}
-                  >
-                    {action.label}
-                  </button>
-                  <SettingsActionFeedback
-                    feedback={actionFeedback[action.id] ?? (
-                      action.disabledReason
-                        ? { kind: 'error' as const, message: action.disabledReason }
-                        : null
-                    )}
-                  />
-                </span>
-              ))}
-            </div>
-          </SettingsSection>
+          <SettingRow
+            key={section.id}
+            className="pivi-integration-setting pivi-setting-row--centered"
+            name={section.heading}
+            description={section.description}
+          >
+            {section.actions.map((action) => (
+              <span className="pivi-settings-action-group" key={action.id}>
+                <button
+                  type="button"
+                  disabled={pending || action.disabled}
+                  title={action.disabledReason}
+                  onClick={() => { void run(action.id); }}
+                >
+                  {action.label}
+                </button>
+                <SettingsActionFeedback
+                  feedback={actionFeedback[action.id] ?? (
+                    action.disabledReason
+                      ? { kind: 'error' as const, message: action.disabledReason }
+                      : null
+                  )}
+                />
+              </span>
+            ))}
+          </SettingRow>
         ))}
       </>
     );

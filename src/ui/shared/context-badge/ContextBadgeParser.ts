@@ -23,6 +23,14 @@ export function mentionPartToContextBadgeToken(part: Exclude<MentionBadgePart, {
       return { kind: 'tool', token: part.raw, toolName: part.toolName };
     case 'agent':
       return { kind: 'agent', token: part.raw, agentId: part.agentId, label: part.label };
+    case 'session':
+      return {
+        kind: 'session',
+        token: part.raw,
+        sessionId: part.sessionId,
+        sessionFile: part.sessionFile,
+        title: part.title,
+      };
     case 'inline-context':
       return { kind: 'inline-context', token: part.raw, context: part.context, label: part.label };
     case 'selected-text-template':

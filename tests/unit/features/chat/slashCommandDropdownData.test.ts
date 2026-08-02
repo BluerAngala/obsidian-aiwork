@@ -107,6 +107,54 @@ describe('slashCommandDropdownData prefetch helpers', () => {
     expect(listTools).toHaveBeenCalledWith('offline');
   });
 
+  it('omits stdio servers from tool discovery', async () => {
+    const listTools = jest.fn(async () => [{ name: 'search' }]);
+    const result = await fetchMcpToolEntries(
+      false,
+      () => ({
+        getServers: () => [
+          { name: 'remote', enabled: true, type: 'http' as const },
+          { name: 'local', enabled: true, type: 'stdio' as const },
+        ],
+      }),
+      () => ({ listTools }),
+    );
+
+    expect(result.kind).toBe('ok');
+    if (result.kind !== 'ok') return;
+    expect(listTools).toHaveBeenCalledTimes(1);
+    expect(listTools).toHaveBeenCalledWith('remote');
+    expect(listTools).not.toHaveBeenCalledWith('local');
+    expect(result.entries.map((entry) => entry.identity)).toEqual([
+      '/remote',
+      '/local',
+      '/remote/search',
+    ]);
+  });
+
+  it('propagates remote failures in strict mode without marking the cache fetched', async () => {
+    const listTools = jest.fn(async () => {
+      throw new Error('probe failed');
+    });
+    await expect(fetchMcpToolEntries(
+      false,
+      () => ({ getServers: () => [{ name: 'remote', enabled: true, type: 'http' as const }] }),
+      () => ({ listTools }),
+      { strict: true },
+    )).rejects.toThrow('probe failed');
+    expect(listTools).toHaveBeenCalledTimes(1);
+  });
+
+  it('propagates catalog failures in strict mode', async () => {
+    await expect(fetchCatalogEntries(
+      false,
+      async () => {
+        throw new Error('catalog failed');
+      },
+      { strict: true },
+    )).rejects.toThrow('catalog failed');
+  });
+
   it('offers server-only entries when tool discovery is unavailable', async () => {
     const result = await fetchMcpToolEntries(
       false,

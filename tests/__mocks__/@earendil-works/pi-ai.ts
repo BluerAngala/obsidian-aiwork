@@ -215,6 +215,23 @@ export function createModels(options?: any): any {
       if (stored) {
         return stored;
       }
+      if (model.provider === 'anthropic') {
+        const authToken = await options?.authContext?.env?.('ANTHROPIC_AUTH_TOKEN')
+          ?? process.env.ANTHROPIC_AUTH_TOKEN;
+        if (authToken) {
+          return {
+            auth: { headers: { Authorization: `Bearer ${authToken}` } },
+            source: 'ANTHROPIC_AUTH_TOKEN',
+          };
+        }
+        for (const envVar of ['ANTHROPIC_OAUTH_TOKEN', 'ANTHROPIC_API_KEY']) {
+          const value = await options?.authContext?.env?.(envVar) ?? process.env[envVar];
+          if (value) {
+            return { auth: { apiKey: value }, source: envVar };
+          }
+        }
+        return undefined;
+      }
       const envVar = getMockProviderEnvVar(model.provider);
       const value = await options?.authContext?.env?.(envVar) ?? process.env[envVar];
       return value ? { auth: { apiKey: value }, source: envVar } : undefined;

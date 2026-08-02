@@ -27,6 +27,7 @@ import type { CapabilityApprovalPort } from "@pivi/pivi-agent-core/ports";
 import type { SessionMessagePage, SessionStore } from "@pivi/pivi-agent-core/session";
 import { OpenSessionManager } from "@pivi/pivi-agent-core/session/openSessionManager";
 import type { SlashCatalogEntry } from "@pivi/pivi-agent-core/skills/commands/slashCommandEntry";
+import type { PiviManagementApprovalPort } from '@pivi/pivi-agent-core/tools/piviManagement';
 import type { ChatPerfRecorder } from "@pivi/pivi-react/store";
 import type { Editor, MarkdownView } from "obsidian";
 import { apiVersion, getIcon, Notice, Plugin } from "obsidian";
@@ -67,6 +68,7 @@ import {
   createSessionStore,
   createSharedStorage,
 } from "@/app/serviceGraph";
+import { readSessionTranscript } from "@/app/sessionTranscript";
 import {
   applyEnvironmentVariablesBatch as applyEnvironmentVariablesBatchForPlugin,
   getActiveEnvironmentVariables as getActiveEnvironmentVariablesFromSettings,
@@ -76,7 +78,7 @@ import {
 } from "@/app/settings/environmentVariables";
 import { measureStartupPhase } from "@/app/startupPerformance";
 import { showDefaultVaultSkillsInstallPrompt } from "@/app/ui/defaultVaultSkillsPrompt";
-import { findAllPiviViews } from "@/app/viewAccess";
+import { findAllPiviViews, refreshPiviManagementViews } from "@/app/viewAccess";
 import { createPiUiFacades } from "@/app/workspace/piUiFacades";
 import type { PiWorkspaceServices } from "@/app/workspace/PiWorkspaceServices";
 import {
@@ -85,6 +87,7 @@ import {
 } from "@/app/workspaceCommandRegistry";
 
 const logger = new PluginLogger('PiviPlugin');
+const DELETED_SESSION_PURGE_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Thin Obsidian Plugin composition root. Product lifecycle, sessions, and
@@ -108,6 +111,7 @@ export default class PiviPlugin extends Plugin implements PiviPluginHost {
     getVaultPath: () => getVaultPath(this.app),
     getStore: () => this.requireSessionStore(),
   });
+  private deletedSessionOperationTail: Promise<void> = Promise.resolve();
   private sessionStore: SessionStore | null = null;
   private piWorkspace: PiWorkspaceServices | null = null;
   private workspaceInitialization: Promise<PiWorkspaceServices> | null = null;
@@ -127,6 +131,42 @@ export default class PiviPlugin extends Plugin implements PiviPluginHost {
     },
     this.app.secretStorage,
   );
+  readonly sessionRecovery = {
+    read: async (sessionFile: string) => {
+      const summary = this.sessions.find((session) => session.sessionFile === sessionFile);
+      if (!summary) throw new Error(`Session not found: ${sessionFile}`);
+      return readSessionTranscript({
+        sessionFile,
+        store: this.requireSessionStore(),
+      });
+    },
+    listDeleted: () => this.runDeletedSessionOperation(() => sessionApi.listDeletedSessions(
+      this.sessionContext(),
+      this.settings.deletedSessionRetentionDays,
+    )),
+    restore: (sessionFile: string) => this.runDeletedSessionOperation(async () => {
+      const restored = await sessionApi.restoreDeletedSession(
+        this.sessionContext(),
+        sessionFile,
+        async (openSession) => {
+          const view = await ensurePiviViewOpen(this.app, this.settings.chatViewPlacement);
+          const opened = await view?.getChatHandle()?.commands.openSession(openSession.id) ?? false;
+          if (!opened) throw new Error('Restored session could not be opened in a Pivi tab.');
+        },
+      );
+      return {
+        sessionId: restored.id,
+        title: restored.title,
+        sessionFile: restored.sessionFile ?? sessionFile,
+      };
+    }),
+  };
+
+  private runDeletedSessionOperation<T>(operation: () => Promise<T>): Promise<T> {
+    const result = this.deletedSessionOperationTail.then(operation, operation);
+    this.deletedSessionOperationTail = result.then(() => undefined, () => undefined);
+    return result;
+  }
 
   getVaultPath(): string | null {
     return getVaultPath(this.app);
@@ -260,6 +300,14 @@ export default class PiviPlugin extends Plugin implements PiviPluginHost {
       );
     }
     await initializePiviPlugin(this);
+    await this.purgeExpiredDeletedSessionFiles().catch((error: unknown) => {
+      logger.warn('Failed to purge expired deleted sessions during startup', error);
+    });
+    this.registerInterval(window.setInterval(() => {
+      void this.purgeExpiredDeletedSessionFiles().catch((error: unknown) => {
+        logger.warn('Failed to purge expired deleted sessions', error);
+      });
+    }, DELETED_SESSION_PURGE_INTERVAL_MS));
   }
 
   onunload(): void {
@@ -340,6 +388,7 @@ export default class PiviPlugin extends Plugin implements PiviPluginHost {
 
   createChatService(options?: {
     capabilityApproval?: CapabilityApprovalPort | null;
+    piviManagementApproval?: PiviManagementApprovalPort | null;
   }) {
     const workspace = this.piWorkspace;
     if (!workspace) {
@@ -464,11 +513,28 @@ export default class PiviPlugin extends Plugin implements PiviPluginHost {
   }
 
   async deleteSession(id: string): Promise<void> {
-    await sessionApi.deleteSession(this.sessionContext(), id);
+    await this.runDeletedSessionOperation(() => sessionApi.deleteSession(this.sessionContext(), id));
+  }
+
+  async deleteSessionFile(sessionFile: string, openSessionId?: string | null): Promise<void> {
+    await this.runDeletedSessionOperation(() => sessionApi.deleteSessionFile(
+      this.sessionContext(),
+      sessionFile,
+      openSessionId,
+    ));
   }
 
   async purgeDeletedSessionFiles(): Promise<number> {
-    return sessionApi.purgeDeletedSessionFiles(this.sessionContext());
+    return this.runDeletedSessionOperation(() => (
+      sessionApi.purgeDeletedSessionFiles(this.sessionContext())
+    ));
+  }
+
+  async purgeExpiredDeletedSessionFiles(): Promise<number> {
+    return this.runDeletedSessionOperation(() => sessionApi.purgeExpiredDeletedSessionFiles(
+      this.sessionContext(),
+      this.settings.deletedSessionRetentionDays,
+    ));
   }
 
   async renameSession(
@@ -527,8 +593,8 @@ export default class PiviPlugin extends Plugin implements PiviPluginHost {
   }
 
   async persistTabManagerState(state: AppTabManagerState): Promise<void> {
-    this.lastKnownTabManagerState = state;
     await this.storage.setTabManagerState(state);
+    this.lastKnownTabManagerState = state;
   }
 
   getAllViews(): PiviChatView[] {
@@ -539,6 +605,16 @@ export default class PiviPlugin extends Plugin implements PiviPluginHost {
     for (const view of this.getAllViews()) {
       await view.getChatHandle()?.maintenance.refreshVaultSkills();
     }
+  }
+
+  /**
+   * Same-turn refresh after a durable Agent management commit.
+   * Aggregates strict per-target failures from every view; never throws for partial refresh.
+   */
+  async refreshPiviManagement(
+    domain: 'mcp' | 'skills' | 'commands',
+  ): Promise<readonly { readonly target: string; readonly message: string }[]> {
+    return refreshPiviManagementViews(this.getAllViews(), domain);
   }
 
   ensureWorkspaceServices(): Promise<PiWorkspaceServices> {

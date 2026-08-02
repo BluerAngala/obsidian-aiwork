@@ -11,7 +11,12 @@ export interface DropdownMcpToolProvider {
 }
 
 export interface DropdownMcpServerProvider {
-  getServers(): Array<{ name: string; enabled: boolean; description?: string }>;
+  getServers(): Array<{
+    name: string;
+    enabled: boolean;
+    description?: string;
+    type?: 'stdio' | 'http' | 'sse';
+  }>;
 }
 
 export interface DropdownSkillSummary {
@@ -40,9 +45,15 @@ export type CatalogFetchResult =
   | { kind: 'noop' }
   | { kind: 'ok'; entries: SlashCatalogEntry[] };
 
+export interface CatalogFetchOptions {
+  /** Propagate loader failures instead of converting them to a no-op. */
+  strict?: boolean;
+}
+
 export async function fetchCatalogEntries(
   catalogEntriesFetched: boolean,
   getCatalogEntries: (() => Promise<SlashCatalogEntry[]>) | null,
+  options: CatalogFetchOptions = {},
 ): Promise<CatalogFetchResult> {
   if (catalogEntriesFetched || !getCatalogEntries) {
     return { kind: 'noop' };
@@ -52,7 +63,8 @@ export async function fetchCatalogEntries(
     const entries = await getCatalogEntries();
     // Empty catalogs still count as fetched so we do not re-read vault on every `/` open.
     return { kind: 'ok', entries };
-  } catch {
+  } catch (error) {
+    if (options.strict) throw error;
     return { kind: 'noop' };
   }
 }
@@ -61,10 +73,19 @@ export type McpToolFetchResult =
   | { kind: 'noop'; fetched: boolean }
   | { kind: 'ok'; entries: DropdownItem[]; fetched: boolean };
 
+export interface McpToolFetchOptions {
+  /**
+   * Fail the whole load when any remote tool list rejects.
+   * Best-effort mode keeps successful servers and remains retryable.
+   */
+  strict?: boolean;
+}
+
 export async function fetchMcpToolEntries(
   mcpToolEntriesFetched: boolean,
   getMcpManager: (() => DropdownMcpServerProvider | null) | null,
   getMcpToolProvider: (() => DropdownMcpToolProvider | null) | null,
+  options: McpToolFetchOptions = {},
 ): Promise<McpToolFetchResult> {
   if (mcpToolEntriesFetched) {
     return { kind: 'noop', fetched: true };
@@ -85,12 +106,22 @@ export async function fetchMcpToolEntries(
     };
   }
 
+  // Automatic slash inventory never starts stdio; remote-only discovery.
+  const remoteServers = servers.filter((server) => server.type !== 'stdio');
   const perServerTools = await Promise.allSettled(
-    servers.map(async (server) => ({
+    remoteServers.map(async (server) => ({
       serverName: server.name,
       tools: await toolProvider.listTools(server.name),
     })),
   );
+
+  if (options.strict) {
+    const failure = perServerTools.find((settled) => settled.status === 'rejected');
+    if (failure?.status === 'rejected') {
+      throw failure.reason;
+    }
+  }
+
   const toolsByServer = new Map<string, DropdownMcpToolSummary[]>();
   for (const settled of perServerTools) {
     if (settled.status === 'rejected') continue;

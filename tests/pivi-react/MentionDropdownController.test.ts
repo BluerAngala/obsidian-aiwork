@@ -45,6 +45,52 @@ describe('MentionDropdownController folder labels', () => {
     controller.destroy();
   });
 
+  it('uses @@ for sessions without changing the ordinary @ file selector', () => {
+    const container = document.body.createDiv();
+    const input = document.createElement('textarea');
+    document.body.appendChild(input);
+    const controller = new MentionDropdownController(container, input, {
+      onAttachFile: jest.fn(),
+      getMentionedMcpServers: () => new Set(),
+      setMentionedMcpServers: () => false,
+      addMentionedMcpServer: jest.fn(),
+      getExternalContexts: () => [],
+      getCachedVaultFolders: () => [{ name: 'notes', path: 'notes' }],
+      getCachedVaultFiles: () => [],
+      normalizePathForVault: (path) => path ?? null,
+    });
+    controller.setSessionProvider({
+      listSessions: () => [{
+        id: 'session-1',
+        title: 'Alpha discussion',
+        preview: 'Decisions about alpha',
+        sessionFile: '.pivi/sessions/alpha.jsonl',
+      }, {
+        id: 'session-2',
+        title: 'Beta discussion',
+        preview: 'Other topic',
+        sessionFile: '.pivi/sessions/beta.jsonl',
+      }],
+    });
+
+    input.value = '@@alpha';
+    input.selectionStart = input.selectionEnd = input.value.length;
+    controller.handleInputChange();
+
+    expect(container.querySelectorAll('.pivi-mention-item--session')).toHaveLength(1);
+    expect(container.querySelector('.pivi-mention-name')).toHaveTextContent('Alpha discussion');
+    expect(container.querySelector('.pivi-mention-path-secondary')).toHaveTextContent('Decisions about alpha');
+    expect(controller.handleKeydown(new KeyboardEvent('keydown', { key: 'Enter' }))).toBe(true);
+    expect(input.value).toBe('@@{session-1} ');
+
+    input.value = '@not';
+    input.selectionStart = input.selectionEnd = input.value.length;
+    controller.handleInputChange();
+    expect(container.querySelector('.pivi-mention-name-folder')).toHaveTextContent('notes/');
+    expect(container.querySelector('.pivi-mention-item--session')).toBeNull();
+    controller.destroy();
+  });
+
   it('closes the dropdown on Escape without consuming unrelated keys', () => {
     const container = document.body.createDiv();
     const input = document.createElement('textarea');

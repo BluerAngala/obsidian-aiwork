@@ -69,6 +69,7 @@ function augmentSettingRowControl(
 export interface SettingRowProps {
   readonly name: string;
   readonly description?: string;
+  readonly className?: string;
   readonly children: ReactNode;
 }
 
@@ -133,12 +134,12 @@ export function SettingsSection({
   );
 }
 
-export function SettingRow({ name, description, children }: SettingRowProps) {
+export function SettingRow({ name, description, className, children }: SettingRowProps) {
   const nameId = useId();
   const descriptionId = description ? `${nameId}-desc` : undefined;
   const context: SettingRowLabelContextValue = { nameId, descriptionId };
   return (
-    <div className="pivi-setting-row">
+    <div className={`pivi-setting-row${className ? ` ${className}` : ''}`}>
       <div className="pivi-setting-row__info">
         <div className="pivi-setting-row__name" id={nameId}>{name}</div>
         {description ? <div className="pivi-setting-description" id={descriptionId}>{description}</div> : null}

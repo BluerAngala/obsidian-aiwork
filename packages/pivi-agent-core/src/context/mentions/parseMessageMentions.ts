@@ -20,6 +20,7 @@ import type {
   MentionBadgePart,
   MentionVaultLookup,
   SelectedTextTemplateMentionPart,
+  SessionMentionPart,
   SkillMentionPart,
   ToolMentionPart,
 } from './mentionTypes';
@@ -29,6 +30,7 @@ const INLINE_CONTEXT_TOKEN_REGEX = /^@\[pivi-inline-context:[A-Za-z0-9_-]+\]/;
 const MCP_SLASH_REGEX = /^\/([a-zA-Z0-9._-]+)(?:\/([^\s]+))?/;
 const SLASH_COMMAND_REGEX = /^\/([a-zA-Z][a-zA-Z0-9_-]*)(?=\s|$)/;
 const MENTION_BODY_REGEX = /^@([^\s]+)/;
+const SESSION_MENTION_REGEX = /^@@\{([^}\s]+)\}/;
 
 function isSlashCommandStart(text: string, index: number): boolean {
   if (text[index] !== '/') return false;
@@ -82,6 +84,25 @@ function tryParseAgent(text: string, index: number): AgentMentionPart | null {
     raw,
     agentId,
     label: agentId,
+  };
+}
+
+function tryParseSession(
+  text: string,
+  index: number,
+  ctx: MentionBadgeParseContext,
+): SessionMentionPart | null {
+  const match = text.slice(index).match(SESSION_MENTION_REGEX);
+  const sessionId = match?.[1];
+  if (!match || !sessionId) return null;
+  const session = ctx.sessions?.find((candidate) => candidate.id === sessionId);
+  if (!session?.sessionFile) return null;
+  return {
+    kind: 'session',
+    raw: match[0],
+    sessionId,
+    sessionFile: session.sessionFile,
+    title: session.title,
   };
 }
 
@@ -398,6 +419,14 @@ export function parseMessageMentions(text: string, ctx: MentionBadgeParseContext
     }
 
     if (isMentionStart(text, index)) {
+      // Session tokens must win over the ordinary @ parser.
+      const session = tryParseSession(text, index, ctx);
+      if (session) {
+        parts.push(session);
+        index += partLength(session);
+        continue;
+      }
+
       const inlineContext = tryParseInlineContext(text, index);
       if (inlineContext) {
         parts.push(inlineContext);

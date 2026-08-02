@@ -84,6 +84,39 @@ describe('parseMessageMentions', () => {
     ]);
   });
 
+  it('parses stable session tokens before ordinary @ mentions', () => {
+    const sessions = [{
+      id: 'session-1',
+      title: 'Planning session',
+      sessionFile: '.pivi/sessions/planning.jsonl',
+    }];
+
+    expect(parseMessageMentions(
+      'Compare @@{session-1} with @notes/readme.md',
+      createContext({ sessions }),
+    )).toEqual([
+      { kind: 'plain', text: 'Compare ' },
+      {
+        kind: 'session',
+        raw: '@@{session-1}',
+        sessionId: 'session-1',
+        sessionFile: '.pivi/sessions/planning.jsonl',
+        title: 'Planning session',
+      },
+      { kind: 'plain', text: ' with ' },
+      {
+        kind: 'file',
+        raw: '@notes/readme.md',
+        path: 'notes/readme.md',
+        label: 'readme.md',
+      },
+    ]);
+
+    expect(parseMessageMentions('Missing @@{unknown}', createContext({ sessions }))).toEqual([
+      { kind: 'plain', text: 'Missing @@{unknown}' },
+    ]);
+  });
+
   it('parses the image generation slash token as a tool', () => {
     const parts = parseMessageMentions(
       '/generate-image a cat',

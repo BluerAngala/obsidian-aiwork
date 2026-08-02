@@ -1,7 +1,12 @@
 import type { PiSubagentQueryRunner } from '@pivi/pivi-agent-core/engine/pi/createSubagentTool';
 import type { PiMcpBridge } from '@pivi/pivi-agent-core/mcp';
 import type { RegisteredToolSummary } from '@pivi/pivi-agent-core/prompt';
-import { TOOL_SKILL, TOOL_SPAWN_AGENT, type ToolSpec } from '@pivi/pivi-agent-core/tools';
+import {
+  TOOL_PIVI_SESSIONS,
+  TOOL_SKILL,
+  TOOL_SPAWN_AGENT,
+  type ToolSpec,
+} from '@pivi/pivi-agent-core/tools';
 import { buildPiToolRegistryCore } from '@pivi/pivi-agent-core/engine/pi/buildPiToolRegistryCore';
 import * as fs from 'fs';
 import * as os from 'os';
@@ -14,6 +19,16 @@ function createBaseToolSpec(name = 'fixture_base'): ToolSpec {
     parameters: { type: 'object', properties: {}, additionalProperties: false },
     async execute() {
       return { content: [{ type: 'text', text: 'base-ok' }], details: {} };
+    },
+  };
+}
+
+function createGuidedToolSpec(name: string, marker: string): ToolSpec {
+  return {
+    ...createBaseToolSpec(name),
+    promptUsage: {
+      summary: `Factory-owned ${marker} summary`,
+      parameters: `\`${marker}\` required`,
     },
   };
 }
@@ -102,6 +117,9 @@ describe('buildPiToolRegistryCore', () => {
 
     expect(registry.registeredToolsSection).toContain('### Skills');
     expect(registry.registeredToolsSection).toContain(`\`${TOOL_SKILL}\``);
+    expect(registry.registeredToolNames).toEqual(registry.tools.map((tool) => tool.name));
+    expect(registry.registeredToolNames).toContain(TOOL_SKILL);
+    expect(registry.registeredToolNames).toContain(TOOL_SPAWN_AGENT);
     expect(registry.registeredToolsSection).toContain('### Subagents');
     expect(registry.registeredToolsSection).toContain(`\`${TOOL_SPAWN_AGENT}\``);
     expect(registry.registeredToolsSection).toContain('Automatically use multiple sub-agents');
@@ -204,5 +222,133 @@ describe('buildPiToolRegistryCore', () => {
       content: [{ type: 'text', text: 'done:run subtask' }],
       details: {},
     });
+  });
+
+  it('includes main-only ToolSpecs in the main registry after base tools', () => {
+    const mainOnly = createBaseToolSpec('fixture_main_only');
+    mainOnly.executionMode = 'sequential';
+    mainOnly.description = 'Main-only fixture for prompt listing';
+
+    const registry = buildPiToolRegistryCore({
+      subagentQueryRunner: { query: async () => 'unused' },
+      vaultPath,
+      mcpBridge: createFakeMcpBridge([createMcpToolSpec()]),
+      baseToolSpecs: [createBaseToolSpec('fixture_base')],
+      mainOnlyToolSpecs: [mainOnly],
+      registeredToolSummary,
+    });
+
+    expect(registry.tools.map((tool) => tool.name)).toEqual([
+      'fixture_base',
+      'fixture_main_only',
+      TOOL_SKILL,
+      TOOL_SPAWN_AGENT,
+      'mcp',
+    ]);
+  });
+
+  it('appends main-only tool names into registeredToolsSection prompt guidance', () => {
+    const mainOnly = createBaseToolSpec('fixture_main_only');
+
+    const registry = buildPiToolRegistryCore({
+      subagentQueryRunner: { query: async () => 'unused' },
+      vaultPath,
+      mcpBridge: null,
+      baseToolSpecs: [createBaseToolSpec('fixture_base')],
+      mainOnlyToolSpecs: [mainOnly],
+      registeredToolSummary: {
+        ...registeredToolSummary,
+        obsidianTools: ['obsidian_read'],
+      },
+    });
+
+    expect(registry.registeredToolsSection).toContain('`obsidian_read`');
+    expect(registry.registeredToolsSection).toContain('`fixture_main_only`');
+  });
+
+  it('builds detailed guidance from actual registered ToolSpecs only', () => {
+    const registered = createGuidedToolSpec('obsidian_read', 'factoryMarker');
+    const unregistered = createGuidedToolSpec('obsidian_search', 'missingMarker');
+
+    const registry = buildPiToolRegistryCore({
+      subagentQueryRunner: { query: async () => 'unused' },
+      vaultPath,
+      mcpBridge: null,
+      baseToolSpecs: [registered],
+      registeredToolSummary: {
+        ...registeredToolSummary,
+        obsidianTools: [registered.name],
+        toolSpecs: [unregistered],
+      },
+    });
+
+    expect(registry.registeredToolsSection).toContain('Factory-owned factoryMarker summary');
+    expect(registry.registeredToolsSection).toContain('`factoryMarker` required');
+    expect(registry.registeredToolsSection).not.toContain('missingMarker');
+    expect(registry.registeredToolsSection).not.toContain('`obsidian_search` —');
+  });
+
+  it.each([true, false])(
+    'keeps main/subagent session inventories and prompt guidance aligned when enabled=%s',
+    (enabled) => {
+      const sessionSpec = createGuidedToolSpec(TOOL_PIVI_SESSIONS, 'sessionFile');
+      const baseToolSpecs = enabled ? [sessionSpec] : [];
+      const buildInventory = () => buildPiToolRegistryCore({
+        subagentQueryRunner: { query: async () => 'unused' },
+        vaultPath,
+        mcpBridge: null,
+        baseToolSpecs,
+        registeredToolSummary: {
+          ...registeredToolSummary,
+          obsidianTools: baseToolSpecs.map(spec => spec.name),
+        },
+      });
+      const main = buildInventory();
+      const subagent = buildInventory();
+
+      for (const inventory of [main, subagent]) {
+        expect(inventory.tools.filter(tool => tool.name === TOOL_PIVI_SESSIONS))
+          .toHaveLength(enabled ? 1 : 0);
+        expect(inventory.registeredToolsSection.includes('Factory-owned sessionFile summary'))
+          .toBe(enabled);
+        expect(inventory.registeredToolsSection.includes('`sessionFile` required'))
+          .toBe(enabled);
+      }
+    },
+  );
+
+  it('preserves sequential executionMode through the Pi adapter for main-only tools', () => {
+    const mainOnly = createBaseToolSpec('fixture_main_only');
+    mainOnly.executionMode = 'sequential';
+
+    const registry = buildPiToolRegistryCore({
+      subagentQueryRunner: { query: async () => 'unused' },
+      vaultPath,
+      mcpBridge: null,
+      baseToolSpecs: [],
+      mainOnlyToolSpecs: [mainOnly],
+      registeredToolSummary,
+    });
+
+    const tool = registry.tools.find((entry) => entry.name === 'fixture_main_only');
+    expect(tool).toBeDefined();
+    expect(tool?.executionMode).toBe('sequential');
+  });
+
+  it('omits main-only tools when mainOnlyToolSpecs is absent', () => {
+    const registry = buildPiToolRegistryCore({
+      subagentQueryRunner: { query: async () => 'unused' },
+      vaultPath,
+      mcpBridge: null,
+      baseToolSpecs: [createBaseToolSpec('fixture_base')],
+      registeredToolSummary,
+    });
+
+    expect(registry.tools.map((tool) => tool.name)).toEqual([
+      'fixture_base',
+      TOOL_SKILL,
+      TOOL_SPAWN_AGENT,
+    ]);
+    expect(registry.registeredToolsSection).not.toContain('fixture_main_only');
   });
 });

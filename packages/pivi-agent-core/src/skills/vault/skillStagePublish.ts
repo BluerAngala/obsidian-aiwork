@@ -51,8 +51,24 @@ function assertInsideRoot(root: string, candidate: string): void {
   }
 }
 
+function assertRealpathInsideRoot(rootRealpath: string, candidate: string): void {
+  let candidateRealpath: string;
+  try {
+    candidateRealpath = fs.realpathSync(candidate);
+  } catch (error) {
+    throw new SkillStageValidationError(
+      `Unable to resolve staged skill path ${candidate}: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+  const prefix = rootRealpath.endsWith(path.sep) ? rootRealpath : `${rootRealpath}${path.sep}`;
+  if (candidateRealpath !== rootRealpath && !candidateRealpath.startsWith(prefix)) {
+    throw new SkillStageValidationError(`Skill path escapes staging root: ${candidate}`);
+  }
+}
+
 function walkFiles(root: string): WalkEntry[] {
   const entries: WalkEntry[] = [];
+  const rootRealpath = fs.realpathSync(root);
 
   const visit = (absolutePath: string, relativePath: string): void => {
     assertInsideRoot(root, absolutePath);
@@ -67,6 +83,7 @@ function walkFiles(root: string): WalkEntry[] {
     if (stat.isSymbolicLink()) {
       throw new SkillStageValidationError(`Symlinks are forbidden in staged skills: ${relativePath || '.'}`);
     }
+    assertRealpathInsideRoot(rootRealpath, absolutePath);
     if (stat.isDirectory()) {
       for (const name of fs.readdirSync(absolutePath)) {
         if (name === '.' || name === '..') continue;
@@ -86,6 +103,22 @@ function walkFiles(root: string): WalkEntry[] {
 
   visit(root, '');
   return entries;
+}
+
+/**
+ * Validate a complete staged `.pivi/skills` tree. Unlike a single-skill stage,
+ * an empty collection is valid because remove/update operations can publish it.
+ */
+export function validateStagedSkillCollection(stagedDir: string): { fileCount: number; totalBytes: number } {
+  const resolved = path.resolve(stagedDir);
+  if (!fs.existsSync(resolved) || !fs.statSync(resolved).isDirectory()) {
+    throw new SkillStageValidationError('Staged skills directory is missing');
+  }
+  const files = walkFiles(resolved);
+  return {
+    fileCount: files.length,
+    totalBytes: files.reduce((total, file) => total + file.size, 0),
+  };
 }
 
 export function validateStagedSkillTree(

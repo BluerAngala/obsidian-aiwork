@@ -1,3 +1,4 @@
+import { requireAgentVaultMutationPath } from '@pivi/obsidian-host/path';
 import {
   textResult,
   TOOL_OBSIDIAN_DAILY,
@@ -26,7 +27,7 @@ function getBooleanField(input: Record<string, unknown>, key: string): boolean |
 }
 
 export function createDailyTool(deps: ObsidianToolDeps): ToolSpec {
-  const { cli, vaultName } = deps;
+  const { cli, vaultName, vaultPath } = deps;
   return {
     name: TOOL_OBSIDIAN_DAILY,
     label: 'Daily note',
@@ -70,6 +71,16 @@ export function createDailyTool(deps: ObsidianToolDeps): ToolSpec {
 
       if ((action === 'append' || action === 'prepend') && !content) {
         throw new Error(`content is required for ${action}.`);
+      }
+
+      if (action === 'append' || action === 'prepend') {
+        const dailyPath = (await cli.run({ vaultName, args: ['daily:path'] })).trim();
+        if (!dailyPath) {
+          throw new Error('Daily note could not be resolved to an exact Vault path.');
+        }
+        // The daily CLI can create the note during append/prepend, so the path
+        // must be validated independently of the file's current existence.
+        requireAgentVaultMutationPath(dailyPath, vaultPath);
       }
 
       const subcommand = action === 'read' ? 'daily:read' : action === 'append' ? 'daily:append' : 'daily:prepend';

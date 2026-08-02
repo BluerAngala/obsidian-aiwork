@@ -24,3 +24,4 @@ export * from './storage/homeFileAdapter';
 export * from './storage/obsidianVaultFileAdapter';
 export * from './storage/sharedStorageService';
 export * from './systemProcessRunner';
+export * from './vaultEditMatch';

@@ -1,3 +1,4 @@
+import type { SessionSummary } from '@pivi/pivi-agent-core/foundation';
 import type { ChatPorts } from '@pivi/pivi-agent-core/runtime/chatPorts';
 import type { MessageViewportHandle } from '@pivi/pivi-react';
 import {
@@ -21,7 +22,12 @@ import { imperativeChatLogger, runTabAction } from '@/app/ui/imperativeChatTabAc
 import { createImperativeChatViewHandle } from '@/app/ui/imperativeChatViewHandle';
 import { QuoteBackgroundController } from '@/ui/chat/controllers/quoteBackground';
 import { TabManager } from '@/ui/chat/tabs/TabManager';
-import type { TabId, TabManagerViewHost } from '@/ui/chat/tabs/types';
+import {
+  generateTabId,
+  type PersistedTabManagerState,
+  type TabId,
+  type TabManagerViewHost,
+} from '@/ui/chat/tabs/types';
 import {
   cancelScheduledAnimationFrame,
   scheduleAnimationFrame,
@@ -60,6 +66,37 @@ export interface CreatedImperativeChatAdapter {
   getSurfaceActions(): ChatSurfaceActions;
   getWelcomeQuoteAdapter(): WelcomeQuoteAdapter;
   getViewHandle(): PiviChatViewHandle;
+}
+
+function reconcileDurableSessionTabs(
+  persistedState: PersistedTabManagerState | null,
+  sessions: readonly SessionSummary[],
+): PersistedTabManagerState | null {
+  const openTabs = [...(persistedState?.openTabs ?? [])];
+  const managedSessionFiles = new Set(openTabs.flatMap((tab) => (
+    typeof tab.sessionFile === 'string' ? [tab.sessionFile] : []
+  )));
+
+  for (const session of sessions) {
+    if (!session.sessionFile || managedSessionFiles.has(session.sessionFile)) continue;
+    openTabs.push({
+      tabId: generateTabId(),
+      sessionFile: session.sessionFile,
+      isArchived: true,
+    });
+    managedSessionFiles.add(session.sessionFile);
+  }
+
+  if (openTabs.length === 0) return null;
+
+  let activeTabId = persistedState?.activeTabId ?? null;
+  if (!openTabs.some((tab) => !tab.isArchived)) {
+    const tabId = generateTabId();
+    openTabs.unshift({ tabId });
+    activeTabId = tabId;
+  }
+
+  return { openTabs, activeTabId };
 }
 
 export function createImperativeChatAdapter(
@@ -169,7 +206,7 @@ export function createImperativeChatAdapter(
           }
         : null,
       tab?.ui.composerActions ?? null,
-      tab ? createMessagePresentation(tab, (handle) => {
+      tab && mountedPorts ? createMessagePresentation(tab, mountedPorts.sessions, (handle) => {
         if (handle) {
           messageViewports.set(tab.id, handle);
         } else {
@@ -191,9 +228,41 @@ export function createImperativeChatAdapter(
 
   const handleTabClose = (tabId: TabId): Promise<void> =>
     runTabAction(async () => {
-      const tab = tabManager?.getTab(tabId);
+      const manager = tabManager;
+      if (!manager) return;
+      const tab = manager.getTab(tabId);
       const force = tab?.state.isStreaming ?? false;
-      await tabManager?.closeTab(tabId, force);
+      const closed = await manager.closeTab(tabId, force);
+      if (!closed) return;
+      publishTabSnapshot();
+    }, 'chat.tabs.failedCloseTab', 'tab close failed');
+
+  const handleTabDelete = (tabId: TabId): Promise<void> =>
+    runTabAction(async () => {
+      const manager = tabManager;
+      if (!manager) return;
+      const tab = manager.getTab(tabId);
+      const force = tab?.state.isStreaming ?? false;
+      const closed = await manager.closeTab(tabId, force);
+      if (!closed) return;
+
+      // Closing can lazily create the first durable session while saving the
+      // current turn. Read identity from the retained tab object after close so
+      // permanent deletion includes that newly bound session.
+      const deletedSessionId = tab?.openSessionId ?? null;
+      const deletedSessionFile = tab?.sessionFile ?? null;
+
+      if (deletedSessionId || deletedSessionFile) {
+        // Purge reads persisted bindings as well as live tabs. Commit the removal
+        // before marking the archived session file deleted so it is not protected
+        // by the 300 ms debounced tab-state write.
+        await persistTabStateImmediate(manager.getPersistedState());
+        if (deletedSessionFile) {
+          await mountedPorts?.sessions.deleteSessionFile(deletedSessionFile, deletedSessionId);
+        } else if (deletedSessionId) {
+          await mountedPorts?.sessions.deleteSession(deletedSessionId);
+        }
+      }
       publishTabSnapshot();
     }, 'chat.tabs.failedCloseTab', 'tab close failed');
 
@@ -271,6 +340,7 @@ export function createImperativeChatAdapter(
       return {
         switchTab: tabId => handleTabClick(tabId),
         archiveTab: tabId => handleTabArchive(tabId),
+        deleteTab: tabId => handleTabDelete(tabId),
         reorderTabs: (openIds, archivedIds) => handleTabReorder(openIds, archivedIds),
         renameTab: (tabId, title) => handleTabRenameTitle(tabId, title),
         closeTab: tabId => handleTabClose(tabId),
@@ -357,8 +427,11 @@ export function createImperativeChatAdapter(
         perfRecorder,
       );
 
-      const persistedState = await loadPersistedTabState();
-      if (persistedState?.openTabs.length) {
+      const persistedState = reconcileDurableSessionTabs(
+        await loadPersistedTabState(),
+        ports.sessions.listSessions(),
+      );
+      if (persistedState) {
         await tabManager.restoreState(persistedState);
       } else {
         await tabManager.createTab();

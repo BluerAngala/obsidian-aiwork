@@ -175,6 +175,13 @@ export function normalizeStoredPiviSettings(
     agentSettings,
   );
   const chatViewPlacement = normalizeChatViewPlacement(stored.chatViewPlacement);
+  const retention = stored.deletedSessionRetentionDays;
+  const deletedSessionRetentionDays = typeof retention === 'number'
+    && Number.isInteger(retention)
+    && retention >= 1
+    && retention <= 3650
+    ? retention
+    : DEFAULT_PIVI_SETTINGS.deletedSessionRetentionDays;
   const providerSettings = {
     ...stored,
     hiddenSlashCommands,
@@ -192,6 +199,7 @@ export function normalizeStoredPiviSettings(
     editorSelectionToolbar,
     agentSettings,
     chatViewPlacement,
+    deletedSessionRetentionDays,
   };
   stripRemovedSettingsFields(settings);
 
@@ -204,6 +212,7 @@ export function normalizeStoredPiviSettings(
     agentSettingsChanged ||
     modelReconciled ||
     stored.chatViewPlacement !== chatViewPlacement ||
+    stored.deletedSessionRetentionDays !== deletedSessionRetentionDays ||
     externalReadDirectoriesMigrated ||
     subagentsChanged ||
     webSearchToolsChanged ||

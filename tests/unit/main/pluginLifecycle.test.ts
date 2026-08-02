@@ -6,6 +6,7 @@ const mockGetAdapter = jest.fn();
 const mockSetTabManagerState = jest.fn();
 const mockGetDeletedSessionFiles = jest.fn();
 const mockSetDeletedSessionFiles = jest.fn();
+const mockUpdateDeletedSessionFiles = jest.fn();
 const mockListSessions = jest.fn();
 const mockSetupNoteToolbarIntegration = jest.fn();
 const mockCreatePluginServiceGraph = jest.fn();
@@ -25,6 +26,7 @@ jest.mock("@pivi/obsidian-host", () => {
     savePiviSettings: mockSavePiviSettings,
     setTabManagerState: mockSetTabManagerState,
     setDeletedSessionFiles: mockSetDeletedSessionFiles,
+    updateDeletedSessionFiles: mockUpdateDeletedSessionFiles,
     getAdapter: mockGetAdapter,
   })),
   };
@@ -448,6 +450,16 @@ describe("PiviPlugin lifecycle", () => {
         });
 
       expect(plugin.getAllViews()).toEqual([piviView]);
+    });
+
+    it("reports a real Pivi view whose chat handle is not mounted", async () => {
+      const plugin = createPlugin();
+      const view = { leaf: {}, getChatHandle: jest.fn(() => null) };
+      plugin.app.workspace.getLeavesOfType = jest.fn(() => [{ view }] as never);
+
+      await expect(plugin.refreshPiviManagement("commands")).resolves.toEqual([
+        { target: "view:1", message: "View refresh unavailable." },
+      ]);
     });
   });
 });

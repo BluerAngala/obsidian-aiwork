@@ -1,6 +1,7 @@
 import type { MentionBadgeParseContext } from '@pivi/pivi-agent-core/context/mentions';
 import {
   isMentionStart,
+  parseMessageMentions,
   resolveExternalRootMentionAtIndex,
 } from '@pivi/pivi-agent-core/context/mentions';
 import type { App, EventRef } from 'obsidian';
@@ -18,6 +19,7 @@ import type {
   McpMentionProvider,
 } from '@/ui/shared/mention/MentionDropdownController';
 import { MentionDropdownController } from '@/ui/shared/mention/MentionDropdownController';
+import type { SessionMentionProvider } from '@/ui/shared/mention/mentionSessionItems';
 import { getVaultFileAliases as getVaultFileAliasesFromMetadata } from '@/ui/shared/mention/obsidianMentionVault';
 import { VaultMentionDataProvider } from '@/ui/shared/mention/VaultMentionDataProvider';
 
@@ -31,6 +33,7 @@ export interface FileContextCallbacks {
   onChipsChanged?: () => void;
   getExternalContexts?: () => string[];
   getSkillNames?: () => Set<string>;
+  getSessions?: SessionMentionProvider['listSessions'];
   /** Called when an agent is selected from the @ mention dropdown. */
   onAgentMentionSelect?: (agentId: string) => void;
 }
@@ -123,6 +126,9 @@ export class FileContextManager {
         normalizePathForVault: (rawPath) => this.normalizePathForVault(rawPath),
       }
     );
+    this.mentionDropdown.setSessionProvider({
+      listSessions: () => this.callbacks.getSessions?.() ?? [],
+    });
 
     this.deleteEventRef = this.app.vault.on('delete', (file) => {
       if (file instanceof TFile) this.handleFileDeleted(file.path);
@@ -381,7 +387,23 @@ export class FileContextManager {
       externalContextEntries: buildExternalContextDisplayEntries(
         this.callbacks.getExternalContexts?.() || [],
       ),
+      sessions: this.callbacks.getSessions?.(),
     };
+  }
+
+  collectReferencedSessions(text: string): Array<{
+    sessionId: string;
+    sessionFile: string;
+    title: string;
+  }> | undefined {
+    const parts = parseMessageMentions(text, this.buildMentionBadgeContext());
+    const seen = new Set<string>();
+    const sessions = parts.flatMap((part) => {
+      if (part.kind !== 'session' || seen.has(part.sessionId)) return [];
+      seen.add(part.sessionId);
+      return [{ sessionId: part.sessionId, sessionFile: part.sessionFile, title: part.title }];
+    });
+    return sessions.length > 0 ? sessions : undefined;
   }
 
   setAgentService(agentService: AgentMentionProvider | null): void {

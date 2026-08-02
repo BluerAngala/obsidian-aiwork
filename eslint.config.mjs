@@ -309,14 +309,51 @@ export default defineConfig([
     },
   },
   {
-    files: [
-      "packages/obsidian-tools/src/**/*.{ts,tsx}",
-      "packages/obsidian-host/src/**/*.{ts,tsx}",
-    ],
+    files: ["packages/obsidian-tools/src/**/*.{ts,tsx}"],
     rules: {
       "@typescript-eslint/no-restricted-imports": packageBoundaryRule([
         rawPiSdkRestriction,
         obsidianReactRestriction,
+        {
+          group: [
+            "@pivi/pivi-agent-core/engine",
+            "@pivi/pivi-agent-core/engine/*",
+          ],
+          message:
+            "@pivi/obsidian-tools must not import Pi engine implementations. Consume host-neutral core contracts instead.",
+        },
+      ]),
+    },
+  },
+  {
+    files: ["packages/obsidian-host/src/**/*.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": packageBoundaryRule([
+        rawPiSdkRestriction,
+        obsidianReactRestriction,
+        {
+          group: [
+            "@pivi/pivi-agent-core/engine/pi",
+            "@pivi/pivi-agent-core/engine/pi/*",
+          ],
+          message:
+            "@pivi/obsidian-host must not import Pi engine implementations. Implement host adapters against core ports instead.",
+        },
+        {
+          group: [
+            "@pivi/pivi-agent-core/skills",
+            "@pivi/pivi-agent-core/skills/*",
+            "@pivi/pivi-agent-core/tools",
+            "@pivi/pivi-agent-core/tools/*",
+          ],
+          message:
+            "@pivi/obsidian-host must not import skills or tools semantics. Keep product/runtime concerns above the host layer.",
+        },
+        {
+          group: ["@pivi/obsidian-tools", "@pivi/obsidian-tools/*"],
+          message:
+            "@pivi/obsidian-host must not import concrete Obsidian tool implementations.",
+        },
       ]),
     },
   },

@@ -7,6 +7,12 @@ import { existsSync, readFileSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
 
+export const ANTHROPIC_AUTH_TOKEN_ENV = 'ANTHROPIC_AUTH_TOKEN';
+export const ANTHROPIC_OAUTH_TOKEN_ENV = 'ANTHROPIC_OAUTH_TOKEN';
+export const ANTHROPIC_API_KEY_ENV = 'ANTHROPIC_API_KEY';
+
+type ProviderEnvironment = Readonly<Record<string, string | undefined>>;
+
 export interface PiAiEnvironmentHost {
   getEnvironmentVariable(name: string): string | undefined;
   shouldReadProcessEnvironmentFallback(): boolean;
@@ -76,13 +82,17 @@ function getProcEnv(key: string): string | undefined {
   return procEnvCache.get(key);
 }
 
-function getEnvironmentVariable(key: string): string | undefined {
-  return environmentHost.getEnvironmentVariable(key) || getProcEnv(key);
+function getEnvironmentVariable(key: string, env?: ProviderEnvironment): string | undefined {
+  return env?.[key] || environmentHost.getEnvironmentVariable(key) || getProcEnv(key);
 }
 
-function hasVertexAdcCredentials(): boolean {
+function hasVertexAdcCredentials(env?: ProviderEnvironment): boolean {
+  const explicitCredentialsPath = env?.GOOGLE_APPLICATION_CREDENTIALS;
+  if (explicitCredentialsPath) {
+    return environmentHost.hasFile(explicitCredentialsPath);
+  }
   if (cachedVertexAdcCredentialsExists === null) {
-    const gacPath = getEnvironmentVariable('GOOGLE_APPLICATION_CREDENTIALS');
+    const gacPath = getEnvironmentVariable('GOOGLE_APPLICATION_CREDENTIALS', env);
     if (gacPath) {
       cachedVertexAdcCredentialsExists = environmentHost.hasFile(gacPath);
     } else {
@@ -104,20 +114,26 @@ function getApiKeyEnvVars(provider: string): string[] | undefined {
     return ['COPILOT_GITHUB_TOKEN'];
   }
   if (provider === 'anthropic') {
-    return ['ANTHROPIC_OAUTH_TOKEN', 'ANTHROPIC_API_KEY'];
+    return [ANTHROPIC_AUTH_TOKEN_ENV, ANTHROPIC_OAUTH_TOKEN_ENV, ANTHROPIC_API_KEY_ENV];
   }
   const envMap: Record<string, string> = {
+    'ant-ling': 'ANT_LING_API_KEY',
+    'qwen-token-plan': 'QWEN_TOKEN_PLAN_API_KEY',
+    'qwen-token-plan-cn': 'QWEN_TOKEN_PLAN_CN_API_KEY',
     openai: 'OPENAI_API_KEY',
     'azure-openai-responses': 'AZURE_OPENAI_API_KEY',
+    nvidia: 'NVIDIA_API_KEY',
     deepseek: 'DEEPSEEK_API_KEY',
     google: 'GEMINI_API_KEY',
     'google-vertex': 'GOOGLE_CLOUD_API_KEY',
     groq: 'GROQ_API_KEY',
     cerebras: 'CEREBRAS_API_KEY',
     xai: 'XAI_API_KEY',
+    radius: 'RADIUS_API_KEY',
     openrouter: 'OPENROUTER_API_KEY',
     'vercel-ai-gateway': 'AI_GATEWAY_API_KEY',
     zai: 'ZAI_API_KEY',
+    'zai-coding-cn': 'ZAI_CODING_CN_API_KEY',
     mistral: 'MISTRAL_API_KEY',
     minimax: 'MINIMAX_API_KEY',
     'minimax-cn': 'MINIMAX_CN_API_KEY',
@@ -140,39 +156,44 @@ function getApiKeyEnvVars(provider: string): string[] | undefined {
   return envVar ? [envVar] : undefined;
 }
 
-export function findEnvKeys(provider: string): string[] | undefined {
+export function findEnvKeys(provider: string, env?: ProviderEnvironment): string[] | undefined {
   const envVars = getApiKeyEnvVars(provider);
   if (!envVars) {
     return undefined;
   }
-  const found = envVars.filter((envVar) => !!getEnvironmentVariable(envVar));
+  const found = envVars.filter((envVar) => !!getEnvironmentVariable(envVar, env));
   return found.length > 0 ? found : undefined;
 }
 
-export function getEnvApiKey(provider: string): string | undefined {
-  const envKeys = findEnvKeys(provider);
+export function getEnvApiKey(provider: string, env?: ProviderEnvironment): string | undefined {
+  const envKeys = findEnvKeys(provider, env);
   if (envKeys?.[0]) {
-    return getEnvironmentVariable(envKeys[0]);
+    const apiKeyEnv = provider === 'anthropic'
+      ? envKeys.find((key) => key !== ANTHROPIC_AUTH_TOKEN_ENV)
+      : envKeys[0];
+    if (apiKeyEnv) {
+      return getEnvironmentVariable(apiKeyEnv, env);
+    }
   }
   if (provider === 'google-vertex') {
-    const hasCredentials = hasVertexAdcCredentials();
+    const hasCredentials = hasVertexAdcCredentials(env);
     const hasProject = !!(
-      getEnvironmentVariable('GOOGLE_CLOUD_PROJECT')
-      || getEnvironmentVariable('GCLOUD_PROJECT')
+      getEnvironmentVariable('GOOGLE_CLOUD_PROJECT', env)
+      || getEnvironmentVariable('GCLOUD_PROJECT', env)
     );
-    const hasLocation = !!getEnvironmentVariable('GOOGLE_CLOUD_LOCATION');
+    const hasLocation = !!getEnvironmentVariable('GOOGLE_CLOUD_LOCATION', env);
     if (hasCredentials && hasProject && hasLocation) {
       return '<authenticated>';
     }
   }
   if (provider === 'amazon-bedrock') {
     if (
-      getEnvironmentVariable('AWS_PROFILE')
-      || (getEnvironmentVariable('AWS_ACCESS_KEY_ID') && getEnvironmentVariable('AWS_SECRET_ACCESS_KEY'))
-      || getEnvironmentVariable('AWS_BEARER_TOKEN_BEDROCK')
-      || getEnvironmentVariable('AWS_CONTAINER_CREDENTIALS_RELATIVE_URI')
-      || getEnvironmentVariable('AWS_CONTAINER_CREDENTIALS_FULL_URI')
-      || getEnvironmentVariable('AWS_WEB_IDENTITY_TOKEN_FILE')
+      getEnvironmentVariable('AWS_PROFILE', env)
+      || (getEnvironmentVariable('AWS_ACCESS_KEY_ID', env) && getEnvironmentVariable('AWS_SECRET_ACCESS_KEY', env))
+      || getEnvironmentVariable('AWS_BEARER_TOKEN_BEDROCK', env)
+      || getEnvironmentVariable('AWS_CONTAINER_CREDENTIALS_RELATIVE_URI', env)
+      || getEnvironmentVariable('AWS_CONTAINER_CREDENTIALS_FULL_URI', env)
+      || getEnvironmentVariable('AWS_WEB_IDENTITY_TOKEN_FILE', env)
     ) {
       return '<authenticated>';
     }

@@ -21,20 +21,14 @@
 }
 
 /* Input wrapper (border container) - flex column so textarea expands when no chips */
-/* Height calculation: context row (36px) + textarea min (60px) + toolbar (38px) + border (2px) = 136px */
 .pivi-input-wrapper {
   position: relative;
   display: flex;
   flex-direction: column;
-  min-height: 140px;
+  min-height: 210px;
   border: 1px solid var(--pivi-host-border);
   border-radius: var(--pivi-radius-sm);
   background: var(--pivi-host-background-primary);
-}
-
-.pivi-input-wrapper:focus-within {
-  outline: var(--pivi-focus-ring);
-  outline-offset: var(--pivi-focus-offset);
 }
 
 /* Context row (file chip start, selection indicator end) - inside input wrapper at top */

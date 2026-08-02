@@ -21,6 +21,7 @@ export function cloneChatTurnRequest(request: ChatTurnRequest): ChatTurnRequest 
     enabledMcpServers: request.enabledMcpServers
       ? new Set(request.enabledMcpServers)
       : undefined,
+    referencedSessions: cloneSerializable(request.referencedSessions),
   };
 }
 
@@ -41,6 +42,7 @@ export function toChatTurnRequestSnapshot(request: ChatTurnRequest): ChatTurnReq
     enabledMcpServers: request.enabledMcpServers
       ? [...request.enabledMcpServers]
       : undefined,
+    referencedSessions: cloneSerializable(request.referencedSessions),
   };
 }
 
@@ -65,6 +67,7 @@ export function chatTurnRequestFromSnapshot(
     enabledMcpServers: snapshot.enabledMcpServers
       ? new Set(snapshot.enabledMcpServers)
       : undefined,
+    referencedSessions: cloneSerializable(snapshot.referencedSessions),
   };
 }
 

@@ -50,6 +50,11 @@ export function buildMentionBadgeContext(
     mcpServerNames,
     skillCommandNames,
     externalContextEntries: buildExternalContextDisplayEntries(externalPaths),
+    sessions: turnRequest?.referencedSessions?.map((session) => ({
+      id: session.sessionId,
+      title: session.title,
+      sessionFile: session.sessionFile,
+    })),
   };
 }
 

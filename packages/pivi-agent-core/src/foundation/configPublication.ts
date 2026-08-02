@@ -62,32 +62,20 @@ export async function writeFileAtomically(
     await adapter.write(tempPath, content);
     if (await adapter.exists(path)) {
       const backupPath = `${path}.bak-${Date.now().toString(36)}`;
-      try {
-        await adapter.rename(path, backupPath);
-        try {
-          await adapter.rename(tempPath, path);
-          if (typeof adapter.delete === 'function') {
-            await adapter.delete(backupPath).catch(() => undefined);
-          }
-          return;
-        } catch (error) {
-          await adapter.rename(backupPath, path).catch(() => undefined);
-          throw error;
-        }
-      } catch {
-        // Fall through to direct overwrite when rename replace fails.
-      }
-    } else {
+      await adapter.rename(path, backupPath);
       try {
         await adapter.rename(tempPath, path);
+        if (typeof adapter.delete === 'function') {
+          await adapter.delete(backupPath).catch(() => undefined);
+        }
         return;
-      } catch {
-        // Fall through.
+      } catch (error) {
+        await adapter.rename(backupPath, path).catch(() => undefined);
+        throw error;
       }
-    }
-    await adapter.write(path, content);
-    if (typeof adapter.delete === 'function') {
-      await adapter.delete(tempPath).catch(() => undefined);
+    } else {
+      await adapter.rename(tempPath, path);
+      return;
     }
   } catch (error) {
     if (typeof adapter.delete === 'function') {

@@ -21,6 +21,8 @@ export interface CapabilityApprovalRequest {
   toolName: string;
   /** Normalized bash command string for allowlist/session matching. */
   command?: string;
+  /** Exact shell executable resolved before Bash authorization. */
+  shellPath?: string;
   /** Blocked absolute path shown in the prompt. */
   blockedPath?: string;
   /** Directory root to grant for external access (directory itself or parent of a file). */

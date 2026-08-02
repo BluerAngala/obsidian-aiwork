@@ -61,6 +61,33 @@ describe('buildTurnSubmission', () => {
     expect(result.displayContent).toBe('Review @notes/');
   });
 
+  it('captures referenced sessions as structured turn context', () => {
+    const referencedSessions = [{
+      sessionId: 'session-1',
+      sessionFile: '.pivi/sessions/planning.jsonl',
+      title: 'Planning session',
+    }];
+    const sources = {
+      selectionController: { getContext: () => null },
+      canvasSelectionController: { getContext: () => null },
+      getFileContextManager: () => ({
+        getCurrentNotePath: () => null,
+        shouldSendCurrentNote: () => false,
+        transformContextMentions: (text: string) => text,
+        collectContextFilePathsForTurn: () => undefined,
+        collectReferencedSessions: () => referencedSessions,
+      }),
+      getExternalContextSelector: () => null,
+    } as unknown as TurnSubmissionSources;
+
+    const result = buildTurnSubmission(sources, {
+      content: 'Continue from @@{session-1}',
+    });
+
+    expect(result.turnRequest.referencedSessions).toEqual(referencedSessions);
+    expect(result.displayContent).toBe('Continue from @@{session-1}');
+  });
+
   it('keeps a command badge token visible while sending its resolved prompt text', () => {
     const sources = {
       selectionController: { getContext: () => null },

@@ -7,6 +7,7 @@ export type ContextBadgeKind =
   | 'skill'
   | 'tool'
   | 'agent'
+  | 'session'
   | 'inline-context'
   | 'selected-text-template'
   | 'attachment';
@@ -20,6 +21,7 @@ export type ContextBadgeToken =
   | { kind: 'skill'; token: string; commandName: string; source?: string; skillPath?: string }
   | { kind: 'tool'; token: string; toolName: string; label?: string }
   | { kind: 'agent'; token: string; agentId: string; label: string; source?: string }
+  | { kind: 'session'; token: string; sessionId: string; sessionFile: string; title: string }
   | { kind: 'inline-context'; token: string; label?: string; context: InlineContextReference }
   | { kind: 'selected-text-template'; token: '{{selected_text}}' }
   | { kind: 'attachment'; token: string; path: string; label?: string };

@@ -38,6 +38,7 @@
     "messageActions": {
       "copyAriaLabel": "메시지 복사",
       "copyAgentResponseAriaLabel": "이 에이전트 응답 복사",
+      "copyConversationAsMarkdownAriaLabel": "이 턴까지의 대화를 Markdown으로 복사",
       "scrollToRecentUserAriaLabel": "가장 최근 사용자 메시지로 스크롤"
     },
     "inlineContext": {
@@ -58,6 +59,17 @@
       "queueTitle": "대기열에 추가",
       "stopTitle": "중지",
       "sendEmptyTitle": "메시지를 입력하세요"
+    },
+    "piviManagementApproval": {
+      "title": "Pivi 변경 확인",
+      "confirm": "확인",
+      "deny": "거부",
+      "management": {
+        "titles": { "mcp": { "upsert": "MCP 서버 “{name}” 업데이트", "enable": "MCP 서버 “{name}” 활성화", "disable": "MCP 서버 “{name}” 비활성화", "remove": "MCP 서버 “{name}” 제거" }, "skills": { "install": "“{source}”에서 Skills 설치", "enable": "Skill “{name}” 활성화", "disable": "Skill “{name}” 비활성화", "update": "Skill “{name}” 업데이트", "updateAll": "패키지로 관리되는 모든 Skills 업데이트", "remove": "Skill “{name}” 제거" }, "commands": { "upsert": "명령 {command} 저장", "remove": "명령 {command} 제거", "move": "명령 {command} 이동" } },
+        "changes": { "mcpUpsert": "계획된 MCP 서버 구성을 적용합니다.", "mcpEnable": "이 MCP 서버를 활성화합니다.", "mcpDisable": "이 MCP 서버를 비활성화합니다.", "mcpRemove": "이 MCP 서버와 자격 증명을 제거합니다.", "skillsInstall": "고정된 패키지 절차로 Skills를 설치합니다.", "skillsEnable": "이 Skill을 활성화합니다.", "skillsDisable": "이 Skill을 비활성화합니다.", "skillsUpdate": "패키지 출처에서 이 Skill을 업데이트합니다.", "skillsUpdateAll": "패키지로 관리되는 모든 Skills를 업데이트합니다.", "skillsRemove": "워크스페이스에서 이 Skill을 제거합니다.", "commandsUpsert": "이 워크스페이스 명령을 만들거나 업데이트합니다.", "commandsRemove": "이 워크스페이스 명령을 삭제합니다.", "commandsMove": "이 워크스페이스 명령의 순서를 바꿉니다." },
+        "fields": { "server": "서버", "enabled": "활성화", "type": "유형", "command": "명령", "args": "인수", "envNames": "환경 변수 이름", "url": "URL", "auth": "인증", "headerNames": "헤더 이름", "bearerToken": "Bearer 토큰", "oauth": "OAuth", "oauthGrant": "OAuth 권한 부여", "oauthClientId": "OAuth 클라이언트 ID", "oauthScope": "OAuth 범위", "oauthClientSecret": "OAuth 클라이언트 비밀", "contextSaving": "컨텍스트 절약", "disabledTools": "비활성화된 도구", "source": "소스", "skills": "Skills", "skill": "Skill", "catalogRevision": "카탈로그 리비전", "icon": "아이콘", "prompt": "프롬프트", "before": "앞", "after": "뒤" },
+        "values": { "yes": "예", "no": "아니요", "clear": "지우기", "disabled": "비활성화", "updated": "업데이트됨" }
+      }
     },
     "capabilityApproval": {
       "title": "권한 필요",
@@ -81,7 +93,7 @@
       "restoreTab": "{title} 복원",
       "editTitle": "{title} 제목 편집",
       "editTitleInputLabel": "탭 제목",
-      "closeTab": "{title} 닫기",
+      "deleteTab": "{title} 삭제",
       "archived": "보관됨",
       "revealArchived": "보관된 탭 표시",
       "failedCreateChat": "채팅을 만들지 못했습니다",
@@ -121,7 +133,7 @@
       "externalRemove": "경로 제거",
       "externalActiveTitle": "외부 컨텍스트 {count}개 (클릭하여 더 추가)",
       "externalIdleTitle": "외부 컨텍스트 추가 (클릭)",
-    "contextOverLimit": "컨텍스트(약 {tokens})가 선택한 모델의 {limit} 컨텍스트 창을 초과했습니다. 더 큰 컨텍스트 창을 가진 모델로 전환하거나 새 세션을 시작하세요."
+      "contextOverLimit": "컨텍스트(약 {tokens})가 선택한 모델의 {limit} 컨텍스트 창을 초과했습니다. 더 큰 컨텍스트 창을 가진 모델로 전환하거나 새 세션을 시작하세요."
     },
     "selection": {
       "linesSelected": "{count} {lines} 선택됨",
@@ -159,14 +171,12 @@
       "expand": "작업 목록 펼치기 — {total}개 중 {completed}개 완료"
     },
     "activity": {
-      "backgroundTask": "백그라운드 작업",
       "subagentTask": "하위 에이전트 작업",
       "expand": "클릭하여 펼치기",
       "collapse": "클릭하여 접기",
       "prompt": "프롬프트",
       "result": "결과",
       "noPrompt": "프롬프트가 없습니다",
-      "sessionEnded": "작업이 완료되기 전에 세션이 종료되었습니다",
       "done": "완료",
       "error": "오류"
     },
@@ -247,6 +257,7 @@
       "kindTool": "도구",
       "kindMcpServer": "MCP 서버",
       "kindMcpTool": "MCP 도구",
+      "newSessionDescription": "새 세션 탭 열기",
       "mcpServerDetail": "MCP 서버: {server}",
       "mcpToolDetail": "MCP 서버: {server} · 도구: {tool}"
     },
@@ -256,6 +267,8 @@
       "skillTooltip": "스킬: {skill}",
       "toolTooltip": "도구: {tool}",
       "agentTooltip": "에이전트: {agent}",
+      "sessionTooltip": "세션: {session}",
+      "sessionAriaLabel": "참조된 세션: {session}",
       "selectedText": "선택한 텍스트",
       "selectedTextTemplateTooltip": "이 명령을 실행할 때 선택한 텍스트",
       "removeSelectedTextTemplate": "선택한 텍스트 변수 제거",
@@ -497,14 +510,18 @@
     },
     "sessionFiles": {
       "heading": "세션 파일",
+      "retention": {
+        "name": "삭제된 세션 보관 기간",
+        "desc": "영구 삭제하기 전까지의 일수입니다."
+      },
       "deleteRemoved": {
-        "name": "제거된 세션 파일 삭제",
-        "desc": "기록에서 제거되었고 보관되지 않았으며 현재 열려 있지 않은 세션 파일만 영구 삭제합니다.",
-        "button": "삭제",
-        "success": "제거된 세션 파일 {count}개를 삭제했습니다.",
-        "failed": "제거된 세션 파일 삭제 실패",
-        "confirmTitle": "제거된 세션 파일을 삭제할까요?",
-        "confirmDescription": "기록에서 제거되었고 보관되지 않았거나 현재 열려 있지 않은 세션 파일만 영구적으로 삭제합니다."
+        "name": "제거된 세션 영구 삭제",
+        "desc": "삭제 작업으로 제거한 세션을 삭제합니다. 열려 있거나 보관된 세션에는 영향을 주지 않습니다.",
+        "button": "영구 삭제",
+        "success": "제거된 세션 파일 {count}개를 영구 삭제했습니다.",
+        "failed": "제거된 세션 영구 삭제 실패",
+        "confirmTitle": "제거된 세션을 영구 삭제할까요?",
+        "confirmDescription": "삭제 작업으로 제거한 세션을 삭제합니다. 열려 있거나 보관된 세션에는 영향을 주지 않습니다."
       }
     },
     "sharedEnvironment": {
@@ -528,6 +545,12 @@
         "mcp": "MCP 서버"
       },
       "heading": "도구 토글",
+      "groups": {
+        "workspace": "{workspaceName}",
+        "hostCli": "{hostName} CLI",
+        "pivi": "Pivi",
+        "additional": "추가 액세스"
+      },
       "intro": "에이전트에 노출되는 {hostName} 도구를 켜거나 끕니다. 변경은 프롬프트 갱신 후 새 턴에 적용됩니다.",
       "unavailableOfficialCli": "공식 Obsidian CLI가 필요합니다.",
       "unavailableExternalRead": "외부 읽기 권한과 허용된 디렉터리가 하나 이상 필요합니다.",
@@ -767,7 +790,8 @@
           "remove": "{name}을(를) 제거했습니다.",
           "enable": "{name}을(를) 사용 설정했습니다.",
           "disable": "{name}을(를) 사용 중지했습니다."
-        }
+        },
+        "partialFailure": "스킬은 저장되었지만 일부 후속 작업에 실패했습니다."
       }
     },
     "slashCommandsUi": {
@@ -926,6 +950,14 @@
       "write": "쓰기",
       "writeDesc": "노트 만들기, 앞/뒤 추가, 또는 의도적 전체 덮어쓰기.",
       "search": "검색",
+      "sessions": "Pivi Sessions",
+      "sessionsDesc": "영구 세션을 읽고 복구 가능한 삭제된 세션을 나열하거나 표시된 Pivi 탭에서 복원합니다.",
+      "piviMcp": "Pivi MCP",
+      "piviMcpDesc": "메인 에이전트 확인을 통해 저장된 MCP 서버를 관리합니다.",
+      "piviSkills": "Pivi Skills",
+      "piviSkillsDesc": "메인 에이전트 확인을 통해 관리형 Skills를 설치, 업데이트, 활성화, 비활성화 및 제거합니다.",
+      "piviCommands": "Pivi Commands",
+      "piviCommandsDesc": "메인 에이전트 확인을 통해 워크스페이스 Commands를 관리합니다.",
       "searchDesc": "노트 텍스트·태그를 검색하거나 폴더의 마크다운 파일을 나열합니다.",
       "noteInfo": "노트 정보",
       "noteInfoDesc": "메타데이터, 태그, 나가는 링크, frontmatter를 읽습니다.",

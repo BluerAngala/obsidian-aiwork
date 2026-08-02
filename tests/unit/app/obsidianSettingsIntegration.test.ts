@@ -2,6 +2,10 @@ import {
   TOOL_OBSIDIAN_BASH,
   TOOL_OBSIDIAN_READ,
   TOOL_OBSIDIAN_TASKS,
+  TOOL_PIVI_COMMANDS,
+  TOOL_PIVI_MCP,
+  TOOL_PIVI_SESSIONS,
+  TOOL_PIVI_SKILLS,
 } from '@pivi/pivi-agent-core/tools';
 
 import type { PiviSettingsHost } from '@/app/hostContracts';
@@ -27,17 +31,40 @@ describe('Obsidian settings integration adapter', () => {
     }, false);
 
     expect(rows.find((row) => row.name === TOOL_OBSIDIAN_READ)).toMatchObject({
+      group: 'workspace-api',
       enabled: false,
       available: true,
     });
     expect(rows.find((row) => row.name === TOOL_OBSIDIAN_TASKS)).toMatchObject({
+      group: 'host-cli',
       enabled: false,
       available: false,
     });
     expect(rows.find((row) => row.name === TOOL_OBSIDIAN_BASH)).toMatchObject({
+      group: 'additional',
       enabled: true,
       available: true,
     });
+    expect(rows.find((row) => row.name === TOOL_PIVI_SESSIONS)).toMatchObject({
+      label: 'Pivi Sessions',
+      description: 'Read durable sessions, list recoverable deleted sessions, or restore one in a visible Pivi tab.',
+      group: 'pivi',
+      enabled: true,
+      available: true,
+    });
+    expect(rows.filter(row => [TOOL_PIVI_MCP, TOOL_PIVI_SKILLS, TOOL_PIVI_COMMANDS]
+      .includes(row.name as typeof TOOL_PIVI_MCP))).toEqual([
+      expect.objectContaining({ name: TOOL_PIVI_MCP, group: 'pivi', enabled: true }),
+      expect.objectContaining({ name: TOOL_PIVI_SKILLS, group: 'pivi', enabled: true }),
+      expect.objectContaining({ name: TOOL_PIVI_COMMANDS, group: 'pivi', enabled: true }),
+    ]);
+
+    const disabled = createObsidianToolRows({
+      allowBash: true,
+      allowExternalRead: false,
+      disabledTools: [TOOL_PIVI_MCP],
+    }, false);
+    expect(disabled.find(row => row.name === TOOL_PIVI_MCP)?.enabled).toBe(false);
   });
 
   it('describes and runs Obsidian-only integration actions', async () => {

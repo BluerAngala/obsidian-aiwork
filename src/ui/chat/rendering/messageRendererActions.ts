@@ -28,6 +28,26 @@ export function getMessageCopyContent(msg: ChatMessage): string {
   return normalizeObsidianAppLinksInMarkdown(content);
 }
 
+/** Serialize only the visible user/agent conversation through one completed agent turn. */
+export function formatConversationAsMarkdown(
+  messages: readonly ChatMessage[],
+  throughMessageId: string,
+): string {
+  const throughIndex = messages.findIndex(message => message.id === throughMessageId);
+  if (throughIndex < 0) return '';
+
+  return messages
+    .slice(0, throughIndex + 1)
+    .filter(message => !message.isRebuiltContext)
+    .map((message) => {
+      const content = getMessageCopyContent(message);
+      if (!content) return null;
+      return `## ${message.role === 'user' ? 'User' : 'Agent'}\n\n${content}`;
+    })
+    .filter((section): section is string => section !== null)
+    .join('\n\n');
+}
+
 export function getForkEntryId(msg: ChatMessage): string | undefined {
   return msg.role === 'user' ? msg.userMessageId : msg.assistantMessageId;
 }

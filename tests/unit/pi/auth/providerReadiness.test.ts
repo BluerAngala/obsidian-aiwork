@@ -54,6 +54,16 @@ describe('deriveProviderReadinessStatus (pivi-agent-core/auth)', () => {
     expect(status.kind).toBe('ready');
   });
 
+  it('treats Anthropic bearer auth environment variables as present credentials', () => {
+    const status = deriveProviderReadinessStatus({
+      providerId: 'anthropic',
+      piSettings: { ...basePiSettings, environmentVariables: 'ANTHROPIC_AUTH_TOKEN=bearer-token' },
+      modelCount: 1,
+    });
+
+    expect(status.kind).toBe('ready');
+  });
+
   it('detects expired OAuth credentials when expiry is known', () => {
     const credential: ProviderCredential = {
       type: 'oauth',

@@ -2,7 +2,7 @@ import { PluginLogger } from '@pivi/pivi-agent-core/foundation/pluginLogger';
 import type { Plugin } from "obsidian";
 import { Notice } from "obsidian";
 
-import type { SharedAppStorage } from "../bootstrap/storage";
+import type { DeletedSessionFileRecord, SharedAppStorage } from "../bootstrap/storage";
 import type { AppTabManagerState } from "../bootstrap/types";
 import {
   type PiviSettingsCodec,
@@ -18,6 +18,45 @@ const logger = new PluginLogger('SharedStorageService');
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function dedupeDeletedSessionRecords(
+  records: readonly DeletedSessionFileRecord[],
+): DeletedSessionFileRecord[] {
+  return Array.from(
+    new Map(records.map((record) => [record.sessionFile, record])).values(),
+  );
+}
+
+function normalizeDeletedSessionFiles(
+  value: unknown,
+): { records: DeletedSessionFileRecord[]; changed: boolean } {
+  if (!Array.isArray(value)) {
+    return { records: [], changed: false };
+  }
+  const migratedAt = Date.now();
+  let changed = false;
+  const records = value.flatMap((entry): DeletedSessionFileRecord[] => {
+    if (typeof entry === "string") {
+      changed = true;
+      return [{ sessionFile: entry, deletedAt: migratedAt }];
+    }
+    if (
+      isRecord(entry)
+      && typeof entry.sessionFile === "string"
+      && typeof entry.deletedAt === "number"
+      && Number.isFinite(entry.deletedAt)
+    ) {
+      return [{ sessionFile: entry.sessionFile, deletedAt: entry.deletedAt }];
+    }
+    changed = true;
+    return [];
+  });
+  const normalized = dedupeDeletedSessionRecords(records);
+  if (normalized.length !== records.length) {
+    changed = true;
+  }
+  return { records: normalized, changed };
 }
 
 export type SharedStorageNoticeMessages = {
@@ -39,6 +78,7 @@ export class SharedStorageService implements SharedAppStorage {
   private adapter: ObsidianVaultFileAdapter;
   private plugin: Plugin;
   private notices: SharedStorageNoticeMessages;
+  private pluginDataOperationTail: Promise<void> = Promise.resolve();
 
   constructor(
     plugin: Plugin,
@@ -77,8 +117,9 @@ export class SharedStorageService implements SharedAppStorage {
   async setTabManagerState(state: AppTabManagerState): Promise<void> {
     try {
       await this.writeTabManagerStateFile(state);
-    } catch {
+    } catch (error) {
       new Notice(this.notices.failedSaveTabLayout);
+      throw error;
     }
   }
 
@@ -115,40 +156,83 @@ export class SharedStorageService implements SharedAppStorage {
 
   private async clearLegacyTabManagerState(): Promise<void> {
     try {
-      const loaded: unknown = await this.plugin.loadData();
-      if (!isRecord(loaded) || !("tabManagerState" in loaded)) {
-        return;
-      }
-      delete loaded.tabManagerState;
-      await this.plugin.saveData(loaded);
+      await this.updatePluginData((data) => {
+        delete data.tabManagerState;
+      });
     } catch (error) {
       // Best-effort cleanup of legacy plugin data after vault migration.
       logger.warn('failed to clear legacy tab manager state', error);
     }
   }
 
-  async setDeletedSessionFiles(sessionFiles: string[]): Promise<void> {
+  async setDeletedSessionFiles(records: DeletedSessionFileRecord[]): Promise<void> {
     try {
-      const loaded: unknown = await this.plugin.loadData();
-      const data = isRecord(loaded) ? loaded : {};
-      data.deletedSessionFiles = Array.from(new Set(sessionFiles));
-      await this.plugin.saveData(data);
-    } catch {
+      await this.updatePluginData((data) => {
+        data.deletedSessionFiles = dedupeDeletedSessionRecords(records);
+      });
+    } catch (error) {
       new Notice(this.notices.failedSaveDeletedSessions);
+      throw error;
     }
   }
 
-  async getDeletedSessionFiles(): Promise<string[]> {
+  async updateDeletedSessionFiles(
+    update: (records: readonly DeletedSessionFileRecord[]) => DeletedSessionFileRecord[],
+  ): Promise<void> {
     try {
+      await this.runPluginDataOperation(async () => {
+        const loaded: unknown = await this.plugin.loadData();
+        const data = isRecord(loaded) ? loaded : {};
+        const { records, changed } = normalizeDeletedSessionFiles(data.deletedSessionFiles);
+        const next = dedupeDeletedSessionRecords(update(records));
+        if (
+          changed
+          || next.length !== records.length
+          || next.some((record, index) => {
+            const previous = records[index];
+            return !previous
+              || previous.sessionFile !== record.sessionFile
+              || previous.deletedAt !== record.deletedAt;
+          })
+        ) {
+          data.deletedSessionFiles = next;
+          await this.plugin.saveData(data);
+        }
+      });
+    } catch (error) {
+      new Notice(this.notices.failedSaveDeletedSessions);
+      throw error;
+    }
+  }
+
+  async getDeletedSessionFiles(): Promise<DeletedSessionFileRecord[]> {
+    return this.runPluginDataOperation(async () => {
       const data: unknown = await this.plugin.loadData();
       if (!isRecord(data) || !Array.isArray(data.deletedSessionFiles)) {
         return [];
       }
-      return data.deletedSessionFiles.filter((sessionFile): sessionFile is string => typeof sessionFile === "string");
-    } catch (error) {
-      logger.warn('failed to load deleted session list', error);
-      return [];
-    }
+      const { records, changed } = normalizeDeletedSessionFiles(data.deletedSessionFiles);
+      if (changed) {
+        data.deletedSessionFiles = records;
+        await this.plugin.saveData(data);
+      }
+      return records;
+    });
+  }
+
+  private runPluginDataOperation<T>(operation: () => Promise<T>): Promise<T> {
+    const result = this.pluginDataOperationTail.then(operation, operation);
+    this.pluginDataOperationTail = result.then(() => undefined, () => undefined);
+    return result;
+  }
+
+  private updatePluginData(update: (data: Record<string, unknown>) => void): Promise<void> {
+    return this.runPluginDataOperation(async () => {
+      const loaded: unknown = await this.plugin.loadData();
+      const data = isRecord(loaded) ? loaded : {};
+      update(data);
+      await this.plugin.saveData(data);
+    });
   }
 
   getAdapter(): ObsidianVaultFileAdapter {

@@ -963,4 +963,38 @@ describe('agentMessageHistory', () => {
       ] }),
     ]);
   });
+
+  it('never persists or replays Pi partial assistant messages', () => {
+    const pendingAssistant = {
+      role: 'assistant',
+      content: [{ type: 'text', text: 'partial answer' }],
+      stopReason: 'pending',
+      timestamp: 2,
+    };
+    const completeAssistant = {
+      role: 'assistant',
+      content: [{ type: 'text', text: 'complete answer' }],
+      stopReason: 'stop',
+      timestamp: 3,
+    };
+
+    const missing = missingAgentMessages([
+      { role: 'user', content: 'question', timestamp: 1 },
+    ] as never[], [
+      { role: 'user', content: 'question', timestamp: 1 },
+      pendingAssistant,
+      completeAssistant,
+    ] as never[]);
+    const sanitized = sanitizeAgentMessagesForLlm([
+      { role: 'user', content: 'question', timestamp: 1 },
+      pendingAssistant,
+      completeAssistant,
+    ] as never[]);
+
+    expect(missing).toEqual([completeAssistant]);
+    expect(sanitized).toEqual([
+      expect.objectContaining({ role: 'user' }),
+      completeAssistant,
+    ]);
+  });
 });

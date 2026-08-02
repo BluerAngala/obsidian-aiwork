@@ -7,6 +7,7 @@ import {
 import { fetchDefaultVaultSkillsRemoteSha } from './fetchDefaultVaultSkillsRemoteSha';
 import { loadVaultSkills } from './loadVaultSkills';
 import { notifyVaultSkillsChanged, type VaultSkillsChangeNotifier } from './notifyVaultSkillsChanged';
+import type { SkillsPublicationMetadata } from './skillPublicationTransaction';
 import { VaultSkillsService } from './vaultSkillsService';
 
 const logger = new PluginLogger('DefaultVaultSkills');
@@ -92,17 +93,77 @@ export async function installDefaultVaultSkills(plugin: DefaultVaultSkillsContex
 
   const service = new VaultSkillsService(vaultPath, { processRunner: plugin.processRunner });
   const notice = plugin.notify?.('Installing default Obsidian skills…', 0) ?? null;
-  try {
-    const [remoteSha, installed] = await Promise.all([
-      fetchDefaultVaultSkillsRemoteSha(plugin.httpClient),
-      service.installFromSlug(DEFAULT_VAULT_SKILLS_SLUG),
-    ]);
+  let metadataCommitted = false;
+  const commitMetadata = async (metadata?: SkillsPublicationMetadata): Promise<void> => {
+    const mutation = metadata?.mutation;
+    if (
+      !mutation
+      || typeof mutation !== 'object'
+      || Array.isArray(mutation)
+      || !('action' in mutation)
+      || mutation.action !== 'install'
+      || !('source' in mutation)
+      || mutation.source !== DEFAULT_VAULT_SKILLS_SLUG
+    ) {
+      return;
+    }
+    const context = metadata?.context;
+    const commitSha = context
+      && typeof context === 'object'
+      && !Array.isArray(context)
+      && 'defaultBundleCommitSha' in context
+      && typeof context.defaultBundleCommitSha === 'string'
+      ? context.defaultBundleCommitSha
+      : undefined;
+    const previous = {
+      seeded: plugin.settings.defaultVaultSkillsSeeded,
+      dismissed: plugin.settings.defaultVaultSkillsPromptDismissed,
+      commitSha: plugin.settings.defaultVaultSkillsCommitSha,
+    };
     plugin.settings.defaultVaultSkillsSeeded = true;
     delete plugin.settings.defaultVaultSkillsPromptDismissed;
-    if (remoteSha) {
-      plugin.settings.defaultVaultSkillsCommitSha = remoteSha;
+    if (commitSha) plugin.settings.defaultVaultSkillsCommitSha = commitSha;
+    try {
+      await plugin.saveSettings();
+      metadataCommitted = true;
+    } catch (error) {
+      plugin.settings.defaultVaultSkillsSeeded = previous.seeded;
+      if (previous.dismissed !== undefined) {
+        plugin.settings.defaultVaultSkillsPromptDismissed = previous.dismissed;
+      } else {
+        delete plugin.settings.defaultVaultSkillsPromptDismissed;
+      }
+      if (previous.commitSha !== undefined) {
+        plugin.settings.defaultVaultSkillsCommitSha = previous.commitSha;
+      } else {
+        delete plugin.settings.defaultVaultSkillsCommitSha;
+      }
+      throw error;
     }
-    await plugin.saveSettings();
+  };
+  try {
+    // Register recovery before the CLI can discover a previous transaction from
+    // another process lifetime; the same metadata callback is used in-transaction.
+    await service.prepareWorkspace(commitMetadata);
+    const remoteSha = await fetchDefaultVaultSkillsRemoteSha(plugin.httpClient);
+    const installed = await service.installFromSlug(DEFAULT_VAULT_SKILLS_SLUG, {
+      afterPublish: () => commitMetadata({
+        mutation: { action: 'install', source: DEFAULT_VAULT_SKILLS_SLUG },
+        context: { defaultBundleCommitSha: remoteSha },
+      }),
+      metadata: {
+        mutation: { action: 'install', source: DEFAULT_VAULT_SKILLS_SLUG },
+        context: { defaultBundleCommitSha: remoteSha },
+      },
+    });
+    // Keep compatibility with injected test/host services that do not execute
+    // publication hooks; real VaultSkillsService commits inside the transaction.
+    if (!metadataCommitted) {
+      await commitMetadata({
+        mutation: { action: 'install', source: DEFAULT_VAULT_SKILLS_SLUG },
+        context: { defaultBundleCommitSha: remoteSha },
+      });
+    }
     await notifyVaultSkillsChanged(plugin);
     notice?.hide();
     plugin.notify?.(

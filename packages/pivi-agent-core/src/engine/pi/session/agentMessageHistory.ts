@@ -94,6 +94,10 @@ function isAssistantMessage(message: AgentMessage): message is Message & { role:
   return isRecord(message) && message.role === 'assistant' && Array.isArray(message.content);
 }
 
+function isPendingAssistantMessage(message: AgentMessage): boolean {
+  return isAssistantMessage(message) && message.stopReason === 'pending';
+}
+
 function isLlmMessage(message: AgentMessage): message is Message {
   if (!isRecord(message)) {
     return false;
@@ -163,10 +167,10 @@ export function missingAgentMessages(
   const maxOverlap = Math.min(existingContext.length, incomingMessages.length);
   for (let overlap = maxOverlap; overlap > 0; overlap--) {
     if (hasMatchingSuffixPrefix(existingContext, incomingMessages, overlap, options)) {
-      return incomingMessages.slice(overlap);
+      return incomingMessages.slice(overlap).filter(message => !isPendingAssistantMessage(message));
     }
   }
-  return incomingMessages;
+  return incomingMessages.filter(message => !isPendingAssistantMessage(message));
 }
 
 /** Drop restored tool results that no longer have a preceding assistant tool call. */
@@ -187,7 +191,7 @@ export function sanitizeAgentMessagesForLlm(messages: AgentMessage[]): Message[]
     }
 
     if (message.role === 'assistant') {
-      if (message.stopReason === 'error') {
+      if (message.stopReason === 'error' || message.stopReason === 'pending') {
         pendingToolCallIds = new Set();
         continue;
       }

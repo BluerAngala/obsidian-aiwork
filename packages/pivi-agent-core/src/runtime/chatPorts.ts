@@ -15,12 +15,14 @@ import type { CapabilityApprovalPort } from '../ports/capabilityApproval';
 import type { SessionMessagePage } from '../session';
 import type { SlashCommandDropdownConfig } from '../skills/commands/slashCommandCatalog';
 import type { SlashCatalogEntry } from '../skills/commands/slashCommandEntry';
+import type { PiviManagementApprovalPort } from '../tools/piviManagement/approval';
 import type { AuxQueryRunner } from './auxQueryRunner';
 import type { PiChatService } from './piChatService';
 
 export interface ChatRuntimePort {
   createChatService(options?: {
     capabilityApproval?: CapabilityApprovalPort | null;
+    piviManagementApproval?: PiviManagementApprovalPort | null;
   }): PiChatService;
   createAuxQueryRunner(): AuxQueryRunner;
 }
@@ -43,6 +45,7 @@ export interface ChatSessionPort {
   }): Promise<OpenSessionState>;
   openSessionFile(sessionFile: string): Promise<OpenSessionState>;
   deleteSession(id: string): Promise<void>;
+  deleteSessionFile(sessionFile: string, openSessionId?: string | null): Promise<void>;
   renameSession(
     id: string,
     title: string,
@@ -59,6 +62,12 @@ export interface ChatCatalogPort {
   listMcpServers(): ManagedMcpServer[];
   listContextSavingMcpServers(): ManagedMcpServer[];
   listMcpTools(serverName: string): Promise<Array<{ name: string; description?: string }>>;
+  /**
+   * Automatic slash-cache inventory path. Prefer a non-authenticating provider
+   * seam that cannot start stdio or persist OAuth; falls back to listMcpTools
+   * only when the host has not wired a dedicated inventory method.
+   */
+  listMcpInventoryTools?(serverName: string): Promise<Array<{ name: string; description?: string }>>;
   listSkills(): Array<{ name: string; description?: string }>;
   listSlashEntries(includeBuiltIns: boolean): Promise<SlashCatalogEntry[]>;
   getSlashDropdownConfig(): SlashCommandDropdownConfig;

@@ -25,6 +25,7 @@ export function createFakeChatPorts(
       createSession: async () => ({ id: 'fake-session' }) as never,
       openSessionFile: async () => ({ id: 'fake-session' }) as never,
       deleteSession: async () => undefined,
+      deleteSessionFile: async () => undefined,
       renameSession: async () => undefined,
       updateSession: async () => undefined,
       forkSession: async () => null,

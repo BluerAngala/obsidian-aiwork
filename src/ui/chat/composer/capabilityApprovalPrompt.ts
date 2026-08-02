@@ -4,8 +4,8 @@ import type {
 } from '@pivi/pivi-agent-core/ports';
 import {
   bashAllowlistPersistScopesDiffer,
-  resolveBashAllowlistPersistEntry,
 } from '@pivi/pivi-agent-core/runtime/capabilitySessionGrants';
+import { createPrefixBashGrant } from '@pivi/pivi-agent-core/tools';
 
 import { t } from '@/app/i18n';
 
@@ -138,11 +138,12 @@ export async function showCapabilityApprovalPrompt(
     }
 
     const command = request.command?.trim() ?? '';
-    if (request.kind !== 'bash' || !command || !bashAllowlistPersistScopesDiffer(command)) {
+    if (request.kind !== 'bash' || !command || !bashAllowlistPersistScopesDiffer(command, request.shellPath)) {
       return { decision: 'allow-always', bashAllowlistScope: 'full' };
     }
 
-    const prefix = resolveBashAllowlistPersistEntry(command, 'prefix');
+    const prefixGrant = createPrefixBashGrant(command, request.shellPath ?? '/bin/sh');
+    const prefix = prefixGrant?.kind === 'argv-prefix' ? (prefixGrant.argv[0] ?? command) : command;
     const persistResult = await askApprovalStep(
       deps,
       parentEl,

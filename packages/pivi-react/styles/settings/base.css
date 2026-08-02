@@ -64,6 +64,25 @@ textarea.pivi-settings-control {
   flex: 0 1 var(--pivi-settings-control-width);
 }
 
+.pivi-environment-setting > .pivi-setting-row__info {
+  flex: 1 1 0;
+}
+
+.pivi-environment-setting > .pivi-setting-row__control {
+  flex: 2 1 0;
+  align-self: stretch;
+  align-items: stretch;
+}
+
+.pivi-environment-setting > .pivi-setting-row__control > .pivi-settings-env-textarea {
+  flex: 1 1 auto;
+  align-self: stretch;
+}
+
+.pivi-environment-setting__actions {
+  margin-block-start: var(--pivi-spacing-md);
+}
+
 .pivi-settings-range {
   display: flex;
   width: min(var(--pivi-settings-control-width), 100%);

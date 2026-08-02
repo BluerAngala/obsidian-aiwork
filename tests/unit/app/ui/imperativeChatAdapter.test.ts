@@ -6,7 +6,7 @@ import {
   type ChatPerfRecorder,
   type ChatTabSnapshotItem,
 } from '@pivi/pivi-react/store';
-import type { ChatMessage } from '@pivi/pivi-agent-core/foundation';
+import type { ChatMessage, SessionSummary } from '@pivi/pivi-agent-core/foundation';
 import type { ChatPorts } from '@pivi/pivi-agent-core/runtime/chatPorts';
 import { Component, type Editor, type MarkdownView } from 'obsidian';
 
@@ -41,6 +41,7 @@ type TestTab = {
   id: string;
   openSessionId: string | null;
   sessionFile: string | null;
+  isArchived: boolean;
   draftModel: string | null;
   lifecycleState?: string;
   service: TestService | null;
@@ -113,6 +114,7 @@ type TestManager = {
   broadcastToAllTabs: jest.Mock<Promise<void>, [(service: TestService) => Promise<void>]>;
   invalidateSlashCommandCaches: jest.Mock<void, []>;
   prefetchSlashCommandCaches: jest.Mock<void, []>;
+  refreshSlashCommandCachesStrict: jest.Mock<Promise<readonly { target: string; message: string }[]>, []>;
   syncPinnedExternalContextPaths: jest.Mock<void, [string[]]>;
 };
 
@@ -131,6 +133,7 @@ function createTab(overrides: Partial<TestTab> = {}): TestTab {
     id: 'tab-1',
     openSessionId: 'session-1',
     sessionFile: '.pivi/sessions/one.jsonl',
+    isArchived: false,
     draftModel: 'draft-model',
     service: createService(),
     serviceInitialized: true,
@@ -165,6 +168,7 @@ function createManager(): TestManager {
     ) => undefined),
     invalidateSlashCommandCaches: jest.fn(),
     prefetchSlashCommandCaches: jest.fn(),
+    refreshSlashCommandCachesStrict: jest.fn(async () => []),
     syncPinnedExternalContextPaths: jest.fn(),
   };
 }
@@ -200,6 +204,7 @@ function createPresentationTab(uiStore: ChatUiStore): TestTab {
 
 type HarnessOptions = {
   persistedState?: PersistedTabManagerState | null;
+  sessions?: SessionSummary[];
   ownerWindow?: Pick<Window, 'cancelAnimationFrame' | 'requestAnimationFrame'> | null;
 };
 
@@ -207,6 +212,8 @@ function createHarness(options: HarnessOptions = {}) {
   const manager = createManager();
   jest.mocked(TabManager).mockImplementation(() => manager as unknown as TabManager);
 
+  const deleteSession = jest.fn(async (_openSessionId: string) => undefined);
+  const deleteSessionFile = jest.fn(async (_sessionFile: string, _openSessionId?: string | null) => undefined);
   const persistTabStateImmediate = jest.fn(async () => undefined);
   const inputPortalContainer = {
     parentElement: null,
@@ -254,12 +261,20 @@ function createHarness(options: HarnessOptions = {}) {
     await adapter.mount(
       { empty: jest.fn() } as unknown as HTMLElement,
       {} as never,
-      {} as ChatPorts,
+      {
+        sessions: {
+          deleteSession,
+          deleteSessionFile,
+          listSessions: () => options.sessions ?? [],
+        },
+      } as unknown as ChatPorts,
     );
   };
 
   return {
     adapter,
+    deleteSession,
+    deleteSessionFile,
     handle: adapter.getViewHandle(),
     inputPortalContainer,
     loadPersistedTabState,
@@ -304,6 +319,87 @@ describe('imperative chat semantic view handle', () => {
     expect(withdrawQueuedMessageToComposer).toHaveBeenCalledWith('queued-2');
     expect(steerQueuedMessage).toHaveBeenCalledWith('queued-3');
     expect(refresh).toHaveBeenCalledTimes(3);
+  });
+
+  it('marks an archived session deleted after removing its persisted tab binding', async () => {
+    const harness = createHarness();
+    const archivedTab = createTab({ isArchived: true });
+    harness.manager.getTab.mockReturnValue(archivedTab);
+    harness.manager.getPersistedState.mockReturnValue({
+      openTabs: [],
+      activeTabId: null,
+    });
+    await harness.mount();
+
+    await harness.adapter.getShellActions().deleteTab(archivedTab.id);
+
+    expect(harness.manager.closeTab).toHaveBeenCalledWith(archivedTab.id, false);
+    expect(harness.persistTabStateImmediate).toHaveBeenCalledWith({
+      openTabs: [],
+      activeTabId: null,
+    });
+    expect(harness.deleteSessionFile).toHaveBeenCalledWith(
+      archivedTab.sessionFile,
+      archivedTab.openSessionId,
+    );
+    expect(harness.persistTabStateImmediate.mock.invocationCallOrder[0])
+      .toBeLessThan(harness.deleteSessionFile.mock.invocationCallOrder[0]!);
+  });
+
+  it('deletes a cold archived tab by its durable session file', async () => {
+    const harness = createHarness();
+    const archivedTab = createTab({
+      isArchived: true,
+      openSessionId: null,
+      sessionFile: '.pivi/sessions/cold.jsonl',
+    });
+    harness.manager.getTab.mockReturnValue(archivedTab);
+    harness.manager.getPersistedState.mockReturnValue({ openTabs: [], activeTabId: null });
+    await harness.mount();
+
+    await harness.adapter.getShellActions().deleteTab(archivedTab.id);
+
+    expect(harness.persistTabStateImmediate).toHaveBeenCalled();
+    expect(harness.deleteSessionFile).toHaveBeenCalledWith(archivedTab.sessionFile, null);
+  });
+
+  it('deletes a session created by the close-time save of the first turn', async () => {
+    const harness = createHarness();
+    const streamingTab = createTab({
+      isArchived: true,
+      openSessionId: null,
+      sessionFile: null,
+    });
+    streamingTab.state.isStreaming = true;
+    harness.manager.getTab.mockReturnValue(streamingTab);
+    harness.manager.closeTab.mockImplementation(async () => {
+      streamingTab.openSessionId = 'open-lazy';
+      streamingTab.sessionFile = '.pivi/sessions/lazy.jsonl';
+      return true;
+    });
+    harness.manager.getPersistedState.mockReturnValue({ openTabs: [], activeTabId: null });
+    await harness.mount();
+
+    await harness.adapter.getShellActions().deleteTab(streamingTab.id);
+
+    expect(harness.manager.closeTab).toHaveBeenCalledWith(streamingTab.id, true);
+    expect(harness.deleteSessionFile).toHaveBeenCalledWith(
+      '.pivi/sessions/lazy.jsonl',
+      'open-lazy',
+    );
+  });
+
+  it('closes an open tab without deleting its durable session', async () => {
+    const harness = createHarness();
+    const openTab = createTab({ isArchived: false });
+    harness.manager.getTab.mockReturnValue(openTab);
+    await harness.mount();
+
+    await harness.adapter.getShellActions().closeTab(openTab.id);
+
+    expect(harness.manager.closeTab).toHaveBeenCalledWith(openTab.id, false);
+    expect(harness.deleteSession).not.toHaveBeenCalled();
+    expect(harness.persistTabStateImmediate).not.toHaveBeenCalled();
   });
 
   it('drives an exact 100 KB Markdown stream and restores the active state', async () => {
@@ -856,6 +952,60 @@ describe('imperative chat semantic view handle', () => {
     expect(blank.manager.prefetchSlashCommandCaches).toHaveBeenCalledTimes(1);
   });
 
+  it('restores every unbound durable Session as an archived tab', async () => {
+    const activeSessionFile = '.pivi/sessions/active.jsonl';
+    const archivedSessionFile = '.pivi/sessions/legacy-unbound.jsonl';
+    const persistedState: PersistedTabManagerState = {
+      openTabs: [{ tabId: 'active-tab', sessionFile: activeSessionFile }],
+      activeTabId: 'active-tab',
+    };
+    const harness = createHarness({
+      persistedState,
+      sessions: [{
+        id: 'active-session',
+        title: 'Active',
+        sessionFile: activeSessionFile,
+      }, {
+        id: 'legacy-session',
+        title: 'Legacy',
+        sessionFile: archivedSessionFile,
+      }] as SessionSummary[],
+    });
+
+    await harness.mount();
+
+    expect(harness.manager.restoreState).toHaveBeenCalledWith({
+      activeTabId: 'active-tab',
+      openTabs: [
+        { tabId: 'active-tab', sessionFile: activeSessionFile },
+        expect.objectContaining({
+          sessionFile: archivedSessionFile,
+          isArchived: true,
+        }),
+      ],
+    });
+  });
+
+  it('keeps all durable Sessions archived when no active tab was persisted', async () => {
+    const sessionFile = '.pivi/sessions/legacy-unbound.jsonl';
+    const harness = createHarness({
+      sessions: [{
+        id: 'legacy-session',
+        title: 'Legacy',
+        sessionFile,
+      }] as SessionSummary[],
+    });
+
+    await harness.mount();
+
+    const restoredState = harness.manager.restoreState.mock.calls[0]?.[0] as PersistedTabManagerState;
+    expect(restoredState.activeTabId).toBe(restoredState.openTabs[0]?.tabId);
+    expect(restoredState.openTabs).toEqual([
+      expect.not.objectContaining({ isArchived: true }),
+      expect.objectContaining({ sessionFile, isArchived: true }),
+    ]);
+  });
+
   it('activates the current tab snapshot, portal targets, and store relay', async () => {
     const { adapter, manager, mount, ownerDocument } = createHarness();
     const uiStore = new ChatUiStore(createInitialChatUiSnapshot());
@@ -1194,6 +1344,62 @@ describe('imperative chat semantic view handle', () => {
     expect(manager.invalidateSlashCommandCaches).toHaveBeenCalledTimes(1);
     expect(first.syncSystemPrompt).toHaveBeenCalledTimes(2);
     expect(second.syncSystemPrompt).toBeUndefined();
+  });
+
+  it('strict management refresh surfaces one tab failure while refreshing siblings', async () => {
+    const { handle, manager, mount } = createHarness();
+    await mount();
+
+    const ok = createService({
+      reloadMcpServers: jest.fn(async () => undefined),
+      syncSystemPrompt: jest.fn(async () => undefined),
+    });
+    const bad = createService({
+      reloadMcpServers: jest.fn(async () => {
+        throw new Error('secret path /Users/me/.pivi/broken');
+      }),
+      syncSystemPrompt: jest.fn(async () => undefined),
+    });
+    manager.getAllTabs.mockReturnValue([
+      createTab({ id: 'ok-tab', service: ok, serviceInitialized: true }),
+      createTab({ id: 'bad-tab', service: bad, serviceInitialized: true }),
+      createTab({ id: 'cold-tab', service: null, serviceInitialized: false }),
+    ]);
+
+    const failures = await handle.maintenance.refreshPiviManagement('mcp');
+
+    expect(ok.reloadMcpServers).toHaveBeenCalledTimes(1);
+    expect(bad.reloadMcpServers).toHaveBeenCalledTimes(1);
+    expect(manager.invalidateSlashCommandCaches).toHaveBeenCalled();
+    expect(manager.refreshSlashCommandCachesStrict).toHaveBeenCalled();
+    expect(failures).toEqual([
+      { target: 'tab:bad-tab', message: 'Runtime refresh failed.' },
+    ]);
+    expect(JSON.stringify(failures)).not.toContain('/Users/me');
+    expect(JSON.stringify(failures)).not.toContain('secret');
+
+    // Skills path uses syncSystemPrompt / ensureReady fallback; commands only warm caches.
+    ok.syncSystemPrompt!.mockClear();
+    bad.syncSystemPrompt = jest.fn(async () => {
+      throw new Error('skills boom');
+    });
+    const skillFailures = await handle.maintenance.refreshPiviManagement('skills');
+    expect(ok.syncSystemPrompt).toHaveBeenCalledTimes(1);
+    expect(skillFailures).toEqual([
+      { target: 'tab:bad-tab', message: 'Runtime refresh failed.' },
+    ]);
+
+    ok.reloadMcpServers.mockClear();
+    bad.reloadMcpServers.mockClear();
+    manager.refreshSlashCommandCachesStrict.mockResolvedValueOnce([
+      { target: 'tab:ok-tab', message: 'Cache refresh failed.' },
+    ]);
+    const commandFailures = await handle.maintenance.refreshPiviManagement('commands');
+    expect(ok.reloadMcpServers).not.toHaveBeenCalled();
+    expect(bad.reloadMcpServers).not.toHaveBeenCalled();
+    expect(commandFailures).toEqual([
+      { target: 'tab:ok-tab', message: 'Cache refresh failed.' },
+    ]);
   });
 
   it('resets model-changed runtimes and force-readies other environment changes', async () => {

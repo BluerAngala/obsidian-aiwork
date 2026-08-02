@@ -41,6 +41,7 @@ export interface ChatTurnRequestSnapshot {
   inlineContexts?: unknown[];
   externalContextPaths?: string[];
   enabledMcpServers?: string[];
+  referencedSessions?: Array<{ sessionId: string; sessionFile: string; title: string }>;
 }
 
 export interface CheckpointPresentation {

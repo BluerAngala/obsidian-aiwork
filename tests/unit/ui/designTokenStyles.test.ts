@@ -53,6 +53,8 @@ describe('product design tokens', () => {
     expect(accessibility).toContain('.pivi-skill-choice:focus-within');
     expect(accessibility).not.toMatch(/focus-visible[^}]*border-radius:/s);
     expect(primitives).toContain('.pivi-toggle:focus-within');
+    expect(input).not.toContain('.pivi-input-wrapper:focus-within');
+    expect(input).toMatch(/\.pivi-input-wrapper\s*\{[^}]*min-height:\s*210px;/s);
     expect(primitives).not.toContain(':has(');
     expect(accessibility).not.toContain(':has(');
   });

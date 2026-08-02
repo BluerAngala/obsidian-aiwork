@@ -1,5 +1,58 @@
 # Changelog
 
+## [0.17.1](https://github.com/shuuul/obsidian-pivi/compare/0.17.0...0.17.1) (2026-08-02)
+
+
+### Features
+
+* **chat:** add new-session slash command ([d8fbc4b](https://github.com/shuuul/obsidian-pivi/commit/d8fbc4b4a71d8f9cbe4380ab8c18a7029dfff83d))
+* **agent:** add managed Pivi capabilities ([a69af8c](https://github.com/shuuul/obsidian-pivi/commit/a69af8c2798dc9e9067f35941cdfe5c1ff1213c0))
+* **engine:** upgrade Pi and dependencies ([4094813](https://github.com/shuuul/obsidian-pivi/commit/40948131499176e8b83e0ef7fa036694d3d9f6ac))
+* **chat:** reference and manage durable sessions ([303d688](https://github.com/shuuul/obsidian-pivi/commit/303d688d3758c4f94578356cc919a42378eab24c))
+* **chat:** copy conversation through a turn as markdown ([17a4c59](https://github.com/shuuul/obsidian-pivi/commit/17a4c59012f89d665f0fe64310523137298958ef))
+* **chat:** recover deleted sessions ([c136d4d](https://github.com/shuuul/obsidian-pivi/commit/c136d4d858bef5d2a3cdb86f76b3d971e01e9f7b))
+
+
+### Bug Fixes
+
+* **skills:** support Windows publication transactions ([5cec2fb](https://github.com/shuuul/obsidian-pivi/commit/5cec2fb23f84d67f8aa45ef859184e01806e15f))
+* **skills:** validate the live tree before staging ([b3d842f](https://github.com/shuuul/obsidian-pivi/commit/b3d842fa89da13dbc56e54c9f0eaad294fc17006))
+* **management:** harden configuration transactions ([924fa85](https://github.com/shuuul/obsidian-pivi/commit/924fa85af89ce10b9b63b083539e2526379ea035))
+* **tools:** harden Bash grants, command transactions, and tool ownership ([f014ca7](https://github.com/shuuul/obsidian-pivi/commit/f014ca7260524ddd5cef12ff508b15111a3ff1fd))
+* **runtime:** harden provider and session lifecycle ([c08d703](https://github.com/shuuul/obsidian-pivi/commit/c08d70333f1c1ff683eee424d69c604ea0d3b9f0))
+* **release:** generate categorized beta changelogs ([f353f25](https://github.com/shuuul/obsidian-pivi/commit/f353f25645ac0c7b60c2d323f1256a9b0ee3f16a))
+* **engine:** restore provider requests with Pi 0.83 ([c9f3151](https://github.com/shuuul/obsidian-pivi/commit/c9f31512fc2d308751647df863f5743e3a4bac01))
+* **composer:** increase default input height ([901c1d0](https://github.com/shuuul/obsidian-pivi/commit/901c1d084cdee6b1025ad33cbef9c076d39deb0b))
+* **composer:** remove duplicate focus ring ([fbf26fb](https://github.com/shuuul/obsidian-pivi/commit/fbf26fbc9127aef15652865a9c620c2eae6de058))
+* **settings:** group built-in tools ([09c1a48](https://github.com/shuuul/obsidian-pivi/commit/09c1a48aa5f96705305b6c105bc11654bc2ca525))
+* **settings:** show Pivi Sessions tool ([d3f22c7](https://github.com/shuuul/obsidian-pivi/commit/d3f22c7e3ddef4323b37f0b3fcb1caff4f666b71))
+* **settings:** widen environment editor ([90bc51b](https://github.com/shuuul/obsidian-pivi/commit/90bc51bb78db9039c0bfd131184a6b314297b22a))
+* **settings:** align Style Settings action ([842c2be](https://github.com/shuuul/obsidian-pivi/commit/842c2be42cad013118437e4fc9d21cd7215163f8))
+* **settings:** clarify permanent session deletion ([248bf33](https://github.com/shuuul/obsidian-pivi/commit/248bf333d9bcb579be31fe24119b6dfc6a8c3fcc))
+* **chat:** delete open tabs from the switcher ([5914ce3](https://github.com/shuuul/obsidian-pivi/commit/5914ce3f8b1b0dbe3f78d1f992aaddbcf577e8c0))
+* **chat:** queue deleted archived session files ([a64352b](https://github.com/shuuul/obsidian-pivi/commit/a64352bd4da2d49cd04bb5b61b64711a65801eab))
+* **prompt:** list run_in_background as required spawn_agent parameter ([d2cc413](https://github.com/shuuul/obsidian-pivi/commit/d2cc41368ee90cc9be10e9147fe07debb9ac282f))
+
+
+### Dependencies
+
+* **deps:** bump @codemirror/view from 6.43.6 to 6.43.7 (#74) ([9e92757](https://github.com/shuuul/obsidian-pivi/commit/9e92757ace303b92d282d43567573d24594d1942))
+* **deps-dev:** bump @types/node from 26.1.1 to 26.1.2 (#73) ([a99a9c0](https://github.com/shuuul/obsidian-pivi/commit/a99a9c01319310ba50cc32820b30959130bdc639))
+* **deps:** bump @modelcontextprotocol/sdk from 1.29.0 to 1.30.0 (#72) ([14cc80b](https://github.com/shuuul/obsidian-pivi/commit/14cc80b5119ba5a994e94d0dc8bab6037827a692))
+* **deps-dev:** bump eslint from 10.7.0 to 10.8.0 in the tooling group (#70) ([8656b60](https://github.com/shuuul/obsidian-pivi/commit/8656b600dfaebb3e9db9dd8191e13062f977e482))
+
+
+### Other Changes
+
+* **specs:** archive 040 and 041 after acceptance ([c5b25a1](https://github.com/shuuul/obsidian-pivi/commit/c5b25a14bd5480c08db784f28a25c128d19b0b30))
+* **specs:** define agent-managed Pivi capabilities ([844a367](https://github.com/shuuul/obsidian-pivi/commit/844a3673b0252fff2a8acfae24a249d17db4d188))
+* **boundaries:** forbid Pi engine imports in obsidian-tools ([cad293d](https://github.com/shuuul/obsidian-pivi/commit/cad293d296930058ccf15b77b58d226fad13042e))
+* **tools:** remove unused isCapabilityDeniedError export ([c8685d1](https://github.com/shuuul/obsidian-pivi/commit/c8685d131e10143368886a6a0fc1a9318f1c34c3))
+* sync AGENTS.md maps and roadmap with current code ([efdf38d](https://github.com/shuuul/obsidian-pivi/commit/efdf38df327ac89eb2341923dce2470f59cc9822))
+
+
+**Full Changelog**: https://github.com/shuuul/obsidian-pivi/compare/0.17.0...0.17.1
+
 ## [0.17.0](https://github.com/shuuul/obsidian-pivi/compare/0.16.2...0.17.0) (2026-07-26)
 
 

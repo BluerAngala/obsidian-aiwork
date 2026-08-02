@@ -185,38 +185,6 @@ export function isBlockedToolResult(content: unknown, isError?: boolean): boolea
   return false;
 }
 
-export function renderToolCall(
-  parentEl: HTMLElement,
-  toolCall: ToolCallInfo,
-  toolCallElements: Map<string, HTMLElement>,
-  options: ToolContentRenderOptions = {},
-): HTMLElement {
-  const { toolEl, header, statusEl, content, currentTaskEl } =
-    createToolElementStructure(parentEl, toolCall);
-
-  toolEl.dataset.toolId = toolCall.id;
-  toolCallElements.set(toolCall.id, toolEl);
-
-  setGenericToolHeaderRight(statusEl, toolCall);
-
-  void renderToolContent(content, toolCall, 'Running...', options);
-
-  const state = { isExpanded: false };
-  toolCall.isExpanded = false;
-  const todoStatusEl = toolCall.name === TOOL_TODO_WRITE ? statusEl : null;
-  setupCollapsible(toolEl, header, content, state, {
-    initiallyExpanded: false,
-    onToggle: createTodoToggleHandler(currentTaskEl, todoStatusEl, (expanded) => {
-      toolCall.isExpanded = expanded;
-    }),
-    baseAriaLabel: getToolLabel(toolCall.name, toolCall.input, toolCall.result)
-  });
-
-  syncObsidianToolHeader(toolEl, toolCall);
-
-  return toolEl;
-}
-
 export function updateToolCallElement(
   toolEl: HTMLElement,
   toolCall: ToolCallInfo,
@@ -296,20 +264,6 @@ export function tryUpdateToolInStepGroup(
   updateToolCallElement(toolEl, toolCall, state?.renderOptions);
   state?.updateToolCall(toolId, toolCall);
   return true;
-}
-
-export function updateToolCallResult(
-  toolId: string,
-  toolCall: ToolCallInfo,
-  toolCallElements: Map<string, HTMLElement>
-) {
-  if (tryUpdateToolInStepGroup(toolId, toolCall, toolCallElements)) {
-    return;
-  }
-
-  const toolEl = toolCallElements.get(toolId);
-  if (!toolEl) return;
-  updateToolCallElement(toolEl, toolCall);
 }
 
 /** For stored (non-streaming) tool calls — collapsed by default. */

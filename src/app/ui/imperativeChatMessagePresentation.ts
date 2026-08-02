@@ -1,5 +1,6 @@
 import type { ChatMessage } from '@pivi/pivi-agent-core/foundation';
 import { PluginLogger } from '@pivi/pivi-agent-core/foundation/pluginLogger';
+import type { ChatPorts } from '@pivi/pivi-agent-core/runtime/chatPorts';
 import type { MessageViewportHandle } from '@pivi/pivi-react';
 import type { MessagePresentationRuntime } from '@pivi/pivi-react/mount';
 
@@ -7,6 +8,7 @@ import { createStreamingMarkdownContentAdapter } from '@/app/ui/createStreamingM
 import { createSubagentContentAdapter } from '@/app/ui/createSubagentContentAdapter';
 import { findRedoContext } from '@/ui/chat/branchContext';
 import {
+  formatConversationAsMarkdown,
   getForkEntryId,
   getMessageCopyContent,
   hasPendingAsyncSubagent,
@@ -45,8 +47,41 @@ async function copyMessage(tab: TabData, message: ChatMessage): Promise<void> {
   if (clipboard?.writeText) await clipboard.writeText(content);
 }
 
+const MARKDOWN_COPY_PAGE_SIZE = 100;
+
+async function copyConversationAsMarkdown(
+  tab: TabData,
+  sessions: ChatPorts['sessions'],
+  throughMessageId: string,
+): Promise<void> {
+  let messages = [...tab.state.messages];
+  let hasOlder = tab.state.hasOlderMessages;
+  const openSessionId = tab.openSessionId ?? tab.state.currentOpenSessionId;
+  let beforeEntryId = messages[0]?.id;
+
+  while (hasOlder && openSessionId && beforeEntryId) {
+    const page = await sessions.readOlder(
+      openSessionId,
+      beforeEntryId,
+      MARKDOWN_COPY_PAGE_SIZE,
+    );
+    if (!page || page.messages.length === 0) break;
+    const existingIds = new Set(messages.map(message => message.id));
+    const older = page.messages.filter(message => !existingIds.has(message.id));
+    if (older.length === 0) break;
+    messages = [...older, ...messages];
+    beforeEntryId = older[0]?.id;
+    hasOlder = page.hasOlder;
+  }
+
+  const markdown = formatConversationAsMarkdown(messages, throughMessageId);
+  const clipboard = tab.dom.messagesEl.ownerDocument.defaultView?.navigator.clipboard;
+  if (clipboard?.writeText && markdown) await clipboard.writeText(markdown);
+}
+
 export function createMessagePresentation(
   tab: TabData,
+  sessions: ChatPorts['sessions'],
   publishViewportHandle: (handle: MessageViewportHandle | null) => void,
 ): MessagePresentationRuntime {
   const renderer = tab.renderer;
@@ -69,6 +104,9 @@ export function createMessagePresentation(
           && !hasPendingAsyncSubagent(message);
       },
       copy: message => copyMessage(tab, message),
+      copyConversationAsMarkdown: messageId => (
+        copyConversationAsMarkdown(tab, sessions, messageId)
+      ),
       fork: messageId => tab.renderer?.forkCallback?.(messageId),
       redo: messageId => tab.renderer?.redoCallback?.(messageId),
       scrollToRecentUser: messageId => viewportHandle?.scrollToRecentUser(messageId),

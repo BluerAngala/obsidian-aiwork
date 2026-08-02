@@ -5,7 +5,8 @@ import {
 } from '@pivi/pivi-agent-core/skills/vault/defaultVaultSkills';
 import { fetchDefaultVaultSkillsRemoteSha } from '@pivi/pivi-agent-core/skills/vault/fetchDefaultVaultSkillsRemoteSha';
 import { notifyVaultSkillsChanged } from '@pivi/pivi-agent-core/skills/vault/notifyVaultSkillsChanged';
-import { VaultSkillsService } from '@pivi/pivi-agent-core/skills/vault/vaultSkillsService';
+import type { SkillsManagementCommitResult } from '@pivi/pivi-agent-core/skills/vault/skillsManagementCoordinator';
+import type { SkillsManagementCoordinator } from '@pivi/pivi-agent-core/skills/vault/skillsManagementCoordinator';
 import type { SettingsComplexPorts } from '@pivi/pivi-react/ports';
 
 import type { PiviSettingsHost } from '@/app/hostContracts';
@@ -15,11 +16,13 @@ import { obsidianPresentationPlatform } from './obsidianPresentationPlatform';
 
 export function createSettingsSkillsPort(
   host: PiviSettingsHost,
+  workspaceCoordinator: SkillsManagementCoordinator,
 ): SettingsComplexPorts['skills'] {
-  const getService = () => {
-    const vaultPath = host.getVaultPath();
-    if (!vaultPath) throw new Error('Vault path is unavailable.');
-    return new VaultSkillsService(vaultPath, { processRunner: host.processRunner });
+  const getCoordinator = (): SkillsManagementCoordinator => workspaceCoordinator;
+  const reportCommitOutcome = (result: SkillsManagementCommitResult): void => {
+    if (!result.refreshed) {
+      host.notify(t('settings.skills.feedback.partialFailure'));
+    }
   };
   return {
     featuredBundle: {
@@ -37,68 +40,73 @@ export function createSettingsSkillsPort(
       isInstalled: () => {
         const vaultPath = host.getVaultPath();
         return vaultPath
-          ? new VaultSkillsService(vaultPath, { processRunner: host.processRunner })
-            .list()
-            .some(skill => isDefaultVaultSkillFolder(skill.folderName))
+          ? getCoordinator().snapshot().skills.some(
+            skill => !!skill.folderName && isDefaultVaultSkillFolder(skill.folderName),
+          )
           : false;
       },
       async install() {
-        const [remoteSha] = await Promise.all([
-          fetchDefaultVaultSkillsRemoteSha(host.httpClient),
-          getService().installFromSource(DEFAULT_VAULT_SKILLS_SLUG),
-        ]);
-        host.settings.defaultVaultSkillsSeeded = true;
-        delete host.settings.defaultVaultSkillsPromptDismissed;
-        delete host.settings.defaultVaultSkillsRemovedFolders;
-        if (remoteSha) host.settings.defaultVaultSkillsCommitSha = remoteSha;
-        await host.saveSettings();
+        const remoteSha = await fetchDefaultVaultSkillsRemoteSha(host.httpClient);
+        const result = await getCoordinator().execute(
+          { action: 'install', source: DEFAULT_VAULT_SKILLS_SLUG },
+          undefined,
+          { defaultBundleCommitSha: remoteSha },
+        );
+        reportCommitOutcome(result);
         await notifyVaultSkillsChanged(host);
       },
       async update() {
         const removedFolders = new Set(host.settings.defaultVaultSkillsRemovedFolders ?? []);
-        const [remoteSha] = await Promise.all([
-          fetchDefaultVaultSkillsRemoteSha(host.httpClient),
-          getService().upgradeDefaultBundle(removedFolders),
-        ]);
-        host.settings.defaultVaultSkillsSeeded = true;
-        if (remoteSha) host.settings.defaultVaultSkillsCommitSha = remoteSha;
-        await host.saveSettings();
+        const remoteSha = await fetchDefaultVaultSkillsRemoteSha(host.httpClient);
+        const result = await getCoordinator().updateDefaultBundle(removedFolders, {
+          defaultBundleCommitSha: remoteSha,
+        });
+        reportCommitOutcome(result);
         await notifyVaultSkillsChanged(host);
       },
     },
     list: () => {
       const vaultPath = host.getVaultPath();
-      return vaultPath ? new VaultSkillsService(vaultPath, { processRunner: host.processRunner }).list() : [];
+      return vaultPath ? getCoordinator().snapshot().skills.map(skill => ({
+        name: skill.name,
+        description: skill.description ?? '',
+        folderName: skill.folderName ?? skill.name,
+        disabled: !skill.enabled,
+      })) : [];
     },
     async listRemote(source) {
-      return getService().listRemoteSkills(source);
+      return (await getCoordinator().listRemote(source)).skills.map(skill => ({
+        name: skill.name,
+        description: skill.description ?? '',
+      }));
     },
     async install(source, skillNames) {
-      await getService().installFromSource(source, {
+      const result = await getCoordinator().execute({
+        action: 'install',
+        source,
         skillNames: skillNames ? [...skillNames] : undefined,
       });
+      reportCommitOutcome(result);
       await notifyVaultSkillsChanged(host);
     },
     async setDisabled(folderName, disabled) {
-      getService().setSkillDisabled(folderName, disabled);
+      const result = await getCoordinator().execute({ action: 'set_enabled', name: folderName, enabled: !disabled });
+      reportCommitOutcome(result);
       await notifyVaultSkillsChanged(host);
     },
     async remove(folderName) {
-      getService().remove(folderName);
-      if (isDefaultVaultSkillFolder(folderName)) {
-        host.settings.defaultVaultSkillsRemovedFolders = [
-          ...new Set([...(host.settings.defaultVaultSkillsRemovedFolders ?? []), folderName]),
-        ];
-        await host.saveSettings();
-      }
+      const result = await getCoordinator().execute({ action: 'remove', name: folderName });
+      reportCommitOutcome(result);
       await notifyVaultSkillsChanged(host);
     },
     async updateAll() {
-      await getService().updateAll();
+      const result = await getCoordinator().execute({ action: 'update_all' });
+      reportCommitOutcome(result);
       await notifyVaultSkillsChanged(host);
     },
     async update(skillName, folderName) {
-      await getService().updateSkill(skillName, folderName);
+      const result = await getCoordinator().execute({ action: 'update', name: folderName || skillName });
+      reportCommitOutcome(result);
       await notifyVaultSkillsChanged(host);
     },
   };

@@ -38,6 +38,7 @@
     "messageActions": {
       "copyAriaLabel": "Copiar mensagem",
       "copyAgentResponseAriaLabel": "Copiar esta resposta do agente",
+      "copyConversationAsMarkdownAriaLabel": "Copiar a conversa até este turno como Markdown",
       "scrollToRecentUserAriaLabel": "Rolar para a mensagem de usuário mais recente"
     },
     "inlineContext": {
@@ -58,6 +59,17 @@
       "queueTitle": "Adicionar à fila",
       "stopTitle": "Parar",
       "sendEmptyTitle": "Digite uma mensagem para enviar"
+    },
+    "piviManagementApproval": {
+      "title": "Confirmar alteração do Pivi",
+      "confirm": "Confirmar",
+      "deny": "Recusar",
+      "management": {
+        "titles": { "mcp": { "upsert": "Atualizar servidor MCP “{name}”", "enable": "Ativar servidor MCP “{name}”", "disable": "Desativar servidor MCP “{name}”", "remove": "Remover servidor MCP “{name}”" }, "skills": { "install": "Instalar Skills de “{source}”", "enable": "Ativar Skill “{name}”", "disable": "Desativar Skill “{name}”", "update": "Atualizar Skill “{name}”", "updateAll": "Atualizar todos os Skills geridos por pacotes", "remove": "Remover Skill “{name}”" }, "commands": { "upsert": "Guardar comando {command}", "remove": "Remover comando {command}", "move": "Mover comando {command}" } },
+        "changes": { "mcpUpsert": "Aplicar a configuração planeada do servidor MCP.", "mcpEnable": "Ativar este servidor MCP.", "mcpDisable": "Desativar este servidor MCP.", "mcpRemove": "Remover este servidor MCP e as suas credenciais.", "skillsInstall": "Instalar Skills pelo fluxo de pacotes fixado.", "skillsEnable": "Ativar este Skill.", "skillsDisable": "Desativar este Skill.", "skillsUpdate": "Atualizar este Skill a partir do pacote de origem.", "skillsUpdateAll": "Atualizar todos os Skills geridos por pacotes.", "skillsRemove": "Remover este Skill do espaço de trabalho.", "commandsUpsert": "Criar ou atualizar este comando do espaço de trabalho.", "commandsRemove": "Eliminar este comando do espaço de trabalho.", "commandsMove": "Reordenar este comando do espaço de trabalho." },
+        "fields": { "server": "Servidor", "enabled": "Ativado", "type": "Tipo", "command": "Comando", "args": "Argumentos", "envNames": "Variáveis de ambiente", "url": "URL", "auth": "Autenticação", "headerNames": "Nomes de cabeçalhos", "bearerToken": "Token Bearer", "oauth": "OAuth", "oauthGrant": "Concessão OAuth", "oauthClientId": "ID de cliente OAuth", "oauthScope": "Âmbito OAuth", "oauthClientSecret": "Segredo de cliente OAuth", "contextSaving": "Poupança de contexto", "disabledTools": "Ferramentas desativadas", "source": "Origem", "skills": "Skills", "skill": "Skill", "catalogRevision": "Revisão do catálogo", "icon": "Ícone", "prompt": "Prompt", "before": "Antes", "after": "Depois" },
+        "values": { "yes": "Sim", "no": "Não", "clear": "Limpar", "disabled": "Desativado", "updated": "Atualizado" }
+      }
     },
     "capabilityApproval": {
       "title": "Permissão necessária",
@@ -81,7 +93,7 @@
       "restoreTab": "Restaurar {title}",
       "editTitle": "Editar título de {title}",
       "editTitleInputLabel": "Título da aba",
-      "closeTab": "Fechar {title}",
+      "deleteTab": "Excluir {title}",
       "archived": "Arquivados",
       "revealArchived": "Mostrar abas arquivadas",
       "failedCreateChat": "Falha ao criar o chat",
@@ -121,7 +133,7 @@
       "externalRemove": "Remover caminho",
       "externalActiveTitle": "{count} contexto(s) externo(s) (clique para adicionar mais)",
       "externalIdleTitle": "Adicionar contextos externos (clique)",
-    "contextOverLimit": "O contexto (~{tokens}) excede a janela de {limit} do modelo selecionado. Mude para um modelo com uma janela de contexto maior ou inicie uma nova sessão."
+      "contextOverLimit": "O contexto (~{tokens}) excede a janela de {limit} do modelo selecionado. Mude para um modelo com uma janela de contexto maior ou inicie uma nova sessão."
     },
     "selection": {
       "linesSelected": "{count} {lines} seleccionada(s)",
@@ -159,14 +171,12 @@
       "expand": "Expandir lista de tarefas — {completed} de {total} concluídas"
     },
     "activity": {
-      "backgroundTask": "Tarefa em segundo plano",
       "subagentTask": "Tarefa do subagente",
       "expand": "Clique para expandir",
       "collapse": "Clique para recolher",
       "prompt": "Instrução",
       "result": "Resultado",
       "noPrompt": "Nenhuma instrução fornecida",
-      "sessionEnded": "A sessão terminou antes da conclusão da tarefa",
       "done": "Concluído",
       "error": "Erro"
     },
@@ -247,6 +257,7 @@
       "kindTool": "Ferramenta",
       "kindMcpServer": "Servidor MCP",
       "kindMcpTool": "Ferramenta MCP",
+      "newSessionDescription": "Abrir uma nova aba de sessão",
       "mcpServerDetail": "Servidor MCP: {server}",
       "mcpToolDetail": "Servidor MCP: {server} · ferramenta: {tool}"
     },
@@ -256,6 +267,8 @@
       "skillTooltip": "Habilidade: {skill}",
       "toolTooltip": "Ferramenta: {tool}",
       "agentTooltip": "Agente: {agent}",
+      "sessionTooltip": "Sessão: {session}",
+      "sessionAriaLabel": "Sessão referenciada: {session}",
       "selectedText": "Texto selecionado",
       "selectedTextTemplateTooltip": "Texto selecionado ao executar este comando",
       "removeSelectedTextTemplate": "Remover variável de texto selecionado",
@@ -497,14 +510,18 @@
     },
     "sessionFiles": {
       "heading": "Arquivos de sessão",
+      "retention": {
+        "name": "Manter sessões removidas por",
+        "desc": "Dias antes de excluir permanentemente os arquivos de sessão."
+      },
       "deleteRemoved": {
-        "name": "Excluir arquivos de sessão removidos",
-        "desc": "Exclui permanentemente apenas arquivos de sessão removidos do histórico, não arquivados e não abertos.",
-        "button": "Excluir",
-        "success": "Excluído(s) {count} arquivo(s) de sessão removido(s).",
-        "failed": "Falha ao excluir arquivos de sessão removidos",
-        "confirmTitle": "Excluir arquivos de sessão removidos?",
-        "confirmDescription": "Isso exclui permanentemente apenas arquivos de sessão removidos do histórico que não estão arquivados nem abertos."
+        "name": "Excluir permanentemente as sessões removidas",
+        "desc": "Exclui as sessões removidas com a ação Excluir. As sessões abertas e arquivadas não são afetadas.",
+        "button": "Excluir permanentemente",
+        "success": "Excluído(s) permanentemente {count} arquivo(s) de sessão removido(s).",
+        "failed": "Falha ao excluir permanentemente as sessões removidas",
+        "confirmTitle": "Excluir permanentemente as sessões removidas?",
+        "confirmDescription": "Isso exclui as sessões removidas com a ação Excluir. As sessões abertas e arquivadas não serão afetadas."
       }
     },
     "sharedEnvironment": {
@@ -528,6 +545,12 @@
         "mcp": "Servidores MCP"
       },
       "heading": "Alternâncias de ferramentas",
+      "groups": {
+        "workspace": "{workspaceName}",
+        "hostCli": "CLI do {hostName}",
+        "pivi": "Pivi",
+        "additional": "Acesso adicional"
+      },
       "intro": "Ative ou desative ferramentas {hostName} expostas ao agente. As alterações valem em novos turnos após o prompt atualizar.",
       "unavailableOfficialCli": "Requer a CLI oficial do Obsidian.",
       "unavailableExternalRead": "Requer leitura externa e pelo menos um diretório permitido.",
@@ -767,7 +790,8 @@
           "remove": "{name} removida.",
           "enable": "{name} ativada.",
           "disable": "{name} desativada."
-        }
+        },
+        "partialFailure": "As skills foram salvas, mas algumas tarefas posteriores falharam."
       }
     },
     "slashCommandsUi": {
@@ -926,6 +950,14 @@
       "write": "Escribir",
       "writeDesc": "Crear notas, adicionar al inicio/final o sobrescribir notas completas a propósito.",
       "search": "Buscar",
+      "sessions": "Pivi Sessions",
+      "sessionsDesc": "Ler sessões persistentes, listar sessões excluídas recuperáveis ou restaurar uma em uma aba visível do Pivi.",
+      "piviMcp": "Pivi MCP",
+      "piviMcpDesc": "Gerencia servidores MCP salvos com confirmação do agente principal.",
+      "piviSkills": "Pivi Skills",
+      "piviSkillsDesc": "Instala, atualiza, ativa, desativa e remove Skills gerenciadas com confirmação do agente principal.",
+      "piviCommands": "Pivi Commands",
+      "piviCommandsDesc": "Gerencia comandos do espaço de trabalho com confirmação do agente principal.",
       "searchDesc": "Buscar texto o etiquetas de notas, o listar arquivos markdown en carpetas.",
       "noteInfo": "Info de nota",
       "noteInfoDesc": "Leer metadatos, etiquetas, enlaces salientes e frontmatter.",

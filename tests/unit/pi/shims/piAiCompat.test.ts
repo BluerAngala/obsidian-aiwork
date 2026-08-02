@@ -10,6 +10,10 @@ import {
   streamSimple,
   unregisterApiProviders,
 } from '@pivi/pivi-agent-core/engine/pi/shims/piAiCompat';
+import {
+  configurePiAiEnvironmentHost,
+  resetPiAiEnvironmentHost,
+} from '@pivi/pivi-agent-core/engine/pi/shims/piAiEnvApiKeys';
 
 const deepseekEnvName = ['DEEPSEEK', 'API', 'KEY'].join('_');
 
@@ -42,7 +46,12 @@ function createTestStream(message: unknown = { role: 'assistant', content: [] })
 describe('piAiCompat shim', () => {
   beforeEach(() => {
     resetApiProviders();
+    resetPiAiEnvironmentHost();
     delete process.env[deepseekEnvName];
+  });
+
+  afterEach(() => {
+    resetPiAiEnvironmentHost();
   });
 
   it('exposes the same model catalog as the Pivi-supported pi-ai models collection', () => {
@@ -111,5 +120,37 @@ describe('piAiCompat shim', () => {
 
     streamSimple(mockModel, mockContext, { apiKey: 'explicit-value-for-test' });
     expect(streamSpy).toHaveBeenLastCalledWith(mockModel, mockContext, { apiKey: 'explicit-value-for-test' });
+  });
+
+  it('uses request-scoped environment keys for registered compat providers', () => {
+    const streamSpy = jest.fn(() => createTestStream());
+    registerApiProvider({ api: 'mock-api', stream: streamSpy as any, streamSimple: streamSpy as any });
+
+    streamSimple(mockModel, mockContext, { env: { DEEPSEEK_API_KEY: 'scoped-key' } });
+
+    expect(streamSpy).toHaveBeenLastCalledWith(mockModel, mockContext, {
+      env: { DEEPSEEK_API_KEY: 'scoped-key' },
+      apiKey: 'scoped-key',
+    });
+  });
+
+  it('does not inject ambient-auth markers as API keys', () => {
+    configurePiAiEnvironmentHost({
+      getEnvironmentVariable: (name) => ({
+        GOOGLE_CLOUD_PROJECT: 'project',
+        GOOGLE_CLOUD_LOCATION: 'location',
+      }[name]),
+      hasFile: () => true,
+    });
+    const streamSpy = jest.fn(() => createTestStream());
+    registerApiProvider({ api: 'mock-api', stream: streamSpy as any, streamSimple: streamSpy as any });
+
+    streamSimple({ ...mockModel, provider: 'google-vertex' }, mockContext);
+
+    expect(streamSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({ provider: 'google-vertex' }),
+      mockContext,
+      undefined,
+    );
   });
 });

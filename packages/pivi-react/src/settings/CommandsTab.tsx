@@ -27,7 +27,10 @@ import { ModalLayer } from '../shared/ModalLayer';
 import { SettingsActionFeedback, SettingsItemActions, SettingsListHeader, SettingsPageDescription, SettingsRemoveButton } from './controls';
 
 function normalizeCommandName(value: string): string {
-  return value.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '');
+  return value.trim().toLowerCase()
+    .replace(/[^a-z0-9._-]/g, '')
+    .replace(/^[._-]+/g, '')
+    .slice(0, 128);
 }
 
 function commandKey(entry: SlashCatalogEntry): string {
@@ -378,6 +381,7 @@ export function CommandsTab({ ports }: { readonly ports: SettingsPorts }) {
   const { workspaceName } = useHostTerminology();
   const mounted = useMountedRef();
   const [entries, setEntries] = useState<readonly SlashCatalogEntry[] | null>(null);
+  const [catalogRevision, setCatalogRevision] = useState<number | null>(null);
   const [internalEntries, setInternalEntries] = useState<readonly SlashCatalogEntry[]>([]);
   const [existingIds, setExistingIds] = useState<ReadonlySet<string>>(new Set());
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
@@ -393,12 +397,14 @@ export function CommandsTab({ ports }: { readonly ports: SettingsPorts }) {
     setError(null);
     try {
       await ports.complex.commands.refresh();
-      const [next, catalogEntries] = await Promise.all([
-        ports.complex.commands.listWorkspaceEntries(),
+      const [snapshot, catalogEntries] = await Promise.all([
+        ports.complex.commands.loadWorkspaceCatalog(),
         ports.complex.commands.listDropdownEntries(),
       ]);
       if (mounted.current) {
+        const next = snapshot.entries;
         setEntries(next);
+        setCatalogRevision(snapshot.catalogRevision);
         setOrder(next.map(entry => entry.id));
         setExistingIds(new Set(catalogEntries.map(entry => entry.id)));
         setInternalEntries(catalogEntries.filter(
@@ -432,8 +438,10 @@ export function CommandsTab({ ports }: { readonly ports: SettingsPorts }) {
     });
     let saved: SlashCatalogEntry;
     try {
-      saved = await ports.complex.commands.saveWorkspaceEntry(entry);
-      if (previous && previous.id !== saved.id) await ports.complex.commands.deleteWorkspaceEntry(previous);
+      if (catalogRevision === null) throw new Error('Command catalog is not loaded.');
+      saved = previous && previous.id !== entry.id
+        ? await ports.complex.commands.renameWorkspaceEntry(previous, entry, catalogRevision)
+        : await ports.complex.commands.saveWorkspaceEntry(entry, catalogRevision);
     } catch (cause) {
       if (mounted.current) {
         ports.feedback.notify(t('settings.createCommand.saveFailed'));
@@ -459,9 +467,11 @@ export function CommandsTab({ ports }: { readonly ports: SettingsPorts }) {
   const remove = async (entry: SlashCatalogEntry) => {
     setPending(true);
     try {
-      await ports.complex.commands.deleteWorkspaceEntry(entry);
+      if (catalogRevision === null) throw new Error('Command catalog is not loaded.');
+      const outcome = await ports.complex.commands.deleteWorkspaceEntry(entry, catalogRevision);
       await ports.complex.commands.refresh();
       if (mounted.current) await load();
+      if (outcome.warnings?.length) ports.feedback.notify(outcome.warnings.join(' '));
     } catch (cause) {
       ports.feedback.notify(t('settings.slashCommandsUi.deleteFailed', { message: cause instanceof Error ? cause.message : String(cause) }));
     } finally {
@@ -486,7 +496,14 @@ export function CommandsTab({ ports }: { readonly ports: SettingsPorts }) {
     commitOrder: async (ids, originalOrder) => {
       setPending(true);
       try {
-        await ports.complex.commands.saveWorkspaceOrder(ids);
+        if (catalogRevision === null) throw new Error('Command catalog is not loaded.');
+        await ports.complex.commands.saveWorkspaceOrder(ids, catalogRevision);
+        const snapshot = await ports.complex.commands.loadWorkspaceCatalog();
+        if (mounted.current) {
+          setEntries(snapshot.entries);
+          setCatalogRevision(snapshot.catalogRevision);
+          setOrder(snapshot.entries.map(entry => entry.id));
+        }
         return true;
       } catch (cause) {
         setOrder([...originalOrder]);

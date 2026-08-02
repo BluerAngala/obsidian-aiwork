@@ -2,11 +2,16 @@
 export interface ProviderEnvVarNames {
   apiKeyVar: string;
   oauthVar?: string;
+  authTokenVar?: string;
 }
 
 export function getProviderEnvVarNames(providerId: string): ProviderEnvVarNames {
   if (providerId === 'anthropic') {
-    return { apiKeyVar: 'ANTHROPIC_API_KEY', oauthVar: 'ANTHROPIC_OAUTH_TOKEN' };
+    return {
+      apiKeyVar: 'ANTHROPIC_API_KEY',
+      oauthVar: 'ANTHROPIC_OAUTH_TOKEN',
+      authTokenVar: 'ANTHROPIC_AUTH_TOKEN',
+    };
   }
   if (providerId === 'google' || providerId === 'gemini') {
     return { apiKeyVar: 'GEMINI_API_KEY' };

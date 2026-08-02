@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/shuuul/obsidian-pivi/releases"><img src="https://img.shields.io/static/v1?label=version&message=0.17.0&color=blue" alt="version"></a>
+  <a href="https://github.com/shuuul/obsidian-pivi/releases"><img src="https://img.shields.io/static/v1?label=version&message=0.17.1&color=blue" alt="version"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT"></a>
   <a href="https://obsidian.md/plugins"><img src="https://img.shields.io/badge/Obsidian-Plugin-7C3AED?logo=obsidian&logoColor=white" alt="Obsidian plugin"></a>
 </p>
@@ -218,7 +218,7 @@ On first launch with no vault skills installed, Pivi asks before installing [kep
 | **MCP** | User-provided servers. Enabled remote HTTP/SSE servers may receive inventory requests during startup/settings refresh. Stdio processes start only after explicit **Connect / refresh tools** or the agent's first search/list/call. |
 | **Skills** | Listing, installing, or updating remote skills uses the host process runner. Default prompt accesses `kepano/obsidian-skills` only after confirmation. |
 | **External file access** | Disabled by default. Allowed absolute roots come from this device's vault-local overlay or folders attached for the current turn; they are not synced through `.pivi/settings.json` or session JSONL. |
-| **Bash access** | Disabled by default. Allowlisted command prefix; runs through user login shell; vault cwd only. |
+| **Bash access** | Disabled by default. Exact-command or shell-safe argv-prefix grants; runs through user login shell; vault cwd only. |
 | **Obsidian CLI** | Disabled by default. When enabled, Pivi starts the configured official Obsidian CLI for the specific CLI-backed tools listed above. |
 | **Vault index** | File mentions, search, graph, tags, and properties enumerate vault metadata and file paths locally; Pivi does not send an index to its author. |
 | **System environment** | Read only at desktop integration boundaries for configured provider credentials, MCP authentication/stdio variables, the official CLI, and Skills tooling. Pivi does not transmit machine identity to its author. |

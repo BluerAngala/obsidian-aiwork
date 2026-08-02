@@ -1,3 +1,5 @@
+import type { ComposerOptionSnapshot } from '@pivi/pivi-react/store';
+
 import type { EditorSelectionSnapshot } from '@/ui/shared/selectionToolbar/types';
 
 /** Payload emitted when the user submits the inline edit prompt. */
@@ -6,6 +8,16 @@ export interface InlineEditSurfaceSendPayload {
   contextFiles: string[];
   model: string;
   thinkingLevel: string;
+}
+
+/** Default model/thinking options used when opening the inline-edit surface. */
+export interface InlineEditComposerDefaults {
+  model: string;
+  thinkingLevel: string;
+  modelOptions: ComposerOptionSnapshot[];
+  thinkingOptions: ComposerOptionSnapshot[];
+  adaptiveReasoning: boolean;
+  defaultReasoningValue: string;
 }
 
 export type InlineEditDiffReviewKind = 'replacement' | 'insertion';

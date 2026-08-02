@@ -38,6 +38,7 @@
     "messageActions": {
       "copyAriaLabel": "Копировать сообщение",
       "copyAgentResponseAriaLabel": "Копировать этот ответ агента",
+      "copyConversationAsMarkdownAriaLabel": "Копировать разговор до этого хода как Markdown",
       "scrollToRecentUserAriaLabel": "К последнему сообщению пользователя"
     },
     "inlineContext": {
@@ -58,6 +59,17 @@
       "queueTitle": "В очередь",
       "stopTitle": "Стоп",
       "sendEmptyTitle": "Введите сообщение"
+    },
+    "piviManagementApproval": {
+      "title": "Подтвердить изменение Pivi",
+      "confirm": "Подтвердить",
+      "deny": "Отклонить",
+      "management": {
+        "titles": { "mcp": { "upsert": "Обновить MCP-сервер «{name}»", "enable": "Включить MCP-сервер «{name}»", "disable": "Отключить MCP-сервер «{name}»", "remove": "Удалить MCP-сервер «{name}»" }, "skills": { "install": "Установить Skills из «{source}»", "enable": "Включить Skill «{name}»", "disable": "Отключить Skill «{name}»", "update": "Обновить Skill «{name}»", "updateAll": "Обновить все Skills из пакетов", "remove": "Удалить Skill «{name}»" }, "commands": { "upsert": "Сохранить команду {command}", "remove": "Удалить команду {command}", "move": "Переместить команду {command}" } },
+        "changes": { "mcpUpsert": "Применить запланированную конфигурацию MCP-сервера.", "mcpEnable": "Включить этот MCP-сервер.", "mcpDisable": "Отключить этот MCP-сервер.", "mcpRemove": "Удалить этот MCP-сервер и его учётные данные.", "skillsInstall": "Установить Skills через закреплённый пакетный процесс.", "skillsEnable": "Включить этот Skill.", "skillsDisable": "Отключить этот Skill.", "skillsUpdate": "Обновить этот Skill из исходного пакета.", "skillsUpdateAll": "Обновить все Skills из пакетов.", "skillsRemove": "Удалить этот Skill из рабочего пространства.", "commandsUpsert": "Создать или обновить эту команду рабочего пространства.", "commandsRemove": "Удалить эту команду рабочего пространства.", "commandsMove": "Изменить порядок этой команды рабочего пространства." },
+        "fields": { "server": "Сервер", "enabled": "Включён", "type": "Тип", "command": "Команда", "args": "Аргументы", "envNames": "Переменные окружения", "url": "URL", "auth": "Аутентификация", "headerNames": "Имена заголовков", "bearerToken": "Bearer-токен", "oauth": "OAuth", "oauthGrant": "Разрешение OAuth", "oauthClientId": "ID клиента OAuth", "oauthScope": "Область OAuth", "oauthClientSecret": "Секрет клиента OAuth", "contextSaving": "Экономия контекста", "disabledTools": "Отключённые инструменты", "source": "Источник", "skills": "Skills", "skill": "Skill", "catalogRevision": "Ревизия каталога", "icon": "Значок", "prompt": "Промпт", "before": "Перед", "after": "После" },
+        "values": { "yes": "Да", "no": "Нет", "clear": "Очистить", "disabled": "Отключено", "updated": "Обновлено" }
+      }
     },
     "capabilityApproval": {
       "title": "Требуется разрешение",
@@ -81,7 +93,7 @@
       "restoreTab": "Восстановить {title}",
       "editTitle": "Изменить заголовок {title}",
       "editTitleInputLabel": "Заголовок вкладки",
-      "closeTab": "Закрыть {title}",
+      "deleteTab": "Удалить {title}",
       "archived": "В архиве",
       "revealArchived": "Показать архивные вкладки",
       "failedCreateChat": "Не удалось создать чат",
@@ -121,7 +133,7 @@
       "externalRemove": "Удалить путь",
       "externalActiveTitle": "{count} внешних контекст(ов) (нажмите, чтобы добавить)",
       "externalIdleTitle": "Добавить внешние контексты (нажмите)",
-    "contextOverLimit": "Контекст (~{tokens}) превышает окно {limit} выбранной модели. Переключитесь на модель с большим контекстным окном или начните новую сессию."
+      "contextOverLimit": "Контекст (~{tokens}) превышает окно {limit} выбранной модели. Переключитесь на модель с большим контекстным окном или начните новую сессию."
     },
     "selection": {
       "linesSelected": "Выбрано {count} {lines}",
@@ -159,14 +171,12 @@
       "expand": "Развернуть список задач — выполнено {completed} из {total}"
     },
     "activity": {
-      "backgroundTask": "Фоновая задача",
       "subagentTask": "Задача субагента",
       "expand": "Нажмите, чтобы развернуть",
       "collapse": "Нажмите, чтобы свернуть",
       "prompt": "Запрос",
       "result": "Результат",
       "noPrompt": "Запрос не указан",
-      "sessionEnded": "Сеанс завершился до окончания задачи",
       "done": "Готово",
       "error": "Ошибка"
     },
@@ -247,6 +257,7 @@
       "kindTool": "Инструмент",
       "kindMcpServer": "MCP-сервер",
       "kindMcpTool": "MCP-инструмент",
+      "newSessionDescription": "Открыть новую вкладку сеанса",
       "mcpServerDetail": "MCP-сервер: {server}",
       "mcpToolDetail": "MCP-сервер: {server} · инструмент: {tool}"
     },
@@ -256,6 +267,8 @@
       "skillTooltip": "Навык: {skill}",
       "toolTooltip": "Инструмент: {tool}",
       "agentTooltip": "Агент: {agent}",
+      "sessionTooltip": "Сессия: {session}",
+      "sessionAriaLabel": "Упомянутая сессия: {session}",
       "selectedText": "Выделенный текст",
       "selectedTextTemplateTooltip": "Текст, выделенный при запуске этой команды",
       "removeSelectedTextTemplate": "Удалить переменную выделенного текста",
@@ -497,14 +510,18 @@
     },
     "sessionFiles": {
       "heading": "Файлы сеансов",
+      "retention": {
+        "name": "Хранить удалённые сеансы",
+        "desc": "Количество дней до окончательного удаления."
+      },
       "deleteRemoved": {
-        "name": "Удалить снятые файлы сеансов",
-        "desc": "Окончательно удаляет только файлы сеансов, убранные из истории и не архивированные и не открытые.",
-        "button": "Удалить",
-        "success": "Удалено файлов сеансов: {count}.",
-        "failed": "Не удалось удалить снятые файлы сеансов",
-        "confirmTitle": "Удалить удалённые файлы сессий?",
-        "confirmDescription": "Безвозвратно удаляются только файлы сессий, убранные из истории и не архивированные и не открытые сейчас."
+        "name": "Окончательно удалить снятые сеансы",
+        "desc": "Удаляет сеансы, снятые действием «Удалить». Открытые и архивные сеансы не затрагиваются.",
+        "button": "Удалить окончательно",
+        "success": "Окончательно удалено файлов сеансов: {count}.",
+        "failed": "Не удалось окончательно удалить снятые сеансы",
+        "confirmTitle": "Окончательно удалить снятые сеансы?",
+        "confirmDescription": "Это удалит сеансы, снятые действием «Удалить». Открытые и архивные сеансы не будут затронуты."
       }
     },
     "sharedEnvironment": {
@@ -528,6 +545,12 @@
         "mcp": "Серверы MCP"
       },
       "heading": "Переключатели инструментов",
+      "groups": {
+        "workspace": "{workspaceName}",
+        "hostCli": "CLI {hostName}",
+        "pivi": "Pivi",
+        "additional": "Дополнительный доступ"
+      },
       "intro": "Включайте или отключайте инструменты {hostName} для агента. Изменения действуют в новых ходах после обновления промпта.",
       "unavailableOfficialCli": "Требуется официальный CLI Obsidian.",
       "unavailableExternalRead": "Нужен внешний доступ на чтение и хотя бы один разрешённый каталог.",
@@ -767,7 +790,8 @@
           "remove": "{name} удалён.",
           "enable": "{name} включён.",
           "disable": "{name} отключён."
-        }
+        },
+        "partialFailure": "Навыки сохранены, но некоторые последующие действия завершились ошибкой."
       }
     },
     "slashCommandsUi": {
@@ -926,6 +950,14 @@
       "write": "Писать",
       "writeDesc": "Создавать заметки, добавлять в начало/конец или намеренно перезаписывать целиком.",
       "search": "Поиск",
+      "sessions": "Pivi Sessions",
+      "sessionsDesc": "Читать постоянные сеансы, просматривать удалённые сеансы, доступные для восстановления, или восстанавливать их в видимой вкладке Pivi.",
+      "piviMcp": "Pivi MCP",
+      "piviMcpDesc": "Управляет сохранёнными серверами MCP с подтверждением главного агента.",
+      "piviSkills": "Pivi Skills",
+      "piviSkillsDesc": "Устанавливает, обновляет, включает, отключает и удаляет управляемые Skills с подтверждением главного агента.",
+      "piviCommands": "Pivi Commands",
+      "piviCommandsDesc": "Управляет командами рабочего пространства с подтверждением главного агента.",
       "searchDesc": "Искать текст и теги заметок или перечислять markdown-файлы в папках.",
       "noteInfo": "Сведения о заметке",
       "noteInfoDesc": "Читать метаданные, теги, исходящие ссылки и frontmatter.",

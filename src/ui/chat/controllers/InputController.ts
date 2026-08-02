@@ -13,6 +13,7 @@ import type {
 } from '@pivi/pivi-agent-core/runtime/chatPorts';
 import type { PiChatService } from '@pivi/pivi-agent-core/runtime/piChatService';
 import type { ChatTurnRequest } from '@pivi/pivi-agent-core/runtime/types';
+import type { PiviManagementApprovalDecision, PiviManagementApprovalRequest } from '@pivi/pivi-agent-core/tools/piviManagement';
 
 import type { PiviChatHost } from '@/app/hostContracts';
 import { ComposerInlinePrompts } from '@/ui/chat/composer/ComposerInlinePrompts';
@@ -161,6 +162,7 @@ export class InputController {
 
   cancelStreaming(): void {
     const { state, streamController } = this.controllerDeps;
+    this.inlinePrompts.dismissPendingInlinePrompts();
     if (!state.isStreaming) return;
     state.cancelRequested = true;
     this.queueRestore.restorePendingMessagesToInput();
@@ -180,6 +182,13 @@ export class InputController {
     request: CapabilityApprovalRequest,
   ): Promise<CapabilityApprovalResult> {
     return this.inlinePrompts.handleCapabilityApproval(request);
+  }
+
+  handlePiviManagementApproval(
+    request: PiviManagementApprovalRequest,
+    signal?: AbortSignal,
+  ): Promise<PiviManagementApprovalDecision> {
+    return this.inlinePrompts.handlePiviManagementApproval(request, signal);
   }
 
   dismissPendingInlinePrompts(): void {

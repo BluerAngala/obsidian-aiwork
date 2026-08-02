@@ -105,6 +105,24 @@ describe('buildTurnPrompt', () => {
     expect(built.prompt).toContain('<context_files>\nnotes/a.md, notes/sub/b.md\n</context_files>');
   });
 
+  it('appends escaped session references without inlining transcripts', () => {
+    const built = buildTurnPrompt({
+      text: 'Continue this work',
+      referencedSessions: [{
+        sessionId: 'session-&-1',
+        sessionFile: '.pivi/sessions/a&b.jsonl',
+        title: 'A < B',
+      }],
+    });
+
+    expect(built.prompt).toContain('<context_sessions>');
+    expect(built.prompt).toContain(
+      '<session id="session-&amp;-1" file=".pivi/sessions/a&amp;b.jsonl" title="A &lt; B" />',
+    );
+    expect(built.prompt).not.toContain('## User');
+    expect(built.persistedContent).toBe(built.prompt);
+  });
+
   it('does not inject turn-local subagent guidance for multi-context tasks', () => {
     const request: ChatTurnRequest = {
       text: 'Compare these notes and extract common themes',

@@ -43,6 +43,7 @@ function makeDeps(overrides: Partial<ObsidianToolDeps> = {}): ObsidianToolDeps {
       movePath: jest.fn().mockResolvedValue({ path: 'notes/a.md', newPath: 'notes/b.md' }),
       openPath: jest.fn().mockResolvedValue({ path: 'notes/a.md' }),
       readNote: jest.fn().mockResolvedValue({ path: 'notes/a.md', content: 'content' }),
+      resolveFile: jest.fn((_file?: string, path?: string) => ({ path: path ?? 'notes/a.md' })),
       searchNotes: jest.fn().mockResolvedValue([]),
       trashPath: jest.fn().mockResolvedValue({ path: 'notes/a.md', kind: 'file' }),
       writeNote: jest.fn().mockResolvedValue({ path: 'notes/a.md' }),
@@ -89,6 +90,23 @@ describe('obsidian tool input hardening', () => {
       vaultName: 'vault',
       args: ['tasks', 'format=json', 'todo'],
     });
+  });
+
+  it('guards resolved task mutation paths while leaving task queries unrestricted', async () => {
+    const deps = makeDeps();
+    const tool = createTasksTool(deps);
+    await tool.execute('call', { action: 'list', path: '.pivi/commands/unsafe.md' });
+    await expect(tool.execute('call', {
+      action: 'done', file: 'alias', line: 1,
+    })).resolves.toBeDefined();
+    (deps.vault.resolveFile as jest.Mock).mockReturnValueOnce({ path: '.pivi/commands/unsafe.md' });
+    await expect(tool.execute('call', {
+      action: 'toggle', file: 'alias', line: 1,
+    })).rejects.toThrow('pivi_commands');
+    (deps.vault.resolveFile as jest.Mock).mockReturnValueOnce(null);
+    await expect(tool.execute('call', {
+      action: 'todo', path: 'missing.md', line: 1,
+    })).rejects.toThrow('exact Vault path');
   });
 
   it('rejects non-string property values instead of coercing to empty strings', async () => {
@@ -704,6 +722,39 @@ describe('obsidian tool input hardening', () => {
     await expect(tool.execute('call', { action: 'delete' })).rejects.toThrow('Invalid daily action');
     await expect(tool.execute('call', { action: 'append' })).rejects.toThrow('content is required for append');
     expect(deps.cli.run).not.toHaveBeenCalled();
+  });
+
+  it('guards the exact daily-note path before append and permits normal notes', async () => {
+    const deps = makeDeps();
+    (deps.cli.run as jest.Mock).mockResolvedValueOnce('notes/daily.md').mockResolvedValueOnce('ok');
+    const tool = createDailyTool(deps);
+    await expect(tool.execute('call', { action: 'append', content: 'safe' })).resolves.toBeDefined();
+
+    (deps.cli.run as jest.Mock).mockResolvedValueOnce('.pivi/skills/daily.md');
+    (deps.vault.resolveFile as jest.Mock).mockReturnValueOnce({ path: '.pivi/skills/daily.md' });
+    await expect(tool.execute('call', { action: 'prepend', content: 'unsafe' }))
+      .rejects.toThrow('pivi_skills');
+  });
+
+  it('allows append to create a daily note that does not exist yet', async () => {
+    const deps = makeDeps();
+    (deps.vault.resolveFile as jest.Mock).mockReturnValue(null);
+    (deps.cli.run as jest.Mock)
+      .mockResolvedValueOnce('notes/new-daily.md')
+      .mockResolvedValueOnce('created');
+    const tool = createDailyTool(deps);
+
+    await expect(tool.execute('call', {
+      action: 'append',
+      content: 'first entry',
+    })).resolves.toMatchObject({
+      details: { action: 'append' },
+    });
+    expect(deps.vault.resolveFile).not.toHaveBeenCalled();
+    expect(deps.cli.run).toHaveBeenNthCalledWith(2, {
+      vaultName: 'vault',
+      args: ['daily:append', 'content=first entry'],
+    });
   });
 
   it('rejects invalid graph actions and limits before metadata access', async () => {

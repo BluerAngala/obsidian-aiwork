@@ -347,7 +347,10 @@ describe('architecture boundary scripts', () => {
 
   it.each([
     ['packages/obsidian-host/src', '@pivi/obsidian-host stays host-only'],
-    ['packages/obsidian-tools/src', '@pivi/obsidian-tools does not import raw Pi SDKs'],
+    [
+      'packages/obsidian-tools/src',
+      '@pivi/obsidian-tools does not import raw Pi SDKs or the Pi engine',
+    ],
   ])('rejects React presentation imports from %s', (fixtureDir, ruleName) => {
     const fixtureRoot = mkdtempSync(join(tmpdir(), 'pivi-boundary-'));
     try {
@@ -361,6 +364,26 @@ describe('architecture boundary scripts', () => {
 
       expect(result.status).toBe(1);
       expect(result.stderr).toContain(`[${ruleName}]`);
+    } finally {
+      rmSync(fixtureRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects Pi engine imports from @pivi/obsidian-tools', () => {
+    const fixtureRoot = mkdtempSync(join(tmpdir(), 'pivi-boundary-'));
+    try {
+      mkdirSync(join(fixtureRoot, 'packages/obsidian-tools/src'), { recursive: true });
+      writeFileSync(
+        join(fixtureRoot, 'packages/obsidian-tools/src/fixture.ts'),
+        "import { piAiModels } from '@pivi/pivi-agent-core/engine/pi/piAiModels';",
+      );
+
+      const result = runArchitectureCheck(fixtureRoot);
+
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain(
+        '[@pivi/obsidian-tools does not import raw Pi SDKs or the Pi engine]',
+      );
     } finally {
       rmSync(fixtureRoot, { recursive: true, force: true });
     }

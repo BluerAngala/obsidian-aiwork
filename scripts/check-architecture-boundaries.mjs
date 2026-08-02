@@ -235,9 +235,13 @@ const boundaryRules = [
     excludedRoots: [srcAppUiDir],
   },
   {
-    name: '@pivi/obsidian-tools does not import raw Pi SDKs',
+    name: '@pivi/obsidian-tools does not import raw Pi SDKs or the Pi engine',
     root: 'packages/obsidian-tools',
-    forbidden: [/^@earendil-works\//, obsidianReactPackagePattern],
+    forbidden: [
+      /^@earendil-works\//,
+      /^@pivi\/pivi-agent-core\/engine(?:\/pi)?(?:\/|$)/,
+      obsidianReactPackagePattern,
+    ],
   },
   {
     name: '@pivi/obsidian-host stays host-only',
@@ -978,6 +982,20 @@ for (const file of piviReactCssFiles) {
       file: path.relative(rootDir, file),
       line,
       moduleName: variable,
+    });
+  }
+}
+
+const obsidianToolsRoot = path.join(rootDir, 'packages', 'obsidian-tools');
+for (const file of listSourceFiles(obsidianToolsRoot)) {
+  const source = fs.readFileSync(file, 'utf8');
+  const ownershipMatch = /\b(?:createSessionsTool|SessionRecoveryPort|TOOL_PIVI_SESSIONS)\b/.exec(source);
+  if (ownershipMatch) {
+    failures.push({
+      rule: '@pivi/obsidian-tools does not own host-neutral session recovery tooling',
+      file: path.relative(rootDir, file),
+      line: source.slice(0, ownershipMatch.index).split('\n').length,
+      detail: `uses core-owned session tooling identifier "${ownershipMatch[0]}"`,
     });
   }
 }

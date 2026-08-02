@@ -8,8 +8,8 @@
 
 - `auth/` for host-neutral provider credential IDs, provider environment variable names, disabled-provider checks, and structural API-key/OAuth credential extraction.
 - `foundation/` for shared contracts and defaults, including Obsidian tool gates such as external filesystem access and the Bash toggle/allowlist.
-- `tools/` for the generic tool protocol and display models.
-- `session/` for host-neutral session contracts, open-session state, paths, and metadata; Pi JSONL persistence and compatibility implementations live under `engine/pi/session/`.
+- `tools/` for the generic tool protocol and display models, including the `pivi_sessions` ToolSpec factory over an injected recovery port.
+- `session/` for host-neutral session contracts, the session recovery port, open-session state, paths, and metadata; Pi JSONL persistence and compatibility implementations live under `engine/pi/session/`.
 - `mcp/` for workspace-local MCP management and proxy tools.
 - `context/` and `prompt/` for host-neutral XML context formatting, runtime skill filtering, and registered-tool prompt assembly.
 - `skills/` for skill and slash-command metadata helpers; runtime loaders exclude disabled vault skills while inventory loaders include them for settings and install prompts. Remote/default skill orchestration receives `HttpClient` and `ProcessRunner` ports from the host, and first-run confirmation is rendered through an injected host prompt callback rather than core-owned DOM.
@@ -29,8 +29,8 @@
 - Workspace context and client terminology under `@pivi/pivi-agent-core/workspace`.
 - Declarative plugin/resource registry contracts under `@pivi/pivi-agent-core/plugins`.
 - Namespaced foundation contracts/defaults under `@pivi/pivi-agent-core/foundation`.
-- Namespaced tool protocol and canonical presentation/summary helpers under `@pivi/pivi-agent-core/tools`.
-- Session contracts, paths, metadata, and linear open-session management under `@pivi/pivi-agent-core/session`; application ports open complete sessions by `sessionFile`, while concrete Pi JSONL tree compatibility stays under `@pivi/pivi-agent-core/engine/pi/session/*`.
+- Namespaced tool protocol, the host-neutral `createSessionsTool` factory, and canonical presentation/summary helpers under `@pivi/pivi-agent-core/tools`.
+- Session contracts, recovery port, paths, metadata, and linear open-session management under `@pivi/pivi-agent-core/session`; application ports open complete sessions by `sessionFile`, while concrete Pi JSONL tree compatibility stays under `@pivi/pivi-agent-core/engine/pi/session/*`.
 - Skill helpers, slash-command catalog contracts, and built-in slash-command IDs under `@pivi/pivi-agent-core/skills`.
 - MCP config, OAuth, server management, and proxy tools under `@pivi/pivi-agent-core/mcp`. Automatic prefetch warms enabled remote servers only; stdio servers start on explicit diagnostics or the first proxy search/list/call.
 - Prompt context formatting, host-neutral mention parsing, and prompt builders under `@pivi/pivi-agent-core/context`, `@pivi/pivi-agent-core/context/mentions`, and `@pivi/pivi-agent-core/prompt`. MCP prompt inventory reflects settings-enabled servers and cached tool names.

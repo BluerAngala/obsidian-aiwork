@@ -208,7 +208,7 @@ export function ChatTabBar({ shell, ownerWindow }: { shell: ChatShellOptions; ow
     setIsOpen(true);
   };
 
-  const beginExit = (item: ChatTabSnapshotItem, action: 'archive' | 'close'): void => {
+  const beginExit = (item: ChatTabSnapshotItem, action: 'archive' | 'delete'): void => {
     if (exitingTabIds.has(item.id) || exitTimers.current.has(item.id)) return;
     if (item.isActive) {
       const fallback = getFallbackItem(snapshot.items, item.id);
@@ -238,7 +238,7 @@ export function ChatTabBar({ shell, ownerWindow }: { shell: ChatShellOptions; ow
         return next;
       });
       if (action === 'archive') void shell.actions.archiveTab(item.id);
-      else void shell.actions.closeTab(item.id);
+      else void shell.actions.deleteTab(item.id);
     }, EXIT_DURATION_MS);
     exitTimers.current.set(item.id, timer);
   };
@@ -407,8 +407,8 @@ export function ChatTabBar({ shell, ownerWindow }: { shell: ChatShellOptions; ow
                 <TabAction
                   className="pivi-tab-switcher-action pivi-tab-switcher-close"
                   icon="x"
-                  label={t('chat.tabs.closeTab', { title: item.title })}
-                  onActivate={() => beginExit(item, 'close')}
+                  label={t('chat.tabs.deleteTab', { title: item.title })}
+                  onActivate={() => beginExit(item, 'delete')}
                 />
               )
               : null}

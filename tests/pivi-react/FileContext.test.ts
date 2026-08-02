@@ -23,6 +23,7 @@ jest.mock('@/ui/shared/mention/MentionDropdownController', () => ({
     containsElement() { return false; }
     setMcpManager() {}
     setAgentService() {}
+    setSessionProvider() {}
   },
 }));
 

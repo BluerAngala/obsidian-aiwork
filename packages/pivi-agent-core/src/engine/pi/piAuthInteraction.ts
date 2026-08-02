@@ -49,28 +49,31 @@ function toAbortError(reason: unknown): Error {
   return reason instanceof Error ? reason : new Error(PROVIDER_OAUTH_LOGIN_CANCELLED);
 }
 
-function waitForManualCodeAbort(...signals: Array<AbortSignal | undefined>): Promise<string> {
-  return new Promise((_, reject) => {
-    const activeSignals = signals.filter((candidate): candidate is AbortSignal => !!candidate);
-    const cleanup = (): void => {
-      for (const activeSignal of activeSignals) {
-        activeSignal.removeEventListener('abort', onAbort);
-      }
-    };
-    const onAbort = (event: Event): void => {
-      cleanup();
-      const abortedSignal = event.currentTarget as AbortSignal;
-      reject(toAbortError(abortedSignal.reason));
-    };
-    const alreadyAborted = activeSignals.find(activeSignal => activeSignal.aborted);
-    if (alreadyAborted) {
-      reject(toAbortError(alreadyAborted.reason));
-      return;
+function combineAbortSignals(...signals: Array<AbortSignal | undefined>): {
+  signal: AbortSignal;
+  cleanup: () => void;
+} {
+  const controller = new AbortController();
+  const activeSignals = signals.filter((candidate): candidate is AbortSignal => !!candidate);
+  const cleanup = (): void => {
+    for (const activeSignal of activeSignals) {
+      activeSignal.removeEventListener('abort', onAbort);
     }
+  };
+  const onAbort = (event: Event): void => {
+    const abortedSignal = event.currentTarget as AbortSignal;
+    controller.abort(abortedSignal.reason);
+    cleanup();
+  };
+  const alreadyAborted = activeSignals.find(activeSignal => activeSignal.aborted);
+  if (alreadyAborted) {
+    controller.abort(alreadyAborted.reason);
+  } else {
     for (const activeSignal of activeSignals) {
       activeSignal.addEventListener('abort', onAbort, { once: true });
     }
-  });
+  }
+  return { signal: controller.signal, cleanup };
 }
 
 /** Map pi-ai AuthInteraction onto Pivi's injected OAuth host and progress callbacks. */
@@ -117,7 +120,18 @@ export function createPiAuthInteraction(options: CreatePiAuthInteractionOptions)
       }
       if (prompt.type === 'manual_code') {
         notifyMessage(oauthHost, onProgress, prompt.message);
-        return waitForManualCodeAbort(prompt.signal, signal);
+        const combined = combineAbortSignals(prompt.signal, signal);
+        try {
+          const code = await oauthHost.requestManualCode(prompt.message, combined.signal);
+          if (code !== null) {
+            return code;
+          }
+          throw combined.signal.aborted
+            ? toAbortError(combined.signal.reason)
+            : new Error(PROVIDER_OAUTH_LOGIN_CANCELLED);
+        } finally {
+          combined.cleanup();
+        }
       }
       if (prompt.type === 'text' || prompt.type === 'secret') {
         notifyMessage(oauthHost, onProgress, prompt.message);

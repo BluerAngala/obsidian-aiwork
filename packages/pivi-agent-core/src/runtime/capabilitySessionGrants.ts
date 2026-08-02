@@ -4,49 +4,47 @@ import type {
   CapabilityApprovalRequest,
   CapabilityApprovalResult,
 } from '../ports/capabilityApproval';
-import { tokenizeBashArgv } from '../tools/bashArgv';
+import {
+  type BashAuthorizationGrant,
+  createExactBashGrant,
+  createPrefixBashGrant,
+  decodeBashGrant,
+  encodeBashGrant,
+  matchBashAuthorization,
+} from '../tools/bashAuthorization';
 
 export function resolveBashAllowlistPersistEntry(
   command: string,
   scope: BashAllowlistPersistScope,
+  shellPath = '/bin/sh',
 ): string {
   const trimmed = command.trim();
-  if (!trimmed || scope === 'full') {
-    return trimmed;
-  }
-  const tokens = tokenizeBashArgv(trimmed);
-  return tokens[0] ?? trimmed;
+  if (!trimmed) return trimmed;
+  if (scope === 'full') return encodeBashGrant(createExactBashGrant(trimmed));
+  const grant = createPrefixBashGrant(trimmed, shellPath);
+  return grant && grant.kind === 'argv-prefix'
+    ? encodeBashGrant({ ...grant, argv: grant.argv.slice(0, 1) })
+    : encodeBashGrant(createExactBashGrant(trimmed));
 }
 
-export function bashAllowlistPersistScopesDiffer(command: string): boolean {
+export function bashAllowlistPersistScopesDiffer(command: string, shellPath = '/bin/sh'): boolean {
   const trimmed = command.trim();
   if (!trimmed) {
     return false;
   }
-  return resolveBashAllowlistPersistEntry(trimmed, 'prefix')
-    !== resolveBashAllowlistPersistEntry(trimmed, 'full');
+  const grant = createPrefixBashGrant(trimmed, shellPath);
+  return grant?.kind === 'argv-prefix' && grant.argv.length > 1;
 }
 
-function grantKey(request: CapabilityApprovalRequest): string | null {
-  if (request.kind === 'bash') {
-    const command = request.command?.trim();
-    return command ? `bash:${command}` : null;
-  }
+function nonBashGrantKey(request: CapabilityApprovalRequest): string | null {
+  if (request.kind === 'bash') return null;
   const root = request.directoryRoot?.trim();
   return root ? `external:${root}` : null;
 }
 
-function tokenizeOrNull(command: string): string[] | null {
-  try {
-    const tokens = tokenizeBashArgv(command);
-    return tokens.length > 0 ? tokens : null;
-  } catch {
-    return null;
-  }
-}
-
-function isTokenPrefix(prefix: readonly string[], tokens: readonly string[]): boolean {
-  return prefix.length <= tokens.length && prefix.every((token, index) => token === tokens[index]);
+function exactBashGrant(request: CapabilityApprovalRequest): BashAuthorizationGrant | null {
+  if (request.kind !== 'bash' || !request.command?.trim()) return null;
+  return createExactBashGrant(request.command);
 }
 
 /**
@@ -55,24 +53,26 @@ function isTokenPrefix(prefix: readonly string[], tokens: readonly string[]): bo
  */
 export class CapabilitySessionGrants {
   private readonly grantedKeys = new Set<string>();
-  private readonly bashAllowEntries: string[][] = [];
+  private readonly bashAllowEntries: BashAuthorizationGrant[] = [];
 
   hasSessionGrant(request: CapabilityApprovalRequest): boolean {
-    const key = grantKey(request);
+    const key = nonBashGrantKey(request);
     if (key != null && this.grantedKeys.has(key)) {
       return true;
     }
     if (request.kind === 'bash' && request.command) {
-      const tokens = tokenizeOrNull(request.command.trim());
-      if (tokens) {
-        return this.bashAllowEntries.some((entry) => isTokenPrefix(entry, tokens));
-      }
+      return matchBashAuthorization(request.command, request.shellPath ?? '/bin/sh', this.bashAllowEntries);
     }
     return false;
   }
 
   rememberSessionGrant(request: CapabilityApprovalRequest): void {
-    const key = grantKey(request);
+    const bashGrant = exactBashGrant(request);
+    if (bashGrant) {
+      this.rememberBashAllowEntry(bashGrant);
+      return;
+    }
+    const key = nonBashGrantKey(request);
     if (key) {
       this.grantedKeys.add(key);
     }
@@ -85,13 +85,14 @@ export class CapabilitySessionGrants {
    * persisted allowlist entry is invisible until the next registry rebuild;
    * the shared session grant makes the approval effective immediately.
    */
-  rememberBashAllowEntry(entry: string): void {
-    const tokens = tokenizeOrNull(entry.trim());
-    if (!tokens) {
-      return;
+  rememberBashAllowEntry(grant: BashAuthorizationGrant | string): void {
+    if (typeof grant === 'string') {
+      const parsed = decodeBashGrant(grant, '/bin/sh');
+      if (!parsed) return;
+      grant = parsed;
     }
-    if (!this.bashAllowEntries.some((existing) => isTokenPrefix(existing, tokens) && isTokenPrefix(tokens, existing))) {
-      this.bashAllowEntries.push(tokens);
+    if (!this.bashAllowEntries.some(existing => JSON.stringify(existing) === JSON.stringify(grant))) {
+      this.bashAllowEntries.push(grant);
     }
   }
 
@@ -127,11 +128,21 @@ export function createCapabilityApprovalPort(options: {
         grants.rememberSessionGrant(request);
       } else if (decision === 'allow-always') {
         if (request.kind === 'bash' && request.command) {
-          const entry = resolveBashAllowlistPersistEntry(request.command, bashAllowlistScope ?? 'full');
+          const scope = bashAllowlistScope ?? 'full';
+          const shellPath = request.shellPath ?? '/bin/sh';
+          const grant = scope === 'prefix'
+            ? (() => {
+              const parsed = createPrefixBashGrant(request.command, shellPath);
+              return parsed?.kind === 'argv-prefix'
+                ? { ...parsed, argv: parsed.argv.slice(0, 1) } satisfies BashAuthorizationGrant
+                : createExactBashGrant(request.command);
+            })()
+            : createExactBashGrant(request.command);
+          const entry = encodeBashGrant(grant);
           if (persistence?.persistBashAllowlistEntry) {
             await persistence.persistBashAllowlistEntry(entry);
           }
-          grants.rememberBashAllowEntry(entry);
+          grants.rememberBashAllowEntry(grant);
         } else if (
           request.kind === 'external-directory'
           && request.directoryRoot

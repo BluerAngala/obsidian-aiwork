@@ -2,6 +2,7 @@ import {
   extractUserQuery,
   resolveUserMessageDisplayText,
 } from '@pivi/pivi-agent-core/context/context';
+import { extractUserQuery as extractSessionUserQuery } from '@pivi/pivi-agent-core/session/userQuery';
 
 describe('extractUserQuery', () => {
   it('strips context-only turns with no user text', () => {
@@ -55,6 +56,24 @@ describe('extractUserQuery', () => {
       '<external_contexts>',
       '  <context path="/Users/example/Projects" available="true" />',
       '</external_contexts>',
+    ].join('\n'))).toBe('');
+  });
+
+  it('strips API-only Session references from durable session projections', () => {
+    const prompt = [
+      'Compare the approaches',
+      '',
+      '<context_sessions>',
+      '  <session id="session-1" file=".pivi/sessions/one.jsonl" title="Original" />',
+      '</context_sessions>',
+    ].join('\n');
+
+    expect(extractSessionUserQuery(prompt)).toBe('Compare the approaches');
+    expect(extractSessionUserQuery([
+      '',
+      '<context_sessions>',
+      '  <session id="session-1" file=".pivi/sessions/one.jsonl" title="Original" />',
+      '</context_sessions>',
     ].join('\n'))).toBe('');
   });
 });

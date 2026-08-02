@@ -65,4 +65,28 @@ describe('piModelEnv provider auth resolution', () => {
 
     await expect(resolvePiProviderAuth(plugin, model!)).resolves.toBeUndefined();
   });
+
+  it('resolves Anthropic auth tokens as bearer headers', async () => {
+    const stub = createMockPiviPluginStub({
+      settings: {
+        model: 'anthropic/mock-model',
+        agentSettings: {
+          environmentVariables: 'ANTHROPIC_AUTH_TOKEN=bearer-token',
+          selectedMode: 'default',
+          visibleModels: ['anthropic/mock-model'],
+        },
+      },
+    });
+    const plugin = asPiviPlugin(stub);
+    configurePiAiModels({
+      credentials: new ObsidianCredentialStore(plugin.app.secretStorage),
+      authContext: new ObsidianAuthContext(plugin),
+    });
+
+    const model = resolvePiModel(plugin, 'anthropic/mock-model');
+
+    await expect(resolvePiProviderAuth(plugin, model!)).resolves.toMatchObject({
+      auth: { headers: { Authorization: 'Bearer bearer-token' } },
+    });
+  });
 });

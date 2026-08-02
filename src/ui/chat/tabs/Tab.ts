@@ -1,9 +1,13 @@
-import type { OpenSessionState } from '@pivi/pivi-agent-core/foundation';
+import type {
+  OpenSessionState,
+  SlashCommand,
+} from '@pivi/pivi-agent-core/foundation';
 import type { ChatPorts } from '@pivi/pivi-agent-core/runtime/chatPorts';
 import type { ChatPerfRecorder } from '@pivi/pivi-react/store';
 
 import type { PiviChatHost } from "@/app/hostContracts";
 
+import { TabPiviManagementApprovalBridge } from '../composer/TabPiviManagementApprovalBridge';
 import { SubagentManager } from "../services/SubagentManager";
 import { ChatState } from '../state/ChatState';
 import {
@@ -147,6 +151,7 @@ export function createTab(options: TabCreateOptions): TabData {
     dom,
     renderer: null,
     capabilityApproval: null,
+    piviManagementApproval: new TabPiviManagementApprovalBridge(),
   };
 
   state.needsAttention = options.needsAttention ?? false;
@@ -161,6 +166,7 @@ export function createTab(options: TabCreateOptions): TabData {
 export interface InitializeTabUIOptions {
   ports: ChatPorts;
   getSlashCatalogConfig?: () => SlashCatalogInfo;
+  onSlashCommandSelect?: (command: SlashCommand) => void;
 }
 
 /**
@@ -195,6 +201,7 @@ export function initializeTabUI(
     ports,
     () => getTabHiddenCommands(tab, ports.settings),
     catalogInfo,
+    options.onSlashCommandSelect,
   );
 
   dom.eventCleanups.push(wireMessageViewport({
@@ -248,6 +255,7 @@ export function destroyTab(tab: TabData): Promise<void> {
 
 
   tab.controllers.inputController?.dismissPendingInlinePrompts();
+  tab.piviManagementApproval?.dispose();
   tab.capabilityApproval?.dispose();
   tab.capabilityApproval = null;
 

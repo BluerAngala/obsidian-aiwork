@@ -4,6 +4,7 @@ import type { Component } from 'obsidian';
 import type { SlashCommandDropdown } from '@/ui/shared/components/SlashCommandDropdown';
 
 import type { TabCapabilityApprovalBridge } from '../composer/TabCapabilityApprovalBridge';
+import type { TabPiviManagementApprovalBridge } from '../composer/TabPiviManagementApprovalBridge';
 import type { BrowserSelectionController } from '../controllers/BrowserSelectionController';
 import type { CanvasSelectionController } from '../controllers/CanvasSelectionController';
 import type { InputController } from '../controllers/InputController';
@@ -185,6 +186,8 @@ export interface TabData {
 
   /** Sidebar capability approval bridge for bash/external tools. */
   capabilityApproval: TabCapabilityApprovalBridge | null;
+  /** One-shot confirmation for Pivi-owned management plans. */
+  piviManagementApproval?: TabPiviManagementApprovalBridge;
 }
 
 export type TabAgentContext = Pick<TabData, 'openSessionId' | 'service' | 'lifecycleState' | 'draftModel'>;

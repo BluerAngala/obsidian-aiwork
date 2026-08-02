@@ -26,6 +26,7 @@ const SETTINGS_SEARCH_KEYS = [
   'settings.environment',
   'settings.sharedEnvironment.name',
   'settings.sessionFiles.heading',
+  'settings.sessionFiles.retention.name',
   'settings.sessionFiles.deleteRemoved.name',
   'settings.styleSettings.name',
   'settings.editorToolbar.provider.title',

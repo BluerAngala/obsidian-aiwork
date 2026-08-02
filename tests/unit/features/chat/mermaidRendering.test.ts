@@ -1,3 +1,5 @@
+import { parseMessageMentions } from '@pivi/pivi-agent-core/context/mentions';
+
 import {
   buildMentionBadgeContext,
   clampMermaidScale,
@@ -72,6 +74,33 @@ describe('user-message mention context', () => {
   it('falls back to current settings only for legacy messages without a snapshot', () => {
     expect(buildMentionBadgeContext(host).externalContextEntries).toEqual([
       expect.objectContaining({ contextRoot: '/current' }),
+    ]);
+  });
+
+  it('restores Session badge metadata from the historical turn snapshot', () => {
+    const context = buildMentionBadgeContext(host, {
+      text: 'Compare @@{session-1}',
+      referencedSessions: [{
+        sessionId: 'session-1',
+        sessionFile: '.pivi/sessions/one.jsonl',
+        title: 'Original title',
+      }],
+    });
+
+    expect(context.sessions).toEqual([{
+      id: 'session-1',
+      sessionFile: '.pivi/sessions/one.jsonl',
+      title: 'Original title',
+    }]);
+    expect(parseMessageMentions('Compare @@{session-1}', context)).toEqual([
+      { kind: 'plain', text: 'Compare ' },
+      {
+        kind: 'session',
+        raw: '@@{session-1}',
+        sessionId: 'session-1',
+        sessionFile: '.pivi/sessions/one.jsonl',
+        title: 'Original title',
+      },
     ]);
   });
 });

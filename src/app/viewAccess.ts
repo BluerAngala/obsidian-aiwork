@@ -29,3 +29,29 @@ export function findAllPiviViews(app: App): PiviChatView[] {
   }
   return views;
 }
+
+export async function refreshPiviManagementViews(
+  views: readonly PiviChatView[],
+  domain: 'mcp' | 'skills' | 'commands',
+): Promise<readonly { readonly target: string; readonly message: string }[]> {
+  const failures: Array<{ target: string; message: string }> = [];
+  for (let index = 0; index < views.length; index++) {
+    const maintenance = views[index]!.getChatHandle()?.maintenance;
+    const viewTarget = `view:${String(index + 1)}`;
+    if (!maintenance?.refreshPiviManagement) {
+      failures.push({ target: viewTarget, message: 'View refresh unavailable.' });
+      continue;
+    }
+    try {
+      for (const entry of await maintenance.refreshPiviManagement(domain)) {
+        failures.push({
+          target: entry.target.startsWith('tab:') ? `${viewTarget}/${entry.target}` : entry.target,
+          message: entry.message,
+        });
+      }
+    } catch {
+      failures.push({ target: viewTarget, message: 'Runtime refresh failed.' });
+    }
+  }
+  return failures.slice(0, 20);
+}

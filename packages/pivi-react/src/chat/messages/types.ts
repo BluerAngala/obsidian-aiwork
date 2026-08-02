@@ -28,6 +28,7 @@ export interface MessagePresentationActions {
   canFork: (message: ChatMessage) => boolean;
   canRedo: (messageId: string) => boolean;
   copy: (message: ChatMessage) => void | Promise<void>;
+  copyConversationAsMarkdown?: (throughMessageId: string) => void | Promise<void>;
   fork: (messageId: string) => void | Promise<void>;
   redo: (messageId: string) => void | Promise<void>;
   scrollToRecentUser: (messageId: string) => void;

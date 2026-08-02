@@ -9,6 +9,19 @@ export interface SystemPromptBuildOptions {
   currentDateIso?: string;
   /** Describes tools actually registered on the agent. */
   registeredToolsSection?: string;
+  /** Actual executable tool identities. When supplied, tool-specific base guidance is capability-filtered. */
+  registeredToolNames?: readonly string[];
+}
+
+const TOOL_IDENTIFIER_PATTERN = /\b(?:obsidian_[a-z0-9_]+|pivi_[a-z0-9_]+|spawn_agent)\b/g;
+
+function filterUnavailableToolGuidance(prompt: string, registeredToolNames?: readonly string[]): string {
+  if (!registeredToolNames) return prompt;
+  const registered = new Set(registeredToolNames);
+  return prompt.split('\n').filter((line) => {
+    const mentioned = line.match(TOOL_IDENTIFIER_PATTERN) ?? [];
+    return mentioned.every((name) => registered.has(name));
+  }).join('\n');
 }
 
 function getPathRules(vaultPath?: string): string {
@@ -85,6 +98,7 @@ selected content from an Obsidian browser view
 - \`<editor_selection>\`: Text currently selected in the editor, with file path and line numbers.
 - \`<browser_selection>\`: Text selected in an Obsidian browser/web view (for example Surfing), including optional source/title/url metadata.
 - \`@filename.md\`: Files mentioned with @ in the query.
+- \`<context_sessions>\`: Referenced Session metadata only; conversation content is not inlined. Call \`pivi_sessions\` with \`action: "read"\` and the exact \`sessionFile\` value when you need that Session's User/Agent transcript.
 - \`<context_files>\`: Comma-separated **vault-relative paths** attached for this turn. For a single file mention, one path is listed. For \`@folder/\`, the list is the **complete, authoritative set** of every vault file under that folder (recursive)—not a sample. Paths only; **no file bodies** are inlined. Use \`obsidian_read\` with \`path=\` when you need content, except when the task should use sub-agent delegation. If the user asks for, allows, or says you can/may use sub-agents, treat that permission as an instruction to use them for safely parallel work. For a large folder or attached-file list, split the complete list into balanced, stable, non-overlapping batches and emit multiple background \`spawn_agent\` calls together, up to the live maximum stated under Available Tools; do not start only one worker when multiple useful batches exist. Before those workers report back, do **not** pre-read, stats-read, inspect metadata, summarize, search, or otherwise import delegated files into the main session. For non-delegated files that may be large, call \`obsidian_read\` with \`mode: "stats"\` first; if large, use \`obsidian_markdown_structure\` and then range-read only the needed lines with \`startLine\` / \`endLine\`. If a large file truly must be read in full and sub-agents are available, prefer spawning a sub-agent with that file as its own context batch and \`run_in_background: true\`, so the worker can keep reading, searching, and using tools in the background while streaming progress/results back without importing the whole file into the main session. Only full-read in the main session when sub-agent delegation is unavailable, explicitly disallowed, or the final answer/edit genuinely requires the full text in the main context; then deliberately call \`obsidian_read\` with \`maxChars\` set at least to the reported \`Characters\` count. Do not assume files are missing from the list unless the user adds more context.
 
 ## Obsidian Context
@@ -198,7 +212,10 @@ export function buildSystemPrompt(
   settings: SystemPromptSettings = {},
   options: SystemPromptBuildOptions = {},
 ): string {
-  let prompt = getBaseSystemPrompt(settings.vaultPath, settings.userName);
+  let prompt = filterUnavailableToolGuidance(
+    getBaseSystemPrompt(settings.vaultPath, settings.userName),
+    options.registeredToolNames,
+  );
 
   if (options.currentDateIso) {
     prompt += `\n\n**Current date (runtime):** ${options.currentDateIso}`;
@@ -228,6 +245,10 @@ export function computeSystemPromptKey(
     options.registeredToolsSection || '',
     options.currentDateIso || '',
   ];
+
+  if (options.registeredToolNames) {
+    parts.push(options.registeredToolNames.join(','));
+  }
 
   if (appendixKey) {
     parts.push(appendixKey);

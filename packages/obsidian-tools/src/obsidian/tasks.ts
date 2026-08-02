@@ -1,3 +1,4 @@
+import { requireAgentVaultMutationPath } from '@pivi/obsidian-host/path';
 import {
   textResult,
   TOOL_OBSIDIAN_TASKS,
@@ -25,7 +26,7 @@ function getTasksAction(value: unknown): TasksAction | undefined {
 }
 
 export function createTasksTool(deps: ObsidianToolDeps): ToolSpec {
-  const { cli, vaultName } = deps;
+  const { cli, vault, vaultName, vaultPath } = deps;
   return {
     name: TOOL_OBSIDIAN_TASKS,
     label: 'Tasks',
@@ -74,18 +75,32 @@ export function createTasksTool(deps: ObsidianToolDeps): ToolSpec {
         }
         return textResult(await cli.run({ vaultName, args }));
       }
-      const args = ['task'];
+
+      let targetFile: string | undefined;
+      let targetPath: string | undefined = notePath;
+      let targetLine = line;
       if (ref) {
-        args.push(`ref=${JSON.stringify(ref)}`);
+        const match = /^(.*):(\d+)$/.exec(ref.trim());
+        if (!match?.[1]) {
+          throw new Error('Task ref could not be resolved to an exact Vault path.');
+        }
+        targetPath = match[1];
+        targetLine = Number(match[2]);
+      } else if (file) {
+        targetFile = file;
+      } else if (input.daily) {
+        const dailyPath = (await cli.run({ vaultName, args: ['daily:path'] })).trim();
+        targetPath = dailyPath || undefined;
       }
-      if (file) {
-        args.push(`file=${file}`);
+      const resolved = vault.resolveFile(targetFile, targetPath);
+      if (!resolved) {
+        throw new Error('Task mutation target could not be resolved to an exact Vault path.');
       }
-      if (notePath) {
-        args.push(`path=${JSON.stringify(notePath)}`);
-      }
-      if (line !== undefined) {
-        args.push(`line=${line}`);
+      requireAgentVaultMutationPath(resolved.path, vaultPath);
+
+      const args = ['task', `path=${JSON.stringify(resolved.path)}`];
+      if (targetLine !== undefined) {
+        args.push(`line=${targetLine}`);
       }
       if (action === 'toggle') {
         args.push('toggle');
@@ -93,9 +108,6 @@ export function createTasksTool(deps: ObsidianToolDeps): ToolSpec {
         args.push('done');
       } else if (action === 'todo') {
         args.push('todo');
-      }
-      if (input.daily) {
-        args.push('daily');
       }
       return textResult(await cli.run({ vaultName, args }));
     },

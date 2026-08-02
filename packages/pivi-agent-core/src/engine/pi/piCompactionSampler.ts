@@ -65,6 +65,9 @@ export async function sampleCompactionNote(
       timeoutMs: COMPACTION_SAMPLE_TIMEOUT_MS,
     });
     const response = await stream.result();
+    if (response.stopReason === 'pending') {
+      throw new Error('Compaction sampling ended before the provider supplied a terminal stop reason.');
+    }
     if (response.stopReason === 'aborted') {
       throw new Error('Cancelled');
     }

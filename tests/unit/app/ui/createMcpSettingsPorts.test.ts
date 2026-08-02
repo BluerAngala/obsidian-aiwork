@@ -126,3 +126,22 @@ describe('createMcpSettingsPort tool inventory', () => {
     expect(harness.cacheTools).not.toHaveBeenCalled();
   });
 });
+
+describe('createMcpSettingsPort snapshots', () => {
+  it('keeps servers and revision from the coordinator atomic snapshot', async () => {
+    const first = remoteServer('https://snapshot-a.example.test/mcp');
+    const loadSettingsSnapshot = jest.fn(async () => ({ servers: [first], revision: 'revision-a' }));
+    const replaceAll = jest.fn(async () => ({ revision: 'revision-b', saved: true, refreshed: true }));
+    const workspace = {
+      mcpManagement: { loadSettingsSnapshot, replaceAll },
+      mcpToolProvider: { getCachedTools: () => [] },
+    } as unknown as PiviPluginWorkspace;
+    const host = { getAllViews: () => [] } as unknown as PiviSettingsHost;
+    const port = createMcpSettingsPort(host, workspace);
+
+    await expect(port.load()).resolves.toEqual([first]);
+    await port.save([first]);
+
+    expect(replaceAll).toHaveBeenCalledWith([first], 'revision-a');
+  });
+});

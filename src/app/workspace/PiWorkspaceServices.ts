@@ -33,6 +33,7 @@ import {
   parseEnvironmentVariables,
   WEB_PROVIDER_IDS,
 } from "@pivi/pivi-agent-core/foundation";
+import { McpManagementCoordinator } from "@pivi/pivi-agent-core/mcp/mcpManagementCoordinator";
 import { McpServerManager } from "@pivi/pivi-agent-core/mcp/mcpServerManager";
 import { McpStorage } from "@pivi/pivi-agent-core/mcp/mcpStorage";
 import { McpOAuthService } from "@pivi/pivi-agent-core/mcp/oauth/mcpOAuthService";
@@ -50,6 +51,8 @@ import {
 import { ensureDefaultWorkspaceCommands } from "@pivi/pivi-agent-core/skills/commands/defaultWorkspaceCommands";
 import type { SlashCommandCatalog } from "@pivi/pivi-agent-core/skills/commands/slashCommandCatalog";
 import type { AppSkillProvider } from "@pivi/pivi-agent-core/skills/skillProvider";
+import { SkillsManagementCoordinator } from "@pivi/pivi-agent-core/skills/vault/skillsManagementCoordinator";
+import { VaultSkillsService } from "@pivi/pivi-agent-core/skills/vault/vaultSkillsService";
 import {
   createWebFetchTool,
   createWebSearchCredentialStore,
@@ -60,13 +63,18 @@ import {
   type WebSearchCredentialStore,
 } from "@pivi/pivi-agent-core/tools";
 
+import { requestOAuthManualCode } from "@/app/oauthManualCodePrompt";
+
+import { createBaseSessionTools } from "./baseSessionTools";
 import {
   type ChatRuntimeServiceFactories,
   createChatRuntimeServiceFactories,
 } from "./createChatRuntimeServices";
 import { createCustomProviderHttpRequest } from "./obsidianHttpRequest";
 import { PiSlashCommandCatalog } from "./PiSlashCommandCatalog";
+import { createPiviManagementMainOnlyToolProviderFactory } from "./PiviManagementService";
 import type { PiviWorkspaceHost, WorkspaceInitContext } from "./serviceContracts";
+import { createVaultSkillsMetadataPort } from "./vaultSkillsMetadataPort";
 import {
   PiMcpDiagnostics,
   PiMcpServerProbeProvider,
@@ -78,6 +86,7 @@ import {
 
 export interface PiWorkspaceServices extends ChatRuntimeServiceFactories {
   mcpStorage: AppMcpStorage;
+  mcpManagement: McpManagementCoordinator;
   mcpServerManager: McpServerManager;
   mcpToolProvider: AppMcpToolProvider;
   mcpDiagnostics: AppMcpDiagnostics;
@@ -85,6 +94,7 @@ export interface PiWorkspaceServices extends ChatRuntimeServiceFactories {
   mcpServerTester: AppMcpServerTester;
   modelReadinessProvider: AppModelReadinessProvider;
   skillProvider: AppSkillProvider;
+  skillsManagement: SkillsManagementCoordinator;
   mcpOAuth: McpOAuthService;
   credentialStore: ObsidianCredentialStore | null;
   webSearchCredentialStore: WebSearchCredentialStore | null;
@@ -140,6 +150,7 @@ export async function createPiWorkspaceServices(
   );
   configurePiAiModels({
     credentials: credentialStore ?? undefined,
+    providerFetch: network.providerFetch,
     authContext: new ObsidianAuthContext({
       settings: host.settings,
       getVaultPath: () => getVaultPath(host.app),
@@ -156,6 +167,7 @@ export async function createPiWorkspaceServices(
     credentialStore,
     {
       openAuthUrl: (url) => systemExternalOpener.openExternalUrl(url),
+      requestManualCode: (message, signal) => requestOAuthManualCode(host.app, message, signal),
     },
     createFileProviderLegacyAuthStore(vaultPath ? `${vaultPath}/.pivi/auth.json` : null),
   );
@@ -178,11 +190,39 @@ export async function createPiWorkspaceServices(
     host.app.secretStorage,
     vaultPath ?? undefined,
   );
+  const mcpManagement = new McpManagementCoordinator({
+    storage: mcpStorage,
+    toolProvider: mcpToolProvider,
+    tester: mcpServerTester,
+    secretStorage: host.app.secretStorage,
+    removeOAuthArtifacts: serverName => mcpOAuth.logout(serverName),
+    publish: async (servers, changedName) => {
+      await mcpServerManager.loadServers();
+      if (changedName === '*') mcpToolProvider.invalidateAll();
+      else mcpToolProvider.invalidate(changedName);
+      // Match Settings: re-grant purpose 'mcp' so Agent-added private origins work without reload.
+      network.grants.revokeByPurpose('mcp');
+      grantPrivateOrigins(
+        network.grants,
+        servers.map((server) => getMcpServerUrl(server.config)),
+        'mcp',
+      );
+    },
+  });
   const modelReadinessProvider = new PiModelReadinessProvider(
     credentialStore,
     providerOAuth,
   );
   const skillProvider = new PiSkillProvider(vaultPath, systemProcessRunner);
+  const vaultSkillsService = new VaultSkillsService(vaultPath ?? "", {
+    processRunner: systemProcessRunner,
+  });
+  const skillsManagement = new SkillsManagementCoordinator({
+    service: vaultSkillsService,
+    vaultPath: vaultPath ?? "",
+    metadata: createVaultSkillsMetadataPort(host),
+  });
+  if (vaultPath) await skillsManagement.prepareWorkspace();
   await ensureDefaultWorkspaceCommands(
     vaultAdapter,
     host.settings,
@@ -201,19 +241,33 @@ export async function createPiWorkspaceServices(
       ),
     },
   );
+  await slashCommandCatalog.prepareWorkspace();
   const baseToolProvider = createObsidianBaseToolProvider(host, providerOAuth, webSearchCredentialStore, network);
   const subagentConcurrencyLimiter = new SubagentConcurrencyLimiter(
     () => getSubagentRuntimeSettingsFromBag(host.settings).maxConcurrentSubagents,
   );
+  const mainOnlyToolProviderFactory = createPiviManagementMainOnlyToolProviderFactory({
+    mcp: mcpManagement,
+    skills: skillsManagement,
+    commands: slashCommandCatalog,
+    refresh: {
+      refreshPiviManagement: async (domain) => {
+        if (!host.refreshPiviManagement) {
+          throw new Error("Pivi management refresh host is unavailable.");
+        }
+        return host.refreshPiviManagement(domain);
+      },
+    },
+  }, () => getObsidianToolsSettingsFromBag(host.settings).disabledTools ?? []);
   const chatRuntimeFactories = createChatRuntimeServiceFactories({
     mcpServerManager,
     mcpOAuth,
     baseToolProvider,
+    mainOnlyToolProviderFactory,
     subagentConcurrencyLimiter,
     mcpSecretStorage: host.app.secretStorage,
     mcpFetch: network.mcpFetch,
   });
-  await slashCommandCatalog.refresh();
   await mcpServerManager.loadServers();
   grantPrivateOrigins(
     network.grants,
@@ -229,6 +283,7 @@ export async function createPiWorkspaceServices(
 
   return {
     mcpStorage,
+    mcpManagement,
     mcpServerManager,
     mcpToolProvider,
     mcpDiagnostics,
@@ -236,6 +291,7 @@ export async function createPiWorkspaceServices(
     mcpServerTester,
     modelReadinessProvider,
     skillProvider,
+    skillsManagement,
     mcpOAuth,
     credentialStore,
     webSearchCredentialStore,
@@ -289,6 +345,8 @@ function createObsidianBaseToolProvider(
       resolveReadMaxChars,
       capabilityApproval: capabilityApproval ?? null,
     });
+
+    toolSpecs.push(...createBaseSessionTools(host.sessionRecovery, settings.disabledTools));
 
     const webSearchSettings = getWebSearchToolsSettingsFromBag(host.settings);
     const environmentVariables = parseEnvironmentVariables(

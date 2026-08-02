@@ -30,6 +30,7 @@ export async function testPiMcpServer(
   processEnv: McpProcessEnv,
   secretStorage?: SyncSecretStore,
   stdioCwd?: string,
+  signal?: AbortSignal,
 ): Promise<McpTestResult> {
   const resolveHost = createMcpResolveHost(processEnv, secretStorage);
   let transport: Transport;
@@ -86,6 +87,9 @@ export async function testPiMcpServer(
 
   const client = new Client({ name: "pivi-tester", version: "1.0.0" });
   const controller = new AbortController();
+  const abort = () => controller.abort(signal?.reason);
+  signal?.addEventListener('abort', abort, { once: true });
+  if (signal?.aborted) abort();
   const timeout = window.setTimeout(() => controller.abort(), 10000);
 
   try {
@@ -108,8 +112,23 @@ export async function testPiMcpServer(
           inputSchema: t.inputSchema as Record<string, unknown>,
         }),
       );
-    } catch (error) {
-      logger.warn('MCP listTools failed after connect', error);
+    } catch {
+      if (controller.signal.aborted) {
+        return {
+          success: false,
+          tools: [],
+          error: signal?.aborted ? "Connection aborted" : "Connection timeout (10s)",
+        };
+      }
+      logger.warn('MCP test tool listing failed');
+    }
+
+    if (controller.signal.aborted) {
+      return {
+        success: false,
+        tools: [],
+        error: signal?.aborted ? "Connection aborted" : "Connection timeout (10s)",
+      };
     }
 
     return {
@@ -119,8 +138,9 @@ export async function testPiMcpServer(
       tools,
     };
   } catch (error) {
+    logger.warn('MCP test connection failed');
     if (controller.signal.aborted) {
-      return { success: false, tools: [], error: "Connection timeout (10s)" };
+      return { success: false, tools: [], error: signal?.aborted ? "Connection aborted" : "Connection timeout (10s)" };
     }
     return {
       success: false,
@@ -129,10 +149,11 @@ export async function testPiMcpServer(
     };
   } finally {
     window.clearTimeout(timeout);
+    signal?.removeEventListener('abort', abort);
     try {
       await client.close();
-    } catch (error) {
-      logger.warn('MCP test client close failed', error);
+    } catch {
+      logger.warn('MCP test client close failed');
     }
   }
 }

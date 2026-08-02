@@ -38,6 +38,7 @@
     "messageActions": {
       "copyAriaLabel": "Copy message",
       "copyAgentResponseAriaLabel": "Copy this agent response",
+      "copyConversationAsMarkdownAriaLabel": "Copy conversation through this turn as Markdown",
       "scrollToRecentUserAriaLabel": "Scroll to most recent user message"
     },
     "messageImages": {
@@ -64,6 +65,27 @@
       "stopTitle": "Stop",
       "sendEmptyTitle": "Enter a message"
     },
+    "piviManagementApproval": {
+      "title": "Confirm Pivi change",
+      "confirm": "Confirm",
+      "deny": "Deny",
+      "management": {
+        "titles": {
+          "mcp": { "upsert": "Update MCP server \"{name}\"", "enable": "Enable MCP server \"{name}\"", "disable": "Disable MCP server \"{name}\"", "remove": "Remove MCP server \"{name}\"" },
+          "skills": { "install": "Install Skills from \"{source}\"", "enable": "Enable Skill \"{name}\"", "disable": "Disable Skill \"{name}\"", "update": "Update Skill \"{name}\"", "updateAll": "Update all package-managed Skills", "remove": "Remove Skill \"{name}\"" },
+          "commands": { "upsert": "Save command {command}", "remove": "Remove command {command}", "move": "Move command {command}" }
+        },
+        "changes": {
+          "mcpUpsert": "Apply the planned MCP server configuration.", "mcpEnable": "Enable this MCP server.", "mcpDisable": "Disable this MCP server.", "mcpRemove": "Remove this MCP server and its owned credentials.",
+          "skillsInstall": "Install Skills through the pinned package workflow.", "skillsEnable": "Enable this Skill.", "skillsDisable": "Disable this Skill.", "skillsUpdate": "Update this Skill from its package provenance.", "skillsUpdateAll": "Update every package-managed Skill.", "skillsRemove": "Remove this Skill from the workspace.",
+          "commandsUpsert": "Create or update this workspace command.", "commandsRemove": "Delete this workspace command.", "commandsMove": "Reorder this workspace command."
+        },
+        "fields": {
+          "server": "Server", "enabled": "Enabled", "type": "Type", "command": "Command", "args": "Arguments", "envNames": "Environment variable names", "url": "URL", "auth": "Authentication", "headerNames": "Header names", "bearerToken": "Bearer token", "oauth": "OAuth", "oauthGrant": "OAuth grant", "oauthClientId": "OAuth client ID", "oauthScope": "OAuth scope", "oauthClientSecret": "OAuth client secret", "contextSaving": "Context saving", "disabledTools": "Disabled tools", "source": "Source", "skills": "Skills", "skill": "Skill", "catalogRevision": "Catalog revision", "icon": "Icon", "prompt": "Prompt", "before": "Before", "after": "After"
+        },
+        "values": { "yes": "Yes", "no": "No", "clear": "Clear", "disabled": "Disabled", "updated": "Updated" }
+      }
+    },
     "capabilityApproval": {
       "title": "Permission required",
       "scopeQuestion": "How long should Pivi allow this?",
@@ -86,7 +108,7 @@
       "restoreTab": "Restore {title}",
       "editTitle": "Edit title for {title}",
       "editTitleInputLabel": "Tab title",
-      "closeTab": "Close {title}",
+      "deleteTab": "Delete {title}",
       "archived": "Archived",
       "revealArchived": "Show archived tabs",
       "failedCreateChat": "Failed to create chat",
@@ -126,7 +148,7 @@
       "externalRemove": "Remove path",
       "externalActiveTitle": "{count} external context(s) (click to add more)",
       "externalIdleTitle": "Add external contexts (click)",
-    "contextOverLimit": "Context (~{tokens}) exceeds the selected model's {limit} window. Switch to a model with a larger context window or start a new session."
+      "contextOverLimit": "Context (~{tokens}) exceeds the selected model's {limit} window. Switch to a model with a larger context window or start a new session."
     },
     "selection": {
       "linesSelected": "{count} {lines} selected",
@@ -164,14 +186,12 @@
       "expand": "Expand task list - {completed} of {total} completed"
     },
     "activity": {
-      "backgroundTask": "Background task",
       "subagentTask": "Subagent task",
       "expand": "Click to expand",
       "collapse": "Click to collapse",
       "prompt": "Prompt",
       "result": "Result",
       "noPrompt": "No prompt provided",
-      "sessionEnded": "Session ended before task completed",
       "done": "Done",
       "error": "Error"
     },
@@ -252,6 +272,7 @@
       "kindTool": "Tool",
       "kindMcpServer": "MCP server",
       "kindMcpTool": "MCP tool",
+      "newSessionDescription": "Open a new session tab",
       "mcpServerDetail": "MCP server: {server}",
       "mcpToolDetail": "MCP server: {server} · tool: {tool}"
     },
@@ -261,6 +282,8 @@
       "skillTooltip": "Skill: {skill}",
       "toolTooltip": "Tool: {tool}",
       "agentTooltip": "Agent: {agent}",
+      "sessionTooltip": "Session: {session}",
+      "sessionAriaLabel": "Referenced session: {session}",
       "selectedText": "Selected text",
       "selectedTextTemplateTooltip": "Selected text when this command runs",
       "removeSelectedTextTemplate": "Remove selected text variable",
@@ -497,14 +520,18 @@
     },
     "sessionFiles": {
       "heading": "Session files",
+      "retention": {
+        "name": "Keep removed sessions for",
+        "desc": "Days before removed session files are permanently deleted."
+      },
       "deleteRemoved": {
-        "name": "Delete removed session files",
-        "desc": "Permanently deletes only session files that were removed from history and are not archived or currently open.",
-        "button": "Delete",
-        "confirmTitle": "Delete removed session files?",
-        "confirmDescription": "This permanently deletes session files that were removed from history and are not archived or currently open.",
-        "success": "Deleted {count} removed session file(s).",
-        "failed": "Failed to delete removed session files"
+        "name": "Permanently delete removed sessions",
+        "desc": "Deletes sessions removed with Delete. Open and archived sessions are not affected.",
+        "button": "Delete permanently",
+        "confirmTitle": "Permanently delete removed sessions?",
+        "confirmDescription": "This deletes sessions removed with Delete. Open and archived sessions will not be affected.",
+        "success": "Permanently deleted {count} removed session file(s).",
+        "failed": "Failed to permanently delete removed sessions"
       }
     },
     "sharedEnvironment": {
@@ -528,6 +555,12 @@
         "mcp": "MCP servers"
       },
       "heading": "Tool toggles",
+      "groups": {
+        "workspace": "{workspaceName}",
+        "hostCli": "{hostName} CLI",
+        "pivi": "Pivi",
+        "additional": "Additional access"
+      },
       "intro": "Enable or disable {hostName} tools exposed to the agent. Changes apply to new turns after the agent prompt refreshes.",
       "unavailableOfficialCli": "Requires the official Obsidian CLI.",
       "unavailableExternalRead": "Requires external read access and at least one allowed directory.",
@@ -763,7 +796,8 @@
           "remove": "{name} removed.",
           "enable": "{name} enabled.",
           "disable": "{name} disabled."
-        }
+        },
+        "partialFailure": "Skills were saved, but some follow-up work failed."
       },
       "notices": {
         "noRemote": "No remote skills found for this source.",
@@ -926,6 +960,14 @@
       "write": "Write",
       "writeDesc": "Create notes, append/prepend content, or intentionally overwrite full notes.",
       "search": "Search",
+      "sessions": "Pivi Sessions",
+      "sessionsDesc": "Read durable sessions, list recoverable deleted sessions, or restore one in a visible Pivi tab.",
+      "piviMcp": "Pivi MCP",
+      "piviMcpDesc": "Manage persisted MCP servers through main-Agent confirmation.",
+      "piviSkills": "Pivi Skills",
+      "piviSkillsDesc": "Install, update, enable, disable, and remove managed Skills through main-Agent confirmation.",
+      "piviCommands": "Pivi Commands",
+      "piviCommandsDesc": "Manage workspace Commands through main-Agent confirmation.",
       "searchDesc": "Search note text, tags, or list markdown files in folders.",
       "noteInfo": "Note info",
       "noteInfoDesc": "Read metadata, tags, outgoing links, and frontmatter.",

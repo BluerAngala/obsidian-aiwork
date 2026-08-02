@@ -1,5 +1,8 @@
 import { execFileSync } from 'child_process';
-import { readFileSync } from 'fs';
+import { buildSync } from 'esbuild';
+import { mkdtempSync, readFileSync, rmSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
 
 const rootDir = process.cwd();
 const packageVersion = (
@@ -22,7 +25,7 @@ describe('shared build compatibility', () => {
       process.stdout.write(JSON.stringify({
         production: {
           target: production.target,
-          define: production.define,
+          define: { 'process.env.NODE_ENV': production.define['process.env.NODE_ENV'] },
           banner: production.banner,
           jsx: production.jsx,
           jsxImportSource: production.jsxImportSource,
@@ -33,7 +36,7 @@ describe('shared build compatibility', () => {
         },
         analysis: {
           target: analysis.target,
-          define: analysis.define,
+          define: { 'process.env.NODE_ENV': analysis.define['process.env.NODE_ENV'] },
           banner: analysis.banner,
           jsx: analysis.jsx,
           jsxImportSource: analysis.jsxImportSource,
@@ -137,5 +140,76 @@ describe('shared build compatibility', () => {
     `);
 
     expect(output).toBe('ok');
+  });
+
+  it('routes the real Google SDK through the bundled scoped fetch', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'pivi-google-fetch-'));
+    const outfile = join(tempDir, 'google-fetch.cjs');
+    try {
+      buildSync({
+        stdin: {
+          resolveDir: rootDir,
+          sourcefile: 'google-fetch-contract.ts',
+          loader: 'ts',
+          contents: `
+            import { googleProvider } from '@earendil-works/pi-ai/providers/google';
+            import { installBundledFetch } from './packages/obsidian-host/src/bundledFetch';
+            import { withScopedGoogleTransport } from './packages/pivi-agent-core/src/engine/pi/scopedGoogleProvider';
+
+            void (async () => {
+              let ambientCalls = 0;
+              let scopedCalls = 0;
+              globalThis.fetch = (async () => {
+                ambientCalls += 1;
+                throw new Error('ambient fetch must not be called');
+              }) as typeof fetch;
+              const scopedFetch = async () => {
+                scopedCalls += 1;
+                return new Response(
+                  'data: {"candidates":[{"content":{"parts":[{"text":"ok"}],"role":"model"},"finishReason":"STOP"}],"usageMetadata":{"promptTokenCount":1,"candidatesTokenCount":1,"totalTokenCount":2}}\\n\\n',
+                  { status: 200, headers: { 'content-type': 'text/event-stream' } },
+                );
+              };
+
+              installBundledFetch(scopedFetch);
+              const provider = withScopedGoogleTransport(googleProvider(), () => scopedFetch);
+              const model = provider.getModels()[0];
+              if (!model) throw new Error('Google provider has no models');
+              const result = await provider.streamSimple(
+                model,
+                { messages: [{ role: 'user', content: 'hello', timestamp: 1 }] },
+                { apiKey: 'test-key', fetch: scopedFetch },
+              ).result();
+              process.stdout.write(JSON.stringify({
+                ambientCalls,
+                scopedCalls,
+                stopReason: result.stopReason,
+                errorMessage: result.errorMessage,
+                text: result.content.find((part) => part.type === 'text')?.text,
+              }));
+            })().catch((error) => {
+              console.error(error);
+              process.exitCode = 1;
+            });
+          `,
+        },
+        bundle: true,
+        platform: 'node',
+        format: 'cjs',
+        target: 'es2022',
+        inject: [join(rootDir, 'packages/obsidian-host/src/bundledFetch.ts')],
+        outfile,
+      });
+
+      const output = execFileSync(process.execPath, [outfile], { encoding: 'utf8' });
+      expect(JSON.parse(output)).toEqual({
+        ambientCalls: 0,
+        scopedCalls: 1,
+        stopReason: 'stop',
+        text: 'ok',
+      });
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
   });
 });
