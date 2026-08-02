@@ -72,7 +72,6 @@ function walkFiles(root: string): WalkEntry[] {
 
   const visit = (absolutePath: string, relativePath: string): void => {
     assertInsideRoot(root, absolutePath);
-    assertRealpathInsideRoot(rootRealpath, absolutePath);
     let stat: fs.Stats;
     try {
       stat = fs.lstatSync(absolutePath);
@@ -84,6 +83,7 @@ function walkFiles(root: string): WalkEntry[] {
     if (stat.isSymbolicLink()) {
       throw new SkillStageValidationError(`Symlinks are forbidden in staged skills: ${relativePath || '.'}`);
     }
+    assertRealpathInsideRoot(rootRealpath, absolutePath);
     if (stat.isDirectory()) {
       for (const name of fs.readdirSync(absolutePath)) {
         if (name === '.' || name === '..') continue;

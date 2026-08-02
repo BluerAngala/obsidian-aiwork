@@ -231,6 +231,11 @@ export class SkillPublicationTransaction {
       fs.closeSync(descriptor);
     }
     fs.renameSync(temporary, destination);
+    // Windows does not support fsync on directory handles. The manifest file
+    // itself is already fsynced before the atomic rename, so keep the
+    // directory-entry durability barrier on platforms that expose it without
+    // making publication fail on Windows.
+    if (process.platform === 'win32') return;
     const directory = fs.openSync(transactionRoot, 'r');
     try {
       fs.fsyncSync(directory);
