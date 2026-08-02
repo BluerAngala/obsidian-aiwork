@@ -214,7 +214,13 @@ describe('VaultSkillsService sync', () => {
     const existing = path.join(vaultPath, '.pivi', 'skills', 'existing');
     fs.mkdirSync(existing, { recursive: true });
     fs.writeFileSync(path.join(existing, 'SKILL.md'), '---\nname: existing\n---\n', 'utf8');
-    fs.symlinkSync('/tmp', path.join(existing, 'linked'));
+    const symlinkTarget = path.join(vaultPath, 'outside-root');
+    fs.mkdirSync(symlinkTarget);
+    fs.symlinkSync(
+      symlinkTarget,
+      path.join(existing, 'linked'),
+      process.platform === 'win32' ? 'junction' : 'dir',
+    );
     const processRunner: ProcessRunner = {
       run: jest.fn(async (request) => {
         writeCliSkill('new-skill', 'new', request.cwd);
