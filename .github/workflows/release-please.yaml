@@ -43,6 +43,16 @@ jobs:
         with:
           ref: ${{ fromJSON(needs.release-please.outputs.pr).headBranchName }}
 
+      - name: Use Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      # sync-version.js requires devDependencies (semver), so install first.
+      - name: Install dependencies
+        run: npm ci
+
       - name: Sync versions.json for Obsidian metadata
         run: node scripts/sync-version.js
 
