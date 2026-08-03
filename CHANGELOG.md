@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.2](https://github.com/shuuul/obsidian-pivi/compare/0.17.1...0.17.2) (2026-08-03)
+
+
+### Bug Fixes
+
+* **review:** drop plugin self-file literals from shipped bundle ([1570cc6](https://github.com/shuuul/obsidian-pivi/commit/1570cc6d0550a7e6e454b2bf011128c64115c114))
+
 ## [0.17.1](https://github.com/shuuul/obsidian-pivi/compare/0.17.0...0.17.1) (2026-08-02)
 
 
