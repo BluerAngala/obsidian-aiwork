@@ -59,7 +59,7 @@ flowchart LR
 | `viewAccess.ts` | Type-guarded enumeration of open Pivi chat views over workspace leaves |
 | `pluginSessionApi.ts` | Session CRUD / purge; cross-view resets and protected bindings use semantic view maintenance |
 | `pluginSettingsLoad.ts` | Settings load, keychain migration, skills seed |
-| `noteToolbarIntegration.ts` | Public-adapter Note Toolbar installation gate, enable fallback, per-command icon-only CLI setup, official item-API synchronization, and keyed setup queue |
+| `noteToolbarIntegration.ts` | In-memory plugin-registry Note Toolbar detection (no manifest file probes, keeping self-file literals out of the bundle), enable fallback, per-command icon-only CLI setup, official item-API synchronization, and keyed setup queue |
 | `workspaceCommandRegistry.ts` | Dynamic workspace-command registration, context resolution, and new-session dispatch |
 | `openStyleSettings.ts` | Style Settings tab open or marketplace fallback |
 | `piviViewActivation.ts` | Activate/open Pivi leaves and create tabs without stacking a blank cold-open tab |

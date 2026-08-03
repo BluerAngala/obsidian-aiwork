@@ -44,7 +44,9 @@ import type { PiviChatView, PiviPluginHost } from "@/app/hostContracts";
 import { getVaultPath } from "@/app/hostPlatform";
 import { t } from "@/app/i18n";
 import {
+  getInstalledPluginVersion,
   isNoteToolbarInstalled,
+  isPluginEnabled,
   type NoteToolbarItemApi,
   type NoteToolbarItemStyle,
   type NoteToolbarSetupQueue,
@@ -217,6 +219,9 @@ export default class PiviPlugin extends Plugin implements PiviPluginHost {
           itemStyle: style,
           itemTooltip: t("settings.noteToolbar.itemTooltip"),
           getItemApi: (itemId) => this.getNoteToolbarItemApi(itemId),
+          getInstalledPluginVersion: (pluginId) =>
+            getInstalledPluginVersion(this.app, pluginId),
+          isPluginEnabled: (pluginId) => isPluginEnabled(this.app, pluginId),
           openUri: openExternalUrl,
           runCli: (args) =>
             cli.run({ vaultName: this.app.vault.getName(), args }),
@@ -226,7 +231,11 @@ export default class PiviPlugin extends Plugin implements PiviPluginHost {
   }
 
   isNoteToolbarInstalled(): Promise<boolean> {
-    return isNoteToolbarInstalled(this.app.vault.adapter, this.app.vault.configDir);
+    return Promise.resolve(
+      isNoteToolbarInstalled((pluginId) =>
+        getInstalledPluginVersion(this.app, pluginId),
+      ),
+    );
   }
 
   async setupWorkspaceCommandNoteToolbar(
@@ -254,6 +263,9 @@ export default class PiviPlugin extends Plugin implements PiviPluginHost {
         itemIcon: icon,
         itemTooltip: t('settings.noteToolbar.commandTooltip', { name: entry.name }),
         getItemApi: (itemId) => this.getNoteToolbarItemApi(itemId),
+        getInstalledPluginVersion: (pluginId) =>
+          getInstalledPluginVersion(this.app, pluginId),
+        isPluginEnabled: (pluginId) => isPluginEnabled(this.app, pluginId),
         openUri: openExternalUrl,
         runCli: (args) => cli.run({ vaultName: this.app.vault.getName(), args }),
       });

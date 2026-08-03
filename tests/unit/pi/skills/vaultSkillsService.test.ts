@@ -297,7 +297,7 @@ describe('VaultSkillsService sync', () => {
     fs.mkdirSync(previousSkills, { recursive: true });
     fs.writeFileSync(path.join(previousSkills, 'SKILL.md'), 'previous');
     fs.writeFileSync(path.join(liveSkills, 'SKILL.md'), 'published');
-    fs.writeFileSync(path.join(transaction, 'manifest.json'), JSON.stringify({
+    fs.writeFileSync(path.join(transaction, 'transaction.json'), JSON.stringify({
       phase: 'published',
       originalArtifacts: ['skills'],
       backedUpArtifacts: ['skills'],
@@ -329,7 +329,7 @@ describe('VaultSkillsService sync', () => {
     fs.mkdirSync(liveSkills, { recursive: true });
     fs.writeFileSync(path.join(previous, 'skills', 'SKILL.md'), 'old');
     fs.writeFileSync(path.join(liveSkills, 'SKILL.md'), 'new');
-    fs.writeFileSync(path.join(transaction, 'manifest.json'), JSON.stringify({
+    fs.writeFileSync(path.join(transaction, 'transaction.json'), JSON.stringify({
       phase: 'mutating', originalArtifacts: ['skills'], backedUpArtifacts: [],
       publishedArtifacts: [],
     }));
@@ -349,7 +349,7 @@ describe('VaultSkillsService sync', () => {
     fs.writeFileSync(path.join(liveSkills, 'SKILL.md'), 'already restored');
     fs.writeFileSync(path.join(previous, 'skills-lock.json'), 'old lock');
     fs.writeFileSync(path.join(vaultPath, '.pivi', 'skills-lock.json'), 'new lock');
-    fs.writeFileSync(path.join(transaction, 'manifest.json'), JSON.stringify({
+    fs.writeFileSync(path.join(transaction, 'transaction.json'), JSON.stringify({
       phase: 'restore-incomplete', originalArtifacts: ['skills', 'skills-lock.json'],
       backedUpArtifacts: ['skills-lock.json'], publishedArtifacts: ['skills', 'skills-lock.json'],
     }));

@@ -1,14 +1,16 @@
+import type { App } from "obsidian";
+
 import {
+  getInstalledPluginVersion,
   isNoteToolbarInstalled,
+  isPluginEnabled,
   setupNoteToolbarIntegration,
   type NoteToolbarIntegrationDependencies,
   type NoteToolbarItemStyle,
 } from "@/app/noteToolbarIntegration";
 
 const CONFIG_DIR = ".config";
-const MANIFEST_PATH = `${CONFIG_DIR}/plugins/note-toolbar/manifest.json`;
 const DATA_PATH = `${CONFIG_DIR}/plugins/note-toolbar/data.json`;
-const ENABLED_PATH = `${CONFIG_DIR}/community-plugins.json`;
 const COMMAND_ID = "pivi:add-selection-to-chat-input";
 const TOOLBAR_ID = "a1111111-1111-4111-8111-111111111111";
 
@@ -36,24 +38,14 @@ function createHarness(options?: {
 }) {
   const files = new Map<string, string>();
   const installed = options?.installed ?? true;
-  if (installed) {
-    files.set(
-      MANIFEST_PATH,
-      JSON.stringify({ id: "note-toolbar", version: options?.version ?? "1.31.06" }),
-    );
-  }
-  if (options?.enabled ?? true) {
-    files.set(ENABLED_PATH, JSON.stringify(["pivi", "note-toolbar"]));
-  } else {
-    files.set(ENABLED_PATH, JSON.stringify(["pivi"]));
-  }
+  let enabled = options?.enabled ?? true;
   if (options?.config !== null) {
     files.set(DATA_PATH, JSON.stringify(options?.config ?? createToolbarConfig()));
   }
 
   const runCli = jest.fn(async (args: string[]): Promise<string> => {
     if (args[0] === "plugin:enable") {
-      files.set(ENABLED_PATH, JSON.stringify(["pivi", "note-toolbar"]));
+      enabled = true;
       return "Enabled note-toolbar";
     }
     if (args[0] === "note-toolbar:add-command") {
@@ -92,6 +84,9 @@ function createHarness(options?: {
     configDir: CONFIG_DIR,
     itemStyle: options?.itemStyle ?? "label-and-icon",
     itemTooltip: "Add selection to Pivi input",
+    getInstalledPluginVersion: (pluginId) =>
+      pluginId === "note-toolbar" && installed ? options?.version ?? "1.31.06" : null,
+    isPluginEnabled: (pluginId) => pluginId === "note-toolbar" && installed && enabled,
     openUri,
     runCli,
   };
@@ -245,7 +240,7 @@ describe("Note Toolbar integration", () => {
   });
 
   it("reports a missing Note Toolbar without invoking CLI or opening a URI", async () => {
-    const { deps, files, openUri, runCli } = createHarness({
+    const { deps, openUri, runCli } = createHarness({
       installed: false,
       enabled: false,
       config: null,
@@ -254,7 +249,6 @@ describe("Note Toolbar integration", () => {
     await expect(setupNoteToolbarIntegration(deps)).resolves.toEqual({
       status: "not-installed",
     });
-    expect(files.has(MANIFEST_PATH)).toBe(false);
     expect(openUri).not.toHaveBeenCalled();
     expect(runCli).not.toHaveBeenCalled();
   });
@@ -274,12 +268,12 @@ describe("Note Toolbar integration", () => {
     expect(runCli).not.toHaveBeenCalled();
   });
 
-  it("detects installation by the public adapter manifest check", async () => {
+  it("detects installation through the in-memory plugin registry", () => {
     const installed = createHarness();
     const missing = createHarness({ installed: false });
 
-    await expect(isNoteToolbarInstalled(installed.deps.adapter, CONFIG_DIR)).resolves.toBe(true);
-    await expect(isNoteToolbarInstalled(missing.deps.adapter, CONFIG_DIR)).resolves.toBe(false);
+    expect(isNoteToolbarInstalled(installed.deps.getInstalledPluginVersion)).toBe(true);
+    expect(isNoteToolbarInstalled(missing.deps.getInstalledPluginVersion)).toBe(false);
   });
 
   it("enables an installed plugin before adding the command", async () => {
@@ -368,5 +362,44 @@ describe("Note Toolbar integration", () => {
     expect(result.error).toContain("JSON");
     expect(files.get(DATA_PATH)).toBe("{not-json");
     expect(runCli).not.toHaveBeenCalled();
+  });
+});
+
+describe("plugin registry probes", () => {
+  it("reads the installed version from the in-memory registry", () => {
+    const app = {
+      plugins: { manifests: { "note-toolbar": { version: "1.31.06" } } },
+    } as unknown as App;
+
+    expect(getInstalledPluginVersion(app, "note-toolbar")).toBe("1.31.06");
+    expect(getInstalledPluginVersion(app, "missing-plugin")).toBeNull();
+  });
+
+  it("reports a registry manifest without a string version as empty", () => {
+    const app = {
+      plugins: { manifests: { "note-toolbar": {} } },
+    } as unknown as App;
+
+    expect(getInstalledPluginVersion(app, "note-toolbar")).toBe("");
+  });
+
+  it("treats a missing or throwing registry as not installed", () => {
+    expect(getInstalledPluginVersion({} as unknown as App, "note-toolbar")).toBeNull();
+    const throwing = {
+      get plugins() {
+        throw new Error("registry unavailable");
+      },
+    } as unknown as App;
+    expect(getInstalledPluginVersion(throwing, "note-toolbar")).toBeNull();
+  });
+
+  it("reads enabled state from the in-memory registry", () => {
+    const app = {
+      plugins: { enabledPlugins: new Set(["note-toolbar"]) },
+    } as unknown as App;
+
+    expect(isPluginEnabled(app, "note-toolbar")).toBe(true);
+    expect(isPluginEnabled(app, "other-plugin")).toBe(false);
+    expect(isPluginEnabled({} as unknown as App, "note-toolbar")).toBe(false);
   });
 });

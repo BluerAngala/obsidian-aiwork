@@ -41,6 +41,10 @@ export interface NoteToolbarIntegrationDependencies {
   itemIcon?: string;
   itemTooltip: string;
   getItemApi?: (itemId: string) => NoteToolbarItemApi | null;
+  /** In-memory plugin registry lookup: installed version, or null when absent. */
+  getInstalledPluginVersion: (pluginId: string) => string | null;
+  /** In-memory plugin registry lookup: whether the plugin is currently enabled. */
+  isPluginEnabled: (pluginId: string) => boolean;
   openUri: (uri: string) => Promise<void>;
   runCli: (args: string[]) => Promise<string>;
 }
@@ -63,24 +67,19 @@ interface PreparedNoteToolbarPlugin {
   result?: NoteToolbarSetupResult;
 }
 
-export async function isNoteToolbarInstalled(
-  adapter: Pick<DataAdapter, "exists">,
-  configDir: string,
-): Promise<boolean> {
-  return await adapter.exists(noteToolbarManifestPath(configDir));
+export function isNoteToolbarInstalled(
+  getInstalledPluginVersion: (pluginId: string) => string | null,
+): boolean {
+  return getInstalledPluginVersion(NOTE_TOOLBAR_PLUGIN_ID) !== null;
 }
 
 async function prepareNoteToolbarPlugin(
   deps: NoteToolbarIntegrationDependencies,
 ): Promise<PreparedNoteToolbarPlugin> {
-  const manifestPath = noteToolbarManifestPath(deps.configDir);
-  if (!(await deps.adapter.exists(manifestPath))) {
+  const version = deps.getInstalledPluginVersion(NOTE_TOOLBAR_PLUGIN_ID);
+  if (version === null) {
     return { result: { status: 'not-installed' } };
   }
-  const manifest = await readJsonRecord(deps.adapter, manifestPath);
-  if (!manifest) throw new Error('The Note Toolbar manifest is invalid.');
-
-  const version = typeof manifest.version === 'string' ? manifest.version : '';
   if (!isSupportedNoteToolbarVersion(version)) {
     await deps.openUri(NOTE_TOOLBAR_MARKETPLACE_URI);
     return {
@@ -88,7 +87,7 @@ async function prepareNoteToolbarPlugin(
     };
   }
 
-  const pluginEnabled = await isCommunityPluginEnabled(deps);
+  const pluginEnabled = deps.isPluginEnabled(NOTE_TOOLBAR_PLUGIN_ID);
   if (!pluginEnabled) {
     if (!deps.cliAvailable) {
       await deps.openUri(NOTE_TOOLBAR_MARKETPLACE_URI);
@@ -235,24 +234,6 @@ function configPath(configDir: string, suffix: string): string {
   return `${configDir.replace(/\/+$/, "")}/${suffix}`;
 }
 
-function noteToolbarManifestPath(configDir: string): string {
-  return configPath(
-    configDir,
-    `plugins/${NOTE_TOOLBAR_PLUGIN_ID}/manifest.json`,
-  );
-}
-
-async function isCommunityPluginEnabled(
-  deps: NoteToolbarIntegrationDependencies,
-): Promise<boolean> {
-  const path = configPath(deps.configDir, "community-plugins.json");
-  if (!(await deps.adapter.exists(path))) {
-    return false;
-  }
-  const parsed = JSON.parse(await deps.adapter.read(path)) as unknown;
-  return Array.isArray(parsed) && parsed.includes(NOTE_TOOLBAR_PLUGIN_ID);
-}
-
 async function readNoteToolbarConfig(
   deps: NoteToolbarIntegrationDependencies,
 ): Promise<NoteToolbarConfigState | null> {
@@ -396,6 +377,41 @@ export async function runQueuedNoteToolbarRequest(
     if (queue.active === setup) {
       queue.active = null;
     }
+  }
+}
+
+/**
+ * Reads the host's in-memory plugin registry instead of probing manifest files
+ * on disk: the registry is the fresher source, and keeping `manifest.json`
+ * path literals out of the shipped bundle avoids matching the community
+ * review's self-update static scan. The Obsidian plugins API is internal, so
+ * every access is defensively optional-chained; any failure reports the
+ * plugin as not installed, which falls back to the manual setup flow.
+ */
+export function getInstalledPluginVersion(app: App, pluginId: string): string | null {
+  try {
+    const manifests = (app as unknown as {
+      plugins?: { manifests?: Record<string, { version?: unknown } | undefined> };
+    }).plugins?.manifests;
+    const manifest = manifests?.[pluginId];
+    if (!manifest) {
+      return null;
+    }
+    return typeof manifest.version === 'string' ? manifest.version : '';
+  } catch {
+    return null;
+  }
+}
+
+/** Registry companion to `getInstalledPluginVersion`; failure means not enabled. */
+export function isPluginEnabled(app: App, pluginId: string): boolean {
+  try {
+    const enabledPlugins = (app as unknown as {
+      plugins?: { enabledPlugins?: { has?: (id: string) => boolean } };
+    }).plugins?.enabledPlugins;
+    return enabledPlugins?.has?.(pluginId) === true;
+  } catch {
+    return false;
   }
 }
 

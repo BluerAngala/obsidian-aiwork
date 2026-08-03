@@ -97,6 +97,48 @@ describe('shared build compatibility', () => {
     expect(options.analysis.plugins).toEqual(options.production.plugins);
   });
 
+  it('fails the community audit when the bundle references plugin self files', () => {
+    const output = runBuildContract(`
+      import { build } from 'esbuild';
+      import { assertCommunityAudit } from './build/plugins/assert-community-audit.mjs';
+      const attempt = async (contents) => {
+        try {
+          const result = await build({
+            stdin: { contents, resolveDir: process.cwd() },
+            bundle: true,
+            platform: 'node',
+            write: false,
+            outfile: 'main.js',
+            plugins: [assertCommunityAudit],
+            logLevel: 'silent',
+          });
+          return result.errors.map((error) => error.text);
+        } catch (error) {
+          return (error.errors ?? []).map((entry) => entry.text);
+        }
+      };
+      process.stdout.write(JSON.stringify({
+        clean: await attempt('export const answer = 42;'),
+        manifest: await attempt('export const target = "plugins/note-toolbar/manifest.json";'),
+        mainJs: await attempt('export const file = "main.js";'),
+      }));
+    `);
+
+    const result = JSON.parse(output) as {
+      clean: string[];
+      manifest: string[];
+      mainJs: string[];
+    };
+
+    expect(result.clean).toEqual([]);
+    expect(result.manifest).toEqual([
+      'Community audit failed: found plugin self-file reference "manifest.json" in main.js',
+    ]);
+    expect(result.mainJs).toEqual([
+      'Community audit failed: found plugin self-file reference "main.js" in main.js',
+    ]);
+  });
+
   it('rewrites dynamic node imports and rejects surviving node specifiers', () => {
     const output = runBuildContract(`
       import { rewriteDynamicNodeImports } from './build/postprocess/rewrite-node-imports.mjs';

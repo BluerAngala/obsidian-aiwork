@@ -592,15 +592,15 @@ Explain this: {{selected_text}}`,
     expect(roots).toHaveLength(1);
     const root = roots[0]!;
     expect(store.files.has(`${root}/canonical.md`)).toBe(true);
-    expect(store.files.has(`${root}/manifest.json`)).toBe(true);
-    expect(JSON.parse(store.files.get(`${root}/manifest.json`)!).phase).toBe('staged');
+    expect(store.files.has(`${root}/transaction.json`)).toBe(true);
+    expect(JSON.parse(store.files.get(`${root}/transaction.json`)!).phase).toBe('staged');
   });
 
   it("recovers an incomplete staged removal before catalog refresh", async () => {
     const root = ".pivi/.commands-removal-leftover";
     const store = createMemoryCommandStore({
       [`${root}/canonical.md`]: COMMAND_BYTES,
-      [`${root}/manifest.json`]: JSON.stringify({
+      [`${root}/transaction.json`]: JSON.stringify({
         version: 1,
         id: "explain",
         phase: "staged",

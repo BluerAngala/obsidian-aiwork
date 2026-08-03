@@ -156,7 +156,7 @@ describe('assertAgentManagedPathMutationAllowed', () => {
     { path: '.pivi/commands/summarize.md', tool: 'pivi_commands' },
     { path: '.pivi/templates/legacy.md', tool: 'pivi_commands' },
     { path: '.pivi/.commands-removal-abc', tool: 'pivi_commands' },
-    { path: '.pivi/.commands-removal-abc/manifest.json', tool: 'pivi_commands' },
+    { path: '.pivi/.commands-removal-abc/transaction.json', tool: 'pivi_commands' },
     { path: '.pivi/.commands-removal-abc/canonical.md', tool: 'pivi_commands' },
   ];
 

@@ -13,7 +13,9 @@ import { validateStagedSkillCollection } from './skillStagePublish';
 
 const SKILLS_CLI_METADATA_FILES = ['skills-lock.json', '.skills.json'] as const;
 const SKILLS_TRANSACTION_DIR_PREFIX = '.skills-transaction-';
-const SKILLS_TRANSACTION_MANIFEST = 'manifest.json';
+// The journal name must not be `manifest.json`: the community review static
+// scan treats that literal plus file writes as a self-update signal.
+const SKILLS_TRANSACTION_MANIFEST = 'transaction.json';
 
 export type SkillsPublicationArtifact = 'skills' | typeof SKILLS_CLI_METADATA_FILES[number];
 

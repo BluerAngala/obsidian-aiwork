@@ -106,7 +106,7 @@ describe('SkillsManagementCoordinator', () => {
     fs.mkdirSync(previous, { recursive: true });
     fs.writeFileSync(path.join(previous, 'SKILL.md'), 'old');
     fs.writeFileSync(path.join(live, 'SKILL.md'), 'new');
-    fs.writeFileSync(path.join(transaction, 'manifest.json'), JSON.stringify({
+    fs.writeFileSync(path.join(transaction, 'transaction.json'), JSON.stringify({
       phase: 'published',
       originalArtifacts: ['skills'],
       backedUpArtifacts: ['skills'],
@@ -141,7 +141,7 @@ describe('SkillsManagementCoordinator', () => {
     const live = path.join(vaultPath, '.pivi', 'skills');
     fs.mkdirSync(path.join(transaction, 'previous', 'skills'), { recursive: true });
     fs.writeFileSync(path.join(live, 'SKILL.md'), 'new');
-    fs.writeFileSync(path.join(transaction, 'manifest.json'), JSON.stringify({
+    fs.writeFileSync(path.join(transaction, 'transaction.json'), JSON.stringify({
       phase: 'published',
       originalArtifacts: ['skills'],
       backedUpArtifacts: ['skills'],
@@ -174,7 +174,7 @@ describe('SkillsManagementCoordinator', () => {
     const live = path.join(vaultPath, '.pivi', 'skills');
     fs.mkdirSync(path.join(transaction, 'previous', 'skills'), { recursive: true });
     fs.writeFileSync(path.join(live, 'SKILL.md'), 'new');
-    fs.writeFileSync(path.join(transaction, 'manifest.json'), JSON.stringify({
+    fs.writeFileSync(path.join(transaction, 'transaction.json'), JSON.stringify({
       phase: 'published',
       originalArtifacts: ['skills'],
       backedUpArtifacts: ['skills'],
