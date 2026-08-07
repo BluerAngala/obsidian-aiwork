@@ -24,6 +24,7 @@ import type { FetchCompatible, HttpClient, HttpRequest, HttpResponse } from '@pi
 import * as dns from 'dns';
 import * as http from 'http';
 import * as https from 'https';
+import type { Socket } from 'net';
 import type { Readable } from 'stream';
 import { brotliDecompressSync, gunzipSync, inflateSync } from 'zlib';
 
@@ -459,10 +460,6 @@ function requestOnce(
     const { pinned, family } = await resolveAndPin(url, policy, lookup, grants);
     applyScopedHttpDefaultHeaders(headers);
 
-    const connectDeadline = createDeadlineSignal(policy.deadlines.connectMs, 'Connect');
-    const firstByteDeadline = createDeadlineSignal(policy.deadlines.firstByteMs, 'First-byte');
-    const combined = mergeAbortSignals([signal, connectDeadline.signal, firstByteDeadline.signal]);
-
     const transport = url.protocol === 'https:' ? https : http;
     const requestHeaders = headersToRecord(headers);
     // Preserve the original hostname in Host / SNI while connecting to the pinned address.
@@ -474,81 +471,139 @@ function requestOnce(
 
     return await new Promise<RawHttpResult>((resolve, reject) => {
       let settled = false;
-      const fail = (error: unknown) => {
+      let phaseTimer: number | undefined;
+      let phaseSocket: Socket | undefined;
+      let phaseEvent: 'connect' | 'secureConnect' | undefined;
+      let req: http.ClientRequest | undefined;
+
+      const clearPhase = () => {
+        if (phaseTimer !== undefined) {
+          window.clearTimeout(phaseTimer);
+          phaseTimer = undefined;
+        }
+        if (phaseSocket && phaseEvent) {
+          phaseSocket.removeListener(phaseEvent, startFirstBytePhase);
+        }
+        phaseSocket = undefined;
+        phaseEvent = undefined;
+      };
+      const cleanup = () => {
+        clearPhase();
+        signal.removeEventListener('abort', onAbort);
+        req?.removeListener('socket', onSocket);
+      };
+      const fail = (error: unknown, destroyRequest = false) => {
         if (settled) return;
         settled = true;
-        connectDeadline.clear();
-        firstByteDeadline.clear();
-        combined.signal.removeEventListener('abort', onAbort);
-        combined.dispose();
+        cleanup();
+        if (destroyRequest) req?.destroy();
         reject(error instanceof Error ? error : new Error(String(error)));
       };
-
       const onAbort = () => {
-        req.destroy();
-        fail(combined.signal.reason instanceof Error
-          ? combined.signal.reason
-          : new EgressPolicyError('aborted', 'Request aborted'));
+        fail(signal.reason instanceof Error
+          ? signal.reason
+          : new EgressPolicyError('aborted', 'Request aborted'), true);
+      };
+      const armPhase = (label: 'Connect' | 'First-byte', ms: number) => {
+        clearPhase();
+        phaseTimer = window.setTimeout(() => {
+          if (signal.aborted) {
+            onAbort();
+            return;
+          }
+          fail(new EgressPolicyError(
+            'deadline',
+            `${label} deadline exceeded (${ms}ms)`,
+          ), true);
+        }, ms);
+      };
+      function startFirstBytePhase(): void {
+        if (settled) return;
+        armPhase('First-byte', policy.deadlines.firstByteMs);
+      }
+      const onSocket = (socket: Socket) => {
+        if (settled) return;
+        if (req?.reusedSocket) {
+          startFirstBytePhase();
+          return;
+        }
+        if (url.protocol === 'https:') {
+          phaseSocket = socket;
+          phaseEvent = 'secureConnect';
+          socket.once('secureConnect', startFirstBytePhase);
+          // A queued request can receive an already-secure socket without Node
+          // marking it as reused or replaying secureConnect.
+          const secureConnecting = (socket as Socket & { secureConnecting?: boolean })
+            .secureConnecting;
+          if (!socket.connecting && secureConnecting === false) {
+            startFirstBytePhase();
+          }
+          return;
+        }
+        if (!socket.connecting) {
+          startFirstBytePhase();
+          return;
+        }
+        phaseSocket = socket;
+        phaseEvent = 'connect';
+        socket.once('connect', startFirstBytePhase);
+      };
+      const onResponse = (res: http.IncomingMessage) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        const remote = res.socket?.remoteAddress?.replace(/^::ffff:/, '');
+        if (remote) {
+          try {
+            assertPinnedAddress([pinned], remote, url);
+          } catch (error) {
+            res.destroy();
+            reject(error instanceof Error ? error : new Error(String(error)));
+            return;
+          }
+        }
+
+        resolve({
+          status: res.statusCode ?? 500,
+          statusText: res.statusMessage ?? '',
+          headers: headersFromIncoming(res),
+          body: res,
+          remoteAddress: remote,
+        });
       };
 
-      const req = transport.request(
-        {
-          protocol: url.protocol,
-          hostname: pinned,
-          servername: url.protocol === 'https:' ? stripBrackets(url.hostname) : undefined,
-          port: url.port ? Number(url.port) : (url.protocol === 'https:' ? 443 : 80),
-          path: `${url.pathname}${url.search}`,
-          method,
-          headers: requestHeaders,
-          agent: resolvedAgent,
-          family,
-          lookup: (_host, _options, callback) => {
-            callback(null, pinned, family);
+      armPhase('Connect', policy.deadlines.connectMs);
+      try {
+        req = transport.request(
+          {
+            protocol: url.protocol,
+            hostname: pinned,
+            servername: url.protocol === 'https:' ? stripBrackets(url.hostname) : undefined,
+            port: url.port ? Number(url.port) : (url.protocol === 'https:' ? 443 : 80),
+            path: `${url.pathname}${url.search}`,
+            method,
+            headers: requestHeaders,
+            agent: resolvedAgent,
+            family,
+            lookup: (_host, _options, callback) => {
+              callback(null, pinned, family);
+            },
           },
-        },
-        (res: http.IncomingMessage) => {
-          if (settled) return;
-          settled = true;
-          // Connect deadline only covers handshake; leaving the socket timeout armed
-          // kills SSE streams during multi-second idle gaps between chunks.
-          req.setTimeout(0);
-          connectDeadline.clear();
-          firstByteDeadline.clear();
-          combined.signal.removeEventListener('abort', onAbort);
-          combined.dispose();
-          const remote = res.socket?.remoteAddress?.replace(/^::ffff:/, '');
-          if (remote) {
-            try {
-              assertPinnedAddress([pinned], remote, url);
-            } catch (error) {
-              res.destroy();
-              reject(error instanceof Error ? error : new Error(String(error)));
-              return;
-            }
-          }
-
-          resolve({
-            status: res.statusCode ?? 500,
-            statusText: res.statusMessage ?? '',
-            headers: headersFromIncoming(res),
-            body: res,
-            remoteAddress: remote,
-          });
-        },
-      );
+          onResponse,
+        );
+      } catch (error) {
+        fail(error);
+        return;
+      }
 
       req.on('error', (error: Error) => fail(error));
-      req.on('timeout', () => {
-        req.destroy();
-        fail(new EgressPolicyError('deadline', `Connect deadline exceeded (${policy.deadlines.connectMs}ms)`));
-      });
-      req.setTimeout(policy.deadlines.connectMs);
+      req.on('socket', onSocket);
 
-      if (combined.signal.aborted) {
+      if (signal.aborted) {
         onAbort();
         return;
       }
-      combined.signal.addEventListener('abort', onAbort, { once: true });
+      signal.addEventListener('abort', onAbort, { once: true });
 
       if (body) req.end(body);
       else req.end();

@@ -1,4 +1,6 @@
 import * as http from 'http';
+import * as https from 'https';
+import * as net from 'net';
 import { gzipSync } from 'zlib';
 
 import { OriginGrantRegistry } from '@pivi/pivi-agent-core/network';
@@ -17,6 +19,31 @@ async function listen(
     server,
     port: address.port,
     close: async () => {
+      await new Promise<void>((resolve, reject) => {
+        server.close((error) => (error ? reject(error) : resolve()));
+      });
+    },
+  };
+}
+
+async function listenWithoutTlsHandshake(): Promise<{
+  port: number;
+  close: () => Promise<void>;
+}> {
+  const sockets = new Set<net.Socket>();
+  const server = net.createServer((socket) => {
+    sockets.add(socket);
+    socket.on('close', () => sockets.delete(socket));
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  if (!address || typeof address === 'string') {
+    throw new Error('Expected TCP address');
+  }
+  return {
+    port: address.port,
+    close: async () => {
+      for (const socket of sockets) socket.destroy();
       await new Promise<void>((resolve, reject) => {
         server.close((error) => (error ? reject(error) : resolve()));
       });
@@ -233,6 +260,172 @@ describe('scopedHttpClient', () => {
       });
       const response = await fetchImpl(url);
       await expect(response.text()).resolves.toBe('firstsecond');
+    } finally {
+      await close();
+    }
+  });
+
+  it('uses firstByteMs after a fast connection instead of keeping connectMs armed', async () => {
+    const { port, close } = await listen((_req, res) => {
+      window.setTimeout(() => {
+        res.writeHead(200, { 'content-type': 'text/plain' });
+        res.end('delayed headers');
+      }, 100);
+    });
+    try {
+      const grants = new OriginGrantRegistry();
+      const url = `http://127.0.0.1:${port}/`;
+      grants.grant(url, 60_000, 'web-fetch');
+      const fetchImpl = createScopedFetch({
+        policy: {
+          purpose: 'web-fetch',
+          deadlines: { connectMs: 40, firstByteMs: 400, totalMs: 2_000 },
+        },
+        grants,
+        lookup: async () => ['127.0.0.1'],
+      });
+
+      const response = await fetchImpl(url);
+      await expect(response.text()).resolves.toBe('delayed headers');
+    } finally {
+      await close();
+    }
+  });
+
+  it('classifies missing response headers as a first-byte deadline', async () => {
+    const { port, close } = await listen(() => undefined);
+    try {
+      const grants = new OriginGrantRegistry();
+      const url = `http://127.0.0.1:${port}/`;
+      grants.grant(url, 60_000, 'web-fetch');
+      const fetchImpl = createScopedFetch({
+        policy: {
+          purpose: 'web-fetch',
+          deadlines: { connectMs: 100, firstByteMs: 40, totalMs: 2_000 },
+        },
+        grants,
+        lookup: async () => ['127.0.0.1'],
+      });
+
+      await expect(fetchImpl(url)).rejects.toThrow('First-byte deadline exceeded (40ms)');
+    } finally {
+      await close();
+    }
+  });
+
+  it('keeps an incomplete HTTPS handshake in the connect phase', async () => {
+    const { port, close } = await listenWithoutTlsHandshake();
+    try {
+      const grants = new OriginGrantRegistry();
+      const url = `https://localhost:${port}/`;
+      grants.grant(url, 60_000, 'web-fetch');
+      const fetchImpl = createScopedFetch({
+        policy: {
+          purpose: 'web-fetch',
+          deadlines: { connectMs: 40, firstByteMs: 400, totalMs: 2_000 },
+        },
+        grants,
+        lookup: async () => ['127.0.0.1'],
+        agent: new https.Agent({ rejectUnauthorized: false }),
+      });
+
+      await expect(fetchImpl(url)).rejects.toThrow('Connect deadline exceeded (40ms)');
+    } finally {
+      await close();
+    }
+  });
+
+  it('starts the first-byte phase immediately for a reused keep-alive socket', async () => {
+    let connectionCount = 0;
+    const { server, port, close } = await listen((req, res) => {
+      if (req.url === '/second') {
+        window.setTimeout(() => {
+          res.writeHead(200, { 'content-type': 'text/plain' });
+          res.end('second');
+        }, 100);
+        return;
+      }
+      res.writeHead(200, { 'content-type': 'text/plain' });
+      res.end('first');
+    });
+    server.on('connection', () => {
+      connectionCount += 1;
+    });
+    const agent = new http.Agent({ keepAlive: true, maxSockets: 1 });
+    try {
+      const grants = new OriginGrantRegistry();
+      const baseUrl = `http://127.0.0.1:${port}`;
+      grants.grant(baseUrl, 60_000, 'web-fetch');
+      const fetchImpl = createScopedFetch({
+        policy: {
+          purpose: 'web-fetch',
+          deadlines: { connectMs: 40, firstByteMs: 400, totalMs: 2_000 },
+        },
+        grants,
+        lookup: async () => ['127.0.0.1'],
+        agent,
+      });
+
+      await expect((await fetchImpl(`${baseUrl}/first`)).text()).resolves.toBe('first');
+      await expect((await fetchImpl(`${baseUrl}/second`)).text()).resolves.toBe('second');
+      expect(connectionCount).toBe(1);
+    } finally {
+      agent.destroy();
+      await close();
+    }
+  });
+
+  it('gives each redirect hop its own first-byte budget', async () => {
+    const { port, close } = await listen((req, res) => {
+      window.setTimeout(() => {
+        if (req.url === '/start') {
+          res.writeHead(302, { location: '/final' });
+          res.end();
+          return;
+        }
+        res.writeHead(200, { 'content-type': 'text/plain' });
+        res.end('redirected');
+      }, 30);
+    });
+    try {
+      const grants = new OriginGrantRegistry();
+      const url = `http://127.0.0.1:${port}/start`;
+      grants.grant(url, 60_000, 'web-fetch');
+      const fetchImpl = createScopedFetch({
+        policy: {
+          purpose: 'web-fetch',
+          deadlines: { connectMs: 40, firstByteMs: 50, totalMs: 2_000 },
+        },
+        grants,
+        lookup: async () => ['127.0.0.1'],
+      });
+
+      await expect((await fetchImpl(url)).text()).resolves.toBe('redirected');
+    } finally {
+      await close();
+    }
+  });
+
+  it('preserves an explicit abort reason when it races a phase deadline', async () => {
+    const { port, close } = await listen(() => undefined);
+    try {
+      const grants = new OriginGrantRegistry();
+      const url = `http://127.0.0.1:${port}/`;
+      grants.grant(url, 60_000, 'web-fetch');
+      const controller = new AbortController();
+      const abortReason = new Error('user cancelled');
+      const fetchImpl = createScopedFetch({
+        policy: {
+          purpose: 'web-fetch',
+          deadlines: { connectMs: 100, firstByteMs: 50, totalMs: 2_000 },
+        },
+        grants,
+        lookup: async () => ['127.0.0.1'],
+      });
+      const pending = fetchImpl(url, { signal: controller.signal });
+      window.setTimeout(() => controller.abort(abortReason), 45);
+
+      await expect(pending).rejects.toBe(abortReason);
     } finally {
       await close();
     }

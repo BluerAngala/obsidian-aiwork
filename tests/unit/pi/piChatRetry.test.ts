@@ -89,6 +89,44 @@ describe('isPiChatRetryableAssistantError', () => {
     ))).toBe(true);
   });
 
+  it('treats connect and first-byte phase deadlines as retryable', () => {
+    expect(isPiChatRetryableAssistantError(assistant(
+      'error',
+      'Connect deadline exceeded (10000ms)',
+    ))).toBe(true);
+    expect(isPiChatRetryableAssistantError(assistant(
+      'error',
+      'First-byte deadline exceeded (20000ms)',
+    ))).toBe(true);
+  });
+
+  it('does not retry body, total, or vaguely classified deadlines', () => {
+    expect(isPiChatRetryableAssistantError(assistant(
+      'error',
+      'Idle deadline exceeded (30000ms)',
+    ))).toBe(false);
+    expect(isPiChatRetryableAssistantError(assistant(
+      'error',
+      'Total deadline exceeded (120000ms)',
+    ))).toBe(false);
+    expect(isPiChatRetryableAssistantError(assistant(
+      'error',
+      'deadline exceeded',
+    ))).toBe(false);
+    expect(isPiChatRetryableAssistantError(assistant(
+      'error',
+      'wrapped: Connect deadline exceeded (10000ms)',
+    ))).toBe(false);
+    expect(isPiChatRetryableAssistantError(assistant(
+      'error',
+      'First-byte deadline exceeded (20000ms): upstream error',
+    ))).toBe(false);
+    expect(isPiChatRetryableAssistantError(assistant(
+      'error',
+      'Idle deadline exceeded (30000ms); cause: Connect deadline exceeded (10000ms)',
+    ))).toBe(false);
+  });
+
   it('does not treat user-aborted stops as retryable', () => {
     expect(isPiChatRetryableAssistantError(assistant('aborted'))).toBe(false);
     expect(isPiChatRetryableAssistantError(assistant(
@@ -196,6 +234,25 @@ describe('runPiChatPromptWithRetry', () => {
       type: 'retry_start',
       errorMessage: 'ECONNRESET',
     }));
+  });
+
+  it.each([
+    'Connect deadline exceeded (10000ms)',
+    'First-byte deadline exceeded (20000ms)',
+  ])('retries a transient phase timeout: %s', async (deadlineError) => {
+    const harness = createHarness([
+      assistant('error', deadlineError),
+      assistant('stop'),
+    ]);
+
+    const resultPromise = harness.run();
+    await jest.advanceTimersByTimeAsync(2_000);
+
+    await expect(resultPromise).resolves.toMatchObject({ status: 'success' });
+    expect(harness.continuePrompt).toHaveBeenCalledTimes(1);
+    expect(harness.discarded).toEqual([
+      expect.objectContaining({ errorMessage: deadlineError }),
+    ]);
   });
 
   it('stops after three retries and keeps the final failure active', async () => {

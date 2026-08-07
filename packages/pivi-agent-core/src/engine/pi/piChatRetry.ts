@@ -12,11 +12,14 @@ export const PI_CHAT_RETRY_BASE_DELAY_MS = 2_000;
 
 /**
  * Node/Electron transport failures that pi-ai's retry classifier currently misses.
- * Covers TLS handshake resets mid-connect and servers that close an SSE stream early
- * (e.g. openai-codex long thinking gaps surfaced as "Connection closed prematurely").
+ * Covers TLS handshake resets, transient connect/first-byte deadlines, and servers
+ * that close an SSE stream early (surfaced as "Connection closed prematurely").
  */
 const PIVI_RETRYABLE_TRANSPORT_ERROR_PATTERN =
   /ECONNRESET|network socket disconnected|secure TLS connection was established|closed prematurely/i;
+const PIVI_RETRYABLE_PHASE_DEADLINE_PATTERN =
+  /^(?:Connect|First-byte) deadline exceeded \(\d+ms\)$/;
+const PIVI_DEADLINE_PATTERN = /deadline exceeded/i;
 
 type PiChatRetryChunk = Extract<
   StreamChunk,
@@ -40,11 +43,18 @@ export interface PiChatRetryOptions {
 
 /** Upstream pi-ai classification plus Pivi-owned TLS/socket transport gaps. */
 export function isPiChatRetryableAssistantError(message: AssistantMessage): boolean {
-  if (isRetryableAssistantError(message)) {
+  if (message.stopReason !== 'error' || !message.errorMessage) {
+    return isRetryableAssistantError(message);
+  }
+  if (PIVI_RETRYABLE_PHASE_DEADLINE_PATTERN.test(message.errorMessage)) {
     return true;
   }
-  if (message.stopReason !== 'error' || !message.errorMessage) {
+  // Do not let a broad upstream timeout classifier retry body/total/unknown deadlines.
+  if (PIVI_DEADLINE_PATTERN.test(message.errorMessage)) {
     return false;
+  }
+  if (isRetryableAssistantError(message)) {
+    return true;
   }
   return PIVI_RETRYABLE_TRANSPORT_ERROR_PATTERN.test(message.errorMessage);
 }
