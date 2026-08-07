@@ -7,6 +7,7 @@ import * as fs from 'fs';
 import { createRequire } from 'module';
 import * as os from 'os';
 import * as path from 'path';
+import { gunzipSync } from 'zlib';
 
 import type { SkillsEnvironmentOptions, SkillsProcessEnv } from './env';
 import { findNodeExecutable as resolveNodeExecutable } from './env';
@@ -26,7 +27,7 @@ export interface SkillsCliInvocation {
   cleanup?: () => void;
 }
 
-declare const __PIVI_EMBEDDED_SKILLS_CLI_BASE64__: string | undefined;
+declare const __PIVI_EMBEDDED_SKILLS_CLI_GZIP_BASE64__: string | undefined;
 
 function findNodeExecutable(
   processEnv: SkillsProcessEnv,
@@ -53,7 +54,7 @@ function cliPathFromPackageRoot(packageRoot: string): string | null {
   return fs.existsSync(candidate) ? candidate : null;
 }
 
-function materializeEmbeddedCli(sourceBase64: string): Pick<SkillsCliInvocation, 'cliPath' | 'cleanup'> {
+function materializeEmbeddedCli(sourceGzipBase64: string): Pick<SkillsCliInvocation, 'cliPath' | 'cleanup'> {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'pivi-skills-cli-'));
   const binDir = path.join(tempRoot, 'bin');
   const distDir = path.join(tempRoot, 'dist');
@@ -68,7 +69,7 @@ function materializeEmbeddedCli(sourceBase64: string): Pick<SkillsCliInvocation,
     );
     fs.writeFileSync(
       path.join(distDir, 'cli.mjs'),
-      Buffer.from(sourceBase64, 'base64'),
+      gunzipSync(Buffer.from(sourceGzipBase64, 'base64')),
       { mode: 0o600 },
     );
     fs.writeFileSync(cliPath, "await import('../dist/cli.mjs');\n", { mode: 0o600 });
@@ -96,7 +97,7 @@ export function resolvePinnedSkillsCli(options: {
   pluginDir?: string | null;
   overridePackageRoot?: string | null;
   searchPaths?: readonly string[];
-  embeddedCliBase64?: string | null;
+  embeddedCliGzipBase64?: string | null;
   resolveFromWorkspace?: boolean;
 } = {}): SkillsCliInvocation {
   const processEnv = options.processEnv ?? process.env;
@@ -141,14 +142,14 @@ export function resolvePinnedSkillsCli(options: {
     };
   }
 
-  const embeddedCliBase64 = options.embeddedCliBase64
-    ?? (typeof __PIVI_EMBEDDED_SKILLS_CLI_BASE64__ === 'string'
-      ? __PIVI_EMBEDDED_SKILLS_CLI_BASE64__
+  const embeddedCliGzipBase64 = options.embeddedCliGzipBase64
+    ?? (typeof __PIVI_EMBEDDED_SKILLS_CLI_GZIP_BASE64__ === 'string'
+      ? __PIVI_EMBEDDED_SKILLS_CLI_GZIP_BASE64__
       : null);
-  if (embeddedCliBase64) {
+  if (embeddedCliGzipBase64) {
     return {
       executable: nodeExecutable,
-      ...materializeEmbeddedCli(embeddedCliBase64),
+      ...materializeEmbeddedCli(embeddedCliGzipBase64),
       version: PINNED_SKILLS_CLI_VERSION,
       packageName: PINNED_SKILLS_CLI_PACKAGE,
     };

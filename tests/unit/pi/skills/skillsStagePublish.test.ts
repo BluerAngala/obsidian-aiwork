@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { gzipSync } from 'zlib';
 
 import {
   publishValidatedSkillTree,
@@ -87,7 +88,7 @@ describe('pinned skills CLI', () => {
   it('materializes and cleans up the CLI bundled with the plugin', () => {
     const cli = resolvePinnedSkillsCli({
       overridePackageRoot: path.join(os.tmpdir(), 'missing-skills-package'),
-      embeddedCliBase64: Buffer.from('export {};\n').toString('base64'),
+      embeddedCliGzipBase64: gzipSync('export {};\n').toString('base64'),
       resolveFromWorkspace: false,
     });
     expect(fs.readFileSync(cli.cliPath, 'utf8')).toBe("await import('../dist/cli.mjs');\n");

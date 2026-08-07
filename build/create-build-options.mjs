@@ -1,6 +1,7 @@
 import { buildSync } from 'esbuild';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { gzipSync } from 'zlib';
 import { external } from './externals.mjs';
 import { assertCommunityAudit } from './plugins/assert-community-audit.mjs';
 import { stripReactHoistableScripts } from './plugins/strip-react-hoistable-scripts.mjs';
@@ -35,10 +36,10 @@ function buildEmbeddedSkillsCli() {
   if (!source) {
     throw new Error('Failed to bundle the pinned skills CLI dependency.');
   }
-  return Buffer.from(source).toString('base64');
+  return gzipSync(source, { level: 9 }).toString('base64');
 }
 
-const embeddedSkillsCliBase64 = buildEmbeddedSkillsCli();
+const embeddedSkillsCliGzipBase64 = buildEmbeddedSkillsCli();
 
 /**
  * Returns the common production/development build configuration without deployment side effects.
@@ -74,7 +75,7 @@ export function createBuildOptions({ production, metafile = false, write = true 
     define: {
       'process.env.NODE_ENV': JSON.stringify(production ? 'production' : 'development'),
       __PIVI_RELEASE_VERSION__: JSON.stringify(releaseArtifactVersion),
-      __PIVI_EMBEDDED_SKILLS_CLI_BASE64__: JSON.stringify(embeddedSkillsCliBase64),
+      __PIVI_EMBEDDED_SKILLS_CLI_GZIP_BASE64__: JSON.stringify(embeddedSkillsCliGzipBase64),
     },
     jsx: 'automatic',
     jsxImportSource: 'react',

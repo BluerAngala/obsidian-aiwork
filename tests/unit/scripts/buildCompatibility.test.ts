@@ -20,8 +20,14 @@ describe('shared build compatibility', () => {
   it('uses the same ES2022 runtime options for production and analysis', () => {
     const output = runBuildContract(`
       import { createBuildOptions } from './build/create-build-options.mjs';
+      import { gunzipSync } from 'node:zlib';
       const production = createBuildOptions({ production: true });
       const analysis = createBuildOptions({ production: true, metafile: true, write: false });
+      const embeddedSkillsCli = Buffer.from(
+        JSON.parse(production.define.__PIVI_EMBEDDED_SKILLS_CLI_GZIP_BASE64__),
+        'base64',
+      );
+      const embeddedSkillsCliSource = gunzipSync(embeddedSkillsCli);
       process.stdout.write(JSON.stringify({
         production: {
           target: production.target,
@@ -44,6 +50,13 @@ describe('shared build compatibility', () => {
           metafile: analysis.metafile,
           write: analysis.write,
           plugins: analysis.plugins.map((plugin) => plugin.name),
+        },
+        embeddedSkillsCli: {
+          compressedBytes: embeddedSkillsCli.byteLength,
+          sourceBytes: embeddedSkillsCliSource.byteLength,
+          hasCreateRequireBanner: embeddedSkillsCliSource
+            .toString('utf8')
+            .includes('__piviCreateRequire'),
         },
       }));
     `);
@@ -71,6 +84,11 @@ describe('shared build compatibility', () => {
         write: boolean;
         plugins: string[];
       };
+      embeddedSkillsCli: {
+        compressedBytes: number;
+        sourceBytes: number;
+        hasCreateRequireBanner: boolean;
+      };
     };
 
     expect(options.production).toMatchObject({
@@ -95,6 +113,9 @@ describe('shared build compatibility', () => {
       expect(options.production.external).not.toContain(reactModule);
     }
     expect(options.analysis.plugins).toEqual(options.production.plugins);
+    expect(options.embeddedSkillsCli.compressedBytes)
+      .toBeLessThan(options.embeddedSkillsCli.sourceBytes);
+    expect(options.embeddedSkillsCli.hasCreateRequireBanner).toBe(true);
   });
 
   it('fails the community audit when the bundle references plugin self files', () => {
