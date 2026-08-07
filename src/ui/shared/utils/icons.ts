@@ -37,12 +37,6 @@ export function appendMcpIcon(container: HTMLElement): void {
   container.appendChild(svg);
 }
 
-/** Pi agent / Pivi brand icon. */
-export const PI_CHAT_ICON: ChatIconSvg = {
-  kind: 'pivi-brand',
-  viewBox: '0 0 512 512',
-};
-
 let piviBrandMaskCounter = 0;
 
 function createPiviBrandIconSvg(ownerDocument: Document): SVGElement {

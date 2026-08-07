@@ -27,15 +27,6 @@ function normalizeHeaderMap(headers: Record<string, string> | undefined): Record
   return normalized;
 }
 
-export function stripHeadersFromCustomProviders(
-  customProviders: readonly CustomProviderConfig[],
-): CustomProviderConfig[] {
-  return customProviders.map((provider) => {
-    const { headers: _headers, ...withoutHeaders } = provider;
-    return { ...withoutHeaders };
-  });
-}
-
 /**
  * Move custom provider header maps into SecretStorage. Source configs are
  * returned without headers only after all required writes succeed.

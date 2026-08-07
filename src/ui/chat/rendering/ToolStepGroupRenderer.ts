@@ -4,7 +4,6 @@ import {
 } from '@pivi/pivi-agent-core/foundation';
 import {
   isToolPresentationGroupable,
-  shouldPresentToolCall,
 } from '@pivi/pivi-agent-core/tools/toolPresentation';
 
 import { t } from '@/app/i18n';
@@ -159,29 +158,4 @@ export function appendStepToStreamingGroup(
   requireGroupable(toolCall);
   mountStepRow(state, toolCall, toolCallElements);
   syncGroupHeader(state, getOrderedToolCalls(state));
-}
-
-/** Render visible stored calls as contiguous groups separated by standalone tools. */
-export function renderStoredToolRuns(
-  parentEl: HTMLElement,
-  toolCalls: ToolCallInfo[],
-  renderOptions: ToolContentRenderOptions = {},
-): void {
-  let group: ToolCallInfo[] = [];
-  const flush = () => {
-    if (group.length === 0) return;
-    createToolStepGroup(parentEl, group, undefined, renderOptions);
-    group = [];
-  };
-
-  for (const toolCall of toolCalls) {
-    if (!shouldPresentToolCall(toolCall.name, toolCall.input)) continue;
-    if (isGroupable(toolCall)) {
-      group.push(toolCall);
-      continue;
-    }
-    flush();
-    renderStoredToolCall(parentEl, toolCall, renderOptions);
-  }
-  flush();
 }

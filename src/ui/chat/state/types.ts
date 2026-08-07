@@ -9,7 +9,7 @@ import type {
   ToolCallInfo,
   UsageInfo,
 } from '@pivi/pivi-agent-core/foundation';
-import type { ChatTurnRequest, PiTurnOptions } from '@pivi/pivi-agent-core/runtime';
+import type { ChatTurnRequest } from '@pivi/pivi-agent-core/runtime';
 import type { TodoItem, TodoVisualizationModel } from '@pivi/pivi-agent-core/tools';
 
 /** Queued message waiting to be sent after current streaming completes. */
@@ -95,9 +95,6 @@ export interface ChatStateCallbacks {
   onOpenSessionChanged?: (id: string | null) => void;
   onAttentionChanged?: (needsAttention: boolean) => void;
 }
-
-/** Options for query execution. */
-export type QueryOptions = PiTurnOptions;
 
 export type {
   ChatMessage,

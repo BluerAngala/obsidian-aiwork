@@ -11,29 +11,6 @@ import {
 } from '../dom';
 import { revealInlineContext } from './inlineContextNavigation';
 
-/** Plain-text token stored in the composer and sent to the agent. */
-export function mentionPartToToken(part: MentionBadgePart): string {
-  switch (part.kind) {
-    case 'file':
-      return part.raw;
-    case 'folder':
-      return part.raw;
-    case 'mcp':
-      return part.raw;
-    case 'skill':
-      return part.raw;
-    case 'tool':
-      return part.raw;
-    case 'agent':
-      return part.raw;
-    case 'inline-context':
-    case 'selected-text-template':
-      return part.raw;
-    default:
-      return '';
-  }
-}
-
 export function createInlineMentionBadge(
   part: MentionBadgePart,
   app: App,
@@ -279,38 +256,4 @@ export function insertPlainTextAtSelection(text: string): void {
   range.collapse(true);
   selection.removeAllRanges();
   selection.addRange(range);
-}
-
-export function insertMentionBadgeAtOffset(
-  editor: HTMLElement,
-  contextStart: number,
-  contextEnd: number,
-  part: MentionBadgePart,
-  app: App,
-): void {
-  const startPos = findNodeAtPlainTextOffset(editor, contextStart);
-  const endPos = findNodeAtPlainTextOffset(editor, contextEnd);
-  if (!startPos || !endPos) {
-    return;
-  }
-
-  const sel = getActiveWindow(editor).getSelection();
-  if (!sel) {
-    return;
-  }
-
-  const range = getActiveDocument(editor).createRange();
-  range.setStart(startPos.node, startPos.offset);
-  range.setEnd(endPos.node, endPos.offset);
-  range.deleteContents();
-
-  const badge = createInlineMentionBadge(part, app, editor);
-  const space = getActiveDocument(editor).createTextNode(' ');
-  range.insertNode(space);
-  range.insertNode(badge);
-
-  range.setStartAfter(space);
-  range.collapse(true);
-  sel.removeAllRanges();
-  sel.addRange(range);
 }

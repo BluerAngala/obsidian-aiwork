@@ -43,10 +43,6 @@ export function setTodoWriteStatus(statusEl: HTMLElement, input: Record<string, 
   resetStatusElement(statusEl, isComplete ? 'completed' : 'running');
 }
 
-export function setToolStatus(statusEl: HTMLElement, status: ToolCallInfo['status']): void {
-  resetStatusElement(statusEl, resolveToolActivityStatus({ status }));
-}
-
 export function setApplyPatchHeaderRight(statusEl: HTMLElement, toolCall: ToolCallInfo): void {
   const isError = toolCall.status === 'error' || toolCall.status === 'blocked';
   const stats = isError ? undefined : getApplyPatchDiffStats(toolCall.input);

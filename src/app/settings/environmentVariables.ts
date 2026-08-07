@@ -159,14 +159,6 @@ async function applyEnvironmentEntriesNow(
   await afterEnvironmentPublished(plugin, hooks);
 }
 
-export function applyEnvironmentEntries(
-  plugin: EnvironmentApplyHost,
-  drafts: readonly EnvironmentEntryDraft[],
-  hooks: EnvironmentApplyHooks,
-): Promise<void> {
-  return enqueuePublication(plugin, () => applyEnvironmentEntriesNow(plugin, drafts, hooks));
-}
-
 function preserveEntry(entry: NonNullable<ReturnType<DeviceLocalEnvironmentStore['loadInitialized']>>['entries'][number]): EnvironmentEntryDraft {
   return {
     key: entry.key,

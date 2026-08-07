@@ -129,14 +129,6 @@ export function validateDirectoryPath(p: string): DirectoryValidationResult {
   }
 }
 
-export function isValidDirectoryPath(p: string): boolean {
-  return validateDirectoryPath(p).valid;
-}
-
-export function filterValidPaths(paths: string[]): string[] {
-  return paths.filter(isValidDirectoryPath);
-}
-
 export function isDuplicatePath(newPath: string, existingPaths: string[]): boolean {
   const normalizedNew = normalizePathForComparison(newPath);
   return existingPaths.some(existing => normalizePathForComparison(existing) === normalizedNew);
