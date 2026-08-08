@@ -45,7 +45,7 @@ export function buildTabDOM(
     }),
   });
   richInput.el.setAttribute("dir", "auto");
-  const composerPortalEl = inputWrapper.createDiv({ cls: "pivi-react-composer-slot" });
+  const composerPortalEl = inputContainerEl.createDiv({ cls: "pivi-react-composer-slot" });
 
   return {
     contentEl,

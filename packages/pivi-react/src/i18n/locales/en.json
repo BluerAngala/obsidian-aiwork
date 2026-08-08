@@ -15,7 +15,7 @@
   },
   "chat": {
     "fork": {
-      "ariaLabel": "Fork conversation",
+      "ariaLabel": "Start new conversation from here",
       "notice": "Forked to new tab",
       "failed": "Fork failed: {error}",
       "unavailableStreaming": "Cannot fork while streaming",
@@ -26,7 +26,7 @@
       "commandNoAssistantUuid": "Cannot fork: no assistant response with identifiers"
     },
     "redo": {
-      "ariaLabel": "Redo agent response",
+      "ariaLabel": "Regenerate response",
       "confirmTruncate": "Redoing this response will discard all later messages in this chat. Continue?",
       "confirmTruncateAction": "Redo and discard",
       "failed": "Redo failed: {error}",
@@ -38,7 +38,7 @@
     "messageActions": {
       "copyAriaLabel": "Copy message",
       "copyAgentResponseAriaLabel": "Copy this agent response",
-      "copyConversationAsMarkdownAriaLabel": "Copy conversation through this turn as Markdown",
+      "copyConversationAsMarkdownAriaLabel": "Copy all conversation before this",
       "editAriaLabel": "Edit message",
       "cancelEdit": "Cancel",
       "resendEdit": "Resend",

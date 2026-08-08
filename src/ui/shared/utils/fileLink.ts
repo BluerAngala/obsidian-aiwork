@@ -6,6 +6,7 @@
  */
 
 import type { App, Component, TFile, WorkspaceLeaf } from 'obsidian';
+import { TFolder } from 'obsidian';
 
 import { getVaultFileByPath, revealWorkspaceLeaf } from './obsidianCompat';
 
@@ -274,7 +275,8 @@ async function revealExistingLinkTarget(
 
 function openLinkTarget(app: App, linkTarget: string): void {
   if (!linkTarget) return;
-  const file = resolveFileInVault(app, extractLinkPathFromTarget(linkTarget));
+  const linkPath = extractLinkPathFromTarget(linkTarget);
+  const file = resolveFileInVault(app, linkPath);
   const openLeaf = file ? findOpenLeafForFile(app, file) : null;
   if (file && openLeaf) {
     void revealExistingLinkTarget(app, openLeaf, file, linkTarget).catch(() => {
@@ -282,6 +284,15 @@ function openLinkTarget(app: App, linkTarget: string): void {
     });
     return;
   }
+  
+  // Check if the target is a folder
+  const abstractFile = app.vault.getAbstractFileByPath(linkPath);
+  if (abstractFile instanceof TFolder) {
+    // It's a folder, reveal it in the file explorer
+    void app.workspace.openLinkText('', abstractFile.path, 'tab');
+    return;
+  }
+  
   void app.workspace.openLinkText(linkTarget, '', 'tab');
 }
 

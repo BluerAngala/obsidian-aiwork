@@ -15,7 +15,7 @@
   },
   "chat": {
     "fork": {
-      "ariaLabel": "Разветвить беседу",
+      "ariaLabel": "Начать новый разговор отсюда",
       "notice": "Разветвлено в новую вкладку",
       "failed": "Не удалось разветвить: {error}",
       "unavailableStreaming": "Нельзя разветвить во время потока",
@@ -26,7 +26,7 @@
       "commandNoAssistantUuid": "Нельзя разветвить: нет ответа ассистента с идентификаторами"
     },
     "redo": {
-      "ariaLabel": "Повторить ответ агента",
+      "ariaLabel": "Перегенерировать ответ",
       "confirmTruncate": "Повтор этого ответа удалит все последующие сообщения в этом чате. Продолжить?",
       "confirmTruncateAction": "Повторить и удалить",
       "failed": "Не удалось повторить: {error}",
@@ -38,7 +38,7 @@
     "messageActions": {
       "copyAriaLabel": "Копировать сообщение",
       "copyAgentResponseAriaLabel": "Копировать этот ответ агента",
-      "copyConversationAsMarkdownAriaLabel": "Копировать разговор до этого хода как Markdown",
+      "copyConversationAsMarkdownAriaLabel": "Копировать весь предыдущий разговор",
       "scrollToRecentUserAriaLabel": "К последнему сообщению пользователя",
       "editAriaLabel": "Edit message",
       "cancelEdit": "Отмена",

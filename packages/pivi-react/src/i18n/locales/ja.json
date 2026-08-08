@@ -15,7 +15,7 @@
   },
   "chat": {
     "fork": {
-      "ariaLabel": "会話を分岐",
+      "ariaLabel": "ここから新しい会話を開始",
       "notice": "新しいタブに分岐しました",
       "failed": "分岐に失敗：{error}",
       "unavailableStreaming": "ストリーミング中は分岐できません",
@@ -26,7 +26,7 @@
       "commandNoAssistantUuid": "分岐できません：識別子付きのアシスタント応答がありません"
     },
     "redo": {
-      "ariaLabel": "エージェント応答をやり直す",
+      "ariaLabel": "応答を再生成",
       "confirmTruncate": "この応答をやり直すと、このチャット内の後続メッセージはすべて破棄されます。続行しますか？",
       "confirmTruncateAction": "やり直して破棄",
       "failed": "やり直しに失敗：{error}",
@@ -38,7 +38,7 @@
     "messageActions": {
       "copyAriaLabel": "メッセージをコピー",
       "copyAgentResponseAriaLabel": "このエージェント応答をコピー",
-      "copyConversationAsMarkdownAriaLabel": "このターンまでの会話を Markdown としてコピー",
+      "copyConversationAsMarkdownAriaLabel": "この前のすべての会話をコピー",
       "scrollToRecentUserAriaLabel": "最新のユーザーメッセージへスクロール",
       "editAriaLabel": "Edit message",
       "cancelEdit": "キャンセル",

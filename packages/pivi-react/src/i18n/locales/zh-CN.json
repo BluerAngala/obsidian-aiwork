@@ -15,7 +15,7 @@
   },
   "chat": {
     "fork": {
-      "ariaLabel": "分叉对话",
+      "ariaLabel": "从此开启新对话",
       "notice": "已分叉到新标签页",
       "failed": "分叉失败：{error}",
       "unavailableStreaming": "流式响应中无法分叉",
@@ -26,7 +26,7 @@
       "commandNoAssistantUuid": "无法分叉：没有带标识符的助手回复"
     },
     "redo": {
-      "ariaLabel": "重做助手回复",
+      "ariaLabel": "重新生成回复",
       "confirmTruncate": "重做这条回复会丢弃此聊天中后续的所有消息。要继续吗？",
       "confirmTruncateAction": "重做并丢弃",
       "failed": "重做失败：{error}",
@@ -38,7 +38,7 @@
     "messageActions": {
       "copyAriaLabel": "复制消息",
       "copyAgentResponseAriaLabel": "复制这条助手回复",
-      "copyConversationAsMarkdownAriaLabel": "将截至此轮的对话复制为 Markdown",
+      "copyConversationAsMarkdownAriaLabel": "复制此前所有对话",
       "scrollToRecentUserAriaLabel": "滚动到最近的用户消息",
       "editAriaLabel": "Edit message",
       "cancelEdit": "取消",

@@ -53,10 +53,12 @@
   display: flex;
   flex-direction: column;
   padding-block-end: var(--pivi-spacing-sm);
+  width: 100%;
 }
 
 .pivi-message-virtual-row > .pivi-message {
   flex: 0 0 auto;
+  width: 100%;
 }
 
 /* Ensure user messages align right in virtual rows */
@@ -280,6 +282,8 @@
 /* Response duration footer - styled as another line of content */
 .pivi-response-footer {
   margin-top: var(--pivi-spacing-sm);
+  padding-top: var(--pivi-spacing-sm);
+  border-top: 1px solid var(--pivi-host-border);
 }
 
 /* Shared metadata typography for live agent status and completed response duration. */

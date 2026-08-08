@@ -15,7 +15,7 @@
   },
   "chat": {
     "fork": {
-      "ariaLabel": "Bifurcar conversación",
+      "ariaLabel": "Iniciar nueva conversación desde aquí",
       "notice": "Bifurcada a una pestaña nueva",
       "failed": "Error al bifurcar: {error}",
       "unavailableStreaming": "No se puede bifurcar durante el streaming",
@@ -26,7 +26,7 @@
       "commandNoAssistantUuid": "No se puede bifurcar: no hay respuesta del asistente con identificadores"
     },
     "redo": {
-      "ariaLabel": "Rehacer respuesta del agente",
+      "ariaLabel": "Regenerar respuesta",
       "confirmTruncate": "Rehacer esta respuesta descartará todos los mensajes posteriores de este chat. ¿Continuar?",
       "confirmTruncateAction": "Rehacer y descartar",
       "failed": "Error al rehacer: {error}",
@@ -38,7 +38,7 @@
     "messageActions": {
       "copyAriaLabel": "Copiar mensaje",
       "copyAgentResponseAriaLabel": "Copiar esta respuesta del agente",
-      "copyConversationAsMarkdownAriaLabel": "Copiar la conversación hasta este turno como Markdown",
+      "copyConversationAsMarkdownAriaLabel": "Copiar toda la conversación anterior",
       "scrollToRecentUserAriaLabel": "Ir al mensaje de usuario más reciente",
       "editAriaLabel": "Edit message",
       "cancelEdit": "Cancelar",

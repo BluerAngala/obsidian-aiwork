@@ -15,7 +15,7 @@
   },
   "chat": {
     "fork": {
-      "ariaLabel": "Konversation verzweigen",
+      "ariaLabel": "Neue Unterhaltung von hier starten",
       "notice": "In neuem Tab verzweigt",
       "failed": "Verzweigung fehlgeschlagen: {error}",
       "unavailableStreaming": "Verzweigung während des Streamings nicht möglich",
@@ -26,7 +26,7 @@
       "commandNoAssistantUuid": "Verzweigung nicht möglich: keine Assistentenantwort mit Kennungen"
     },
     "redo": {
-      "ariaLabel": "Agentenantwort erneut erstellen",
+      "ariaLabel": "Antwort neu generieren",
       "confirmTruncate": "Wenn diese Antwort erneut erstellt wird, werden alle späteren Nachrichten in diesem Chat verworfen. Fortfahren?",
       "confirmTruncateAction": "Erneut erstellen und verwerfen",
       "failed": "Wiederholen fehlgeschlagen: {error}",
@@ -38,7 +38,7 @@
     "messageActions": {
       "copyAriaLabel": "Nachricht kopieren",
       "copyAgentResponseAriaLabel": "Diese Agentenantwort kopieren",
-      "copyConversationAsMarkdownAriaLabel": "Unterhaltung bis zu diesem Turn als Markdown kopieren",
+      "copyConversationAsMarkdownAriaLabel": "Alle Unterhaltungen vor dieser kopieren",
       "scrollToRecentUserAriaLabel": "Zur neuesten Benutzernachricht scrollen",
       "editAriaLabel": "Edit message",
       "cancelEdit": "Abbrechen",

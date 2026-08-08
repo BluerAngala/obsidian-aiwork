@@ -75,8 +75,8 @@ export function ComposerChrome({
             type="button"
           >
             {queuesMessage
-              ? <QueueMessageIcon />
-              : <PlatformIcon name={stopsResponse ? 'square' : 'arrow-up'} />}
+              ? <><QueueMessageIcon /><span className="pivi-send-button-label">{t('chat.composer.queueTitle')}</span></>
+              : <><PlatformIcon name={stopsResponse ? 'square' : 'arrow-up'} /><span className="pivi-send-button-label">{stopsResponse ? t('chat.composer.stopTitle') : t('chat.composer.sendTitle')}</span></>}
           </button>
         </div>
       </div>

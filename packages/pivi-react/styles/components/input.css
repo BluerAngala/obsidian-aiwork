@@ -172,13 +172,13 @@
   user-select: none;
 }
 
-/* Input toolbar */
+/* Input toolbar - positioned outside input wrapper */
 .pivi-input-toolbar {
   display: flex;
   align-items: center;
   justify-content: flex-start;
   flex-shrink: 0;
-  padding: 4px 6px 6px 6px;
+  padding: 6px 6px 4px 6px;
   gap: var(--pivi-spacing-xs);
 }
 
@@ -241,20 +241,23 @@
 }
 
 .pivi-send-button {
-  width: 24px;
-  height: 24px;
-  padding: 0;
+  width: auto;
+  height: 28px;
+  padding: 0 10px;
   margin: 0;
   border: none;
-  border-radius: var(--pivi-radius-pill);
+  border-radius: var(--pivi-radius-sm);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 4px;
   outline: none;
   appearance: none;
   box-shadow: none;
   flex-shrink: 0;
+  font-size: var(--pivi-text-xs);
+  font-weight: 500;
   transition:
     background-color var(--pivi-duration-fast) var(--pivi-ease-out),
     color var(--pivi-duration-fast) var(--pivi-ease-out),
@@ -267,21 +270,27 @@
   height: 14px;
 }
 
+.pivi-send-button-label {
+  font-size: var(--pivi-text-xs);
+  font-weight: 500;
+  line-height: 1;
+}
+
 .pivi-send-button.pivi-send-disabled {
-  background: transparent;
-  color: var(--pivi-host-text-faint);
+  background: var(--pivi-host-background-secondary);
+  color: var(--pivi-host-text-muted);
   cursor: default;
-  opacity: 0.45;
+  opacity: 0.6;
 }
 
 .pivi-send-button.pivi-send-ready {
   background: var(--pivi-host-interactive-accent);
-  color: var(--pivi-host-text-on-accent);
+  color: #ffffff;
 }
 
 .pivi-send-button.pivi-send-queue {
   background: var(--pivi-host-interactive-accent);
-  color: var(--pivi-host-text-on-accent);
+  color: #ffffff;
 }
 
 .pivi-send-button.pivi-send-queue svg {

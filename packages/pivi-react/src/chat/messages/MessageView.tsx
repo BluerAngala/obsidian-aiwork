@@ -222,13 +222,12 @@ export const MessageView = memo(function MessageView({ actions, contentAdapters,
 
   const canCopy = !hideActions && actions.canCopy(message);
   const showEdit = !hideActions && message.role === 'user' && actions.editAndResend !== undefined;
-  const showScroll = !hideActions && message.role === 'assistant';
   const showRedo = !hideActions && message.role === 'assistant' && actions.canRedo(message.id);
   const showFork = !hideActions && message.role === 'assistant' && actions.canFork(message);
   const showMarkdownCopy = !hideActions
     && message.role === 'assistant'
     && actions.copyConversationAsMarkdown !== undefined;
-  const showActions = canCopy || showEdit || showMarkdownCopy || showScroll || showRedo || showFork;
+  const showActions = canCopy || showEdit || showMarkdownCopy || showRedo || showFork;
   const roleActionsClass = message.role === 'user'
     ? 'pivi-user-msg-actions'
     : 'pivi-assistant-msg-actions';
@@ -332,18 +331,6 @@ export const MessageView = memo(function MessageView({ actions, contentAdapters,
                 onCopy={() => actions.copyConversationAsMarkdown?.(message.id)}
                 roleClass="pivi-conversation-markdown-copy-btn"
               />
-            )
-            : null}
-          {showScroll
-            ? (
-              <button
-                aria-label={t('chat.messageActions.scrollToRecentUserAriaLabel')}
-                className="pivi-message-action-btn pivi-message-scroll-user-btn"
-                onClick={() => actions.scrollToRecentUser(message.id)}
-                type="button"
-              >
-                <PlatformIcon name="user" />
-              </button>
             )
             : null}
           {showRedo

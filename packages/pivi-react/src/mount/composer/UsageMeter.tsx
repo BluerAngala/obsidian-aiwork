@@ -25,11 +25,10 @@ export function UsageMeter({ usage }: { usage: UsageInfo | null }) {
       });
 
   return (
-    <div className="pivi-context-meter">
+    <div className="pivi-context-meter" data-tooltip={label}>
       <span
         aria-label={label}
         className={`pivi-context-meter-gauge pivi-context-meter-gauge-input${contextLengthUnknown ? ' unknown' : pressurePercentage > 80 ? ' warning' : ''}`}
-        data-tooltip={label}
         role="img"
       >
         <svg aria-hidden="true" height="16" viewBox="0 0 16 16" width="16">
@@ -48,6 +47,9 @@ export function UsageMeter({ usage }: { usage: UsageInfo | null }) {
             ? <text className="pivi-meter-unknown-mark" textAnchor="middle" x="8" y="11.5">!</text>
             : null}
         </svg>
+      </span>
+      <span className="pivi-context-meter-label">
+        {contextLengthUnknown ? '!' : `${totalPercentage}%`}
       </span>
     </div>
   );
