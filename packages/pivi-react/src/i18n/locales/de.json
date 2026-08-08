@@ -39,7 +39,8 @@
       "copyAriaLabel": "Nachricht kopieren",
       "copyAgentResponseAriaLabel": "Diese Agentenantwort kopieren",
       "copyConversationAsMarkdownAriaLabel": "Unterhaltung bis zu diesem Turn als Markdown kopieren",
-      "scrollToRecentUserAriaLabel": "Zur neuesten Benutzernachricht scrollen"
+      "scrollToRecentUserAriaLabel": "Zur neuesten Benutzernachricht scrollen",
+      "editAriaLabel": "Edit message"
     },
     "messageImages": {
       "lightboxAria": "Bildvorschau",
@@ -70,10 +71,76 @@
       "confirm": "Bestätigen",
       "deny": "Ablehnen",
       "management": {
-        "titles": { "mcp": { "upsert": "MCP-Server „{name}“ aktualisieren", "enable": "MCP-Server „{name}“ aktivieren", "disable": "MCP-Server „{name}“ deaktivieren", "remove": "MCP-Server „{name}“ entfernen" }, "skills": { "install": "Skills aus „{source}“ installieren", "enable": "Skill „{name}“ aktivieren", "disable": "Skill „{name}“ deaktivieren", "update": "Skill „{name}“ aktualisieren", "updateAll": "Alle paketverwalteten Skills aktualisieren", "remove": "Skill „{name}“ entfernen" }, "commands": { "upsert": "Befehl {command} speichern", "remove": "Befehl {command} entfernen", "move": "Befehl {command} verschieben" } },
-        "changes": { "mcpUpsert": "Die geplante MCP-Serverkonfiguration anwenden.", "mcpEnable": "Diesen MCP-Server aktivieren.", "mcpDisable": "Diesen MCP-Server deaktivieren.", "mcpRemove": "Diesen MCP-Server und seine Zugangsdaten entfernen.", "skillsInstall": "Skills über den festgelegten Paketablauf installieren.", "skillsEnable": "Diesen Skill aktivieren.", "skillsDisable": "Diesen Skill deaktivieren.", "skillsUpdate": "Diesen Skill aus seiner Paketquelle aktualisieren.", "skillsUpdateAll": "Alle paketverwalteten Skills aktualisieren.", "skillsRemove": "Diesen Skill aus dem Arbeitsbereich entfernen.", "commandsUpsert": "Diesen Arbeitsbereichsbefehl erstellen oder aktualisieren.", "commandsRemove": "Diesen Arbeitsbereichsbefehl löschen.", "commandsMove": "Diesen Arbeitsbereichsbefehl neu anordnen." },
-        "fields": { "server": "Server", "enabled": "Aktiviert", "type": "Typ", "command": "Befehl", "args": "Argumente", "envNames": "Umgebungsvariablen", "url": "URL", "auth": "Authentifizierung", "headerNames": "Headernamen", "bearerToken": "Bearer-Token", "oauth": "OAuth", "oauthGrant": "OAuth-Grant", "oauthClientId": "OAuth-Client-ID", "oauthScope": "OAuth-Bereich", "oauthClientSecret": "OAuth-Client-Secret", "contextSaving": "Kontextspeicherung", "disabledTools": "Deaktivierte Werkzeuge", "source": "Quelle", "skills": "Skills", "skill": "Skill", "catalogRevision": "Katalogrevision", "icon": "Symbol", "prompt": "Prompt", "before": "Vor", "after": "Nach" },
-        "values": { "yes": "Ja", "no": "Nein", "clear": "Löschen", "disabled": "Deaktiviert", "updated": "Aktualisiert" }
+        "titles": {
+          "mcp": {
+            "upsert": "MCP-Server „{name}“ aktualisieren",
+            "enable": "MCP-Server „{name}“ aktivieren",
+            "disable": "MCP-Server „{name}“ deaktivieren",
+            "remove": "MCP-Server „{name}“ entfernen"
+          },
+          "skills": {
+            "install": "Skills aus „{source}“ installieren",
+            "enable": "Skill „{name}“ aktivieren",
+            "disable": "Skill „{name}“ deaktivieren",
+            "update": "Skill „{name}“ aktualisieren",
+            "updateAll": "Alle paketverwalteten Skills aktualisieren",
+            "remove": "Skill „{name}“ entfernen"
+          },
+          "commands": {
+            "upsert": "Befehl {command} speichern",
+            "remove": "Befehl {command} entfernen",
+            "move": "Befehl {command} verschieben"
+          }
+        },
+        "changes": {
+          "mcpUpsert": "Die geplante MCP-Serverkonfiguration anwenden.",
+          "mcpEnable": "Diesen MCP-Server aktivieren.",
+          "mcpDisable": "Diesen MCP-Server deaktivieren.",
+          "mcpRemove": "Diesen MCP-Server und seine Zugangsdaten entfernen.",
+          "skillsInstall": "Skills über den festgelegten Paketablauf installieren.",
+          "skillsEnable": "Diesen Skill aktivieren.",
+          "skillsDisable": "Diesen Skill deaktivieren.",
+          "skillsUpdate": "Diesen Skill aus seiner Paketquelle aktualisieren.",
+          "skillsUpdateAll": "Alle paketverwalteten Skills aktualisieren.",
+          "skillsRemove": "Diesen Skill aus dem Arbeitsbereich entfernen.",
+          "commandsUpsert": "Diesen Arbeitsbereichsbefehl erstellen oder aktualisieren.",
+          "commandsRemove": "Diesen Arbeitsbereichsbefehl löschen.",
+          "commandsMove": "Diesen Arbeitsbereichsbefehl neu anordnen."
+        },
+        "fields": {
+          "server": "Server",
+          "enabled": "Aktiviert",
+          "type": "Typ",
+          "command": "Befehl",
+          "args": "Argumente",
+          "envNames": "Umgebungsvariablen",
+          "url": "URL",
+          "auth": "Authentifizierung",
+          "headerNames": "Headernamen",
+          "bearerToken": "Bearer-Token",
+          "oauth": "OAuth",
+          "oauthGrant": "OAuth-Grant",
+          "oauthClientId": "OAuth-Client-ID",
+          "oauthScope": "OAuth-Bereich",
+          "oauthClientSecret": "OAuth-Client-Secret",
+          "contextSaving": "Kontextspeicherung",
+          "disabledTools": "Deaktivierte Werkzeuge",
+          "source": "Quelle",
+          "skills": "Skills",
+          "skill": "Skill",
+          "catalogRevision": "Katalogrevision",
+          "icon": "Symbol",
+          "prompt": "Prompt",
+          "before": "Vor",
+          "after": "Nach"
+        },
+        "values": {
+          "yes": "Ja",
+          "no": "Nein",
+          "clear": "Löschen",
+          "disabled": "Deaktiviert",
+          "updated": "Aktualisiert"
+        }
       }
     },
     "capabilityApproval": {

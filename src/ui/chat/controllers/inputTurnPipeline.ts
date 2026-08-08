@@ -15,6 +15,7 @@ import { queueTurnWhileStreaming } from '@/ui/chat/composer/ComposerStreamingQue
 import { beginOutgoingTurn } from '@/ui/chat/composer/ComposerTurnLifecycle';
 import { notifyIfContextOverLimit } from '@/ui/chat/composer/contextOverLimitNotice';
 
+import type { ChatState } from '../state/ChatState';
 import type { RichChatInput } from '../ui/RichChatInput';
 import type { InputControllerDeps } from './InputController';
 
@@ -268,14 +269,7 @@ export class InputTurnPipeline {
         onAssistantText: options?.onAssistantText,
       }));
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      const content = `\n\n**Error:** ${errorMsg}`;
-      assistantMsg.content += content;
-      assistantMsg.contentBlocks = [
-        ...(assistantMsg.contentBlocks ?? []),
-        { type: 'text', content },
-      ];
-      state.notifyMessageChanged(assistantMsg);
+      this.handleTurnError(error, assistantMsg, state, shouldUseInput, displayContent, inputEl);
     } finally {
       await this.finalizeOutgoingTurn({
         streamGeneration,
@@ -456,6 +450,27 @@ export class InputTurnPipeline {
     const { state } = this.host.deps;
     if (state.currentTodos && state.currentTodos.every(t => t.status === 'completed')) {
       state.currentTodos = null;
+    }
+  }
+
+  private handleTurnError(
+    error: unknown,
+    assistantMsg: ChatMessage,
+    state: ChatState,
+    shouldUseInput: boolean,
+    displayContent: string,
+    inputEl: RichChatInput,
+  ): void {
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+    const errorContent = `\n\n**Error:** ${errorMsg}`;
+    assistantMsg.content += errorContent;
+    assistantMsg.contentBlocks = [
+      ...(assistantMsg.contentBlocks ?? []),
+      { type: 'text', content: errorContent },
+    ];
+    state.notifyMessageChanged(assistantMsg);
+    if (shouldUseInput) {
+      inputEl.value = displayContent;
     }
   }
 

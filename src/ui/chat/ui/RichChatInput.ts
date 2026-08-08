@@ -4,6 +4,7 @@ import { getOrderedListEnterEdit } from '@/ui/chat/composer/markdownListContinua
 import {
   buildComposerFromText,
   extractComposerContent,
+  insertPlainTextAtSelection,
 } from '@/ui/shared/mention/inlineMentionBadgeDom';
 import {
   MentionInput,
@@ -42,6 +43,32 @@ export class RichChatInput extends MentionInput {
     } finally {
       this.isSyncing = false;
     }
+    this.dispatchInputEvent();
+  }
+
+  /** Inserts a file mention token (e.g. `@path/note.md`) at the cursor position. */
+  insertFileMention(filePath: string): void {
+    const token = `@${filePath}`;
+    const { text, cursorPos } = extractComposerContent(this.el);
+    const prefix = text.slice(0, cursorPos);
+    const needsSpace = prefix.length > 0 && !prefix.endsWith(' ') && !prefix.endsWith('\n');
+    this.focus();
+    insertPlainTextAtSelection((needsSpace ? ' ' : '') + token + ' ');
+    this.syncMentionBadgesFromContent();
+    this.updateEmptyState();
+    this.dispatchInputEvent();
+  }
+
+  /** Inserts a folder mention token (e.g. `@folder/`) at the cursor position. */
+  insertFolderMention(folderPath: string): void {
+    const token = `@${folderPath}/`;
+    const { text, cursorPos } = extractComposerContent(this.el);
+    const prefix = text.slice(0, cursorPos);
+    const needsSpace = prefix.length > 0 && !prefix.endsWith(' ') && !prefix.endsWith('\n');
+    this.focus();
+    insertPlainTextAtSelection((needsSpace ? ' ' : '') + token + ' ');
+    this.syncMentionBadgesFromContent();
+    this.updateEmptyState();
     this.dispatchInputEvent();
   }
 

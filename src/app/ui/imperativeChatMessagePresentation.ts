@@ -47,6 +47,10 @@ async function copyMessage(tab: TabData, message: ChatMessage): Promise<void> {
   if (clipboard?.writeText) await clipboard.writeText(content);
 }
 
+function editAndResendMessage(tab: TabData, message: ChatMessage, newContent: string): void {
+  void tab.controllers.inputController?.sendMessage({ content: newContent });
+}
+
 const MARKDOWN_COPY_PAGE_SIZE = 100;
 
 async function copyConversationAsMarkdown(
@@ -107,6 +111,7 @@ export function createMessagePresentation(
       copyConversationAsMarkdown: messageId => (
         copyConversationAsMarkdown(tab, sessions, messageId)
       ),
+      editAndResend: (message, newContent) => editAndResendMessage(tab, message, newContent),
       fork: messageId => tab.renderer?.forkCallback?.(messageId),
       redo: messageId => tab.renderer?.redoCallback?.(messageId),
       scrollToRecentUser: messageId => viewportHandle?.scrollToRecentUser(messageId),

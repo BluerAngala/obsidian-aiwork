@@ -39,6 +39,7 @@
       "copyAriaLabel": "Copy message",
       "copyAgentResponseAriaLabel": "Copy this agent response",
       "copyConversationAsMarkdownAriaLabel": "Copy conversation through this turn as Markdown",
+      "editAriaLabel": "Edit message",
       "scrollToRecentUserAriaLabel": "Scroll to most recent user message"
     },
     "messageImages": {

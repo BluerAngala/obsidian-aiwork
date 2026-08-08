@@ -1,5 +1,6 @@
 import type { ChatMessage, ImageAttachment } from '@pivi/pivi-agent-core/foundation';
-import { memo, useEffect, useRef, useState } from 'react';
+import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 
 import { useT } from '../../i18n';
 import { PlatformIcon } from '../../icons';
@@ -157,9 +158,51 @@ export interface MessageViewProps {
 /** The sole React owner of a visible message shell and its action toolbar. */
 export const MessageView = memo(function MessageView({ actions, contentAdapters, hideActions = false, isStreaming = false, message, projectionStore }: MessageViewProps) {
   const t = useT();
+  const [isEditing, setIsEditing] = useState(false);
+  const editTextRef = useRef<string>('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const messageRef = useRef(message);
+  messageRef.current = message;
   const getLatestMessage = () => (
-    projectionStore?.getMessageSnapshot(message.id) as ChatMessage | null
-  ) ?? message;
+    projectionStore?.getMessageSnapshot(messageRef.current.id) as ChatMessage | null
+  ) ?? messageRef.current;
+
+  const startEditing = useCallback(() => {
+    const msg = messageRef.current;
+    if (msg.role !== 'user' || !actions.editAndResend || hideActions) return;
+    editTextRef.current = msg.displayContent ?? msg.content;
+    setIsEditing(true);
+  }, [actions.editAndResend, hideActions]);
+
+  const handleDoubleClick = useCallback(() => {
+    startEditing();
+  }, [startEditing]);
+
+  const handleEditKeyDown = useCallback((e: ReactKeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      const newContent = editTextRef.current.trim();
+      if (newContent) {
+        const latestMsg = (projectionStore?.getMessageSnapshot(messageRef.current.id) as ChatMessage | null) ?? messageRef.current;
+        void Promise.resolve(actions.editAndResend?.(latestMsg, newContent));
+      }
+      setIsEditing(false);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setIsEditing(false);
+    }
+  }, [actions, projectionStore]);
+
+  useEffect(() => {
+    if (isEditing && textareaRef.current) {
+      textareaRef.current.focus();
+      textareaRef.current.setSelectionRange(
+        textareaRef.current.value.length,
+        textareaRef.current.value.length,
+      );
+    }
+  }, [isEditing]);
+
   if (message.isRebuiltContext) return null;
 
   const hasVisibleAssistant = message.role === 'assistant' && messageHasVisibleAssistantContent(message);
@@ -178,13 +221,14 @@ export const MessageView = memo(function MessageView({ actions, contentAdapters,
   if (message.role === 'assistant' && !hasVisibleAssistant) return null;
 
   const canCopy = !hideActions && actions.canCopy(message);
+  const showEdit = !hideActions && message.role === 'user' && actions.editAndResend !== undefined;
   const showScroll = !hideActions && message.role === 'assistant';
   const showRedo = !hideActions && message.role === 'assistant' && actions.canRedo(message.id);
   const showFork = !hideActions && message.role === 'assistant' && actions.canFork(message);
   const showMarkdownCopy = !hideActions
     && message.role === 'assistant'
     && actions.copyConversationAsMarkdown !== undefined;
-  const showActions = canCopy || showMarkdownCopy || showScroll || showRedo || showFork;
+  const showActions = canCopy || showEdit || showMarkdownCopy || showScroll || showRedo || showFork;
   const roleActionsClass = message.role === 'user'
     ? 'pivi-user-msg-actions'
     : 'pivi-assistant-msg-actions';
@@ -200,7 +244,23 @@ export const MessageView = memo(function MessageView({ actions, contentAdapters,
     >
       <div className="pivi-message-content" dir="auto">
         {message.role === 'user'
-          ? <UserContent contentAdapters={contentAdapters} message={message} />
+          ? isEditing
+            ? (
+              <textarea
+                className="pivi-message-inline-edit"
+                defaultValue={message.displayContent ?? message.content}
+                onBlur={() => setIsEditing(false)}
+                onChange={(e) => { editTextRef.current = e.target.value; }}
+                onKeyDown={handleEditKeyDown}
+                ref={textareaRef}
+                rows={3}
+              />
+            )
+            : (
+              <div onDoubleClick={handleDoubleClick}>
+                <UserContent contentAdapters={contentAdapters} message={message} />
+              </div>
+            )
           : (
             <>
               <AssistantContentView contentAdapters={contentAdapters} isStreaming={isStreaming} message={message} projectionStore={projectionStore} />
@@ -221,6 +281,18 @@ export const MessageView = memo(function MessageView({ actions, contentAdapters,
                   ? 'pivi-user-msg-copy-btn'
                   : 'pivi-assistant-msg-copy-btn'}
               />
+            )
+            : null}
+          {showEdit
+            ? (
+              <button
+                aria-label={t('chat.messageActions.editAriaLabel')}
+                className="pivi-message-action-btn pivi-message-edit-btn pivi-user-msg-edit-btn"
+                onClick={startEditing}
+                type="button"
+              >
+                <PlatformIcon name="pencil" />
+              </button>
             )
             : null}
           {showMarkdownCopy

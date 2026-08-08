@@ -150,6 +150,17 @@ export class FileContextManager {
   }
 
   /**
+   * Attaches a vault file by path. The file will be included in the next turn's
+   * context_files. Triggers a chip refresh so the context row updates.
+   */
+  attachFile(path: string): void {
+    const normalized = this.normalizePathForVault(path);
+    if (!normalized) return;
+    this.state.attachFile(normalized);
+    this.callbacks.onChipsChanged?.();
+  }
+
+  /**
    * Paths for `<context_files>`: explicit chip attachments plus all files under @folder mentions.
    * Folder expansion is path-only; file contents are not read here.
    */

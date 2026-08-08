@@ -25,7 +25,7 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  min-height: var(--pivi-input-wrapper-height, 210px);
+  min-height: var(--pivi-input-wrapper-height, 140px);
   border: 1px solid var(--pivi-host-border);
   border-radius: var(--pivi-radius-sm);
   background: var(--pivi-host-background-primary);

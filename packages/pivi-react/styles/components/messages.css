@@ -488,3 +488,20 @@
   font-family: var(--pivi-font-monospace);
   font-size: var(--pivi-text-xs);
 }
+
+/* Inline message edit textarea (double-click on user message) */
+.pivi-message-inline-edit {
+  width: 100%;
+  min-height: 60px;
+  padding: 8px 10px;
+  border: 1px solid var(--pivi-host-interactive-accent);
+  border-radius: var(--pivi-radius-sm);
+  background: var(--pivi-host-background-primary);
+  color: var(--pivi-host-text-normal);
+  font-family: inherit;
+  font-size: var(--pivi-text-body);
+  line-height: var(--pivi-chat-line-height, 1.4);
+  resize: vertical;
+  outline: none;
+  box-shadow: 0 0 0 1px var(--pivi-host-interactive-accent);
+}

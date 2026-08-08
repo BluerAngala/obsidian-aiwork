@@ -39,7 +39,8 @@
       "copyAriaLabel": "메시지 복사",
       "copyAgentResponseAriaLabel": "이 에이전트 응답 복사",
       "copyConversationAsMarkdownAriaLabel": "이 턴까지의 대화를 Markdown으로 복사",
-      "scrollToRecentUserAriaLabel": "가장 최근 사용자 메시지로 스크롤"
+      "scrollToRecentUserAriaLabel": "가장 최근 사용자 메시지로 스크롤",
+      "editAriaLabel": "Edit message"
     },
     "inlineContext": {
       "addSelectionToChatInput": "선택 영역을 채팅에 추가",
@@ -65,10 +66,76 @@
       "confirm": "확인",
       "deny": "거부",
       "management": {
-        "titles": { "mcp": { "upsert": "MCP 서버 “{name}” 업데이트", "enable": "MCP 서버 “{name}” 활성화", "disable": "MCP 서버 “{name}” 비활성화", "remove": "MCP 서버 “{name}” 제거" }, "skills": { "install": "“{source}”에서 Skills 설치", "enable": "Skill “{name}” 활성화", "disable": "Skill “{name}” 비활성화", "update": "Skill “{name}” 업데이트", "updateAll": "패키지로 관리되는 모든 Skills 업데이트", "remove": "Skill “{name}” 제거" }, "commands": { "upsert": "명령 {command} 저장", "remove": "명령 {command} 제거", "move": "명령 {command} 이동" } },
-        "changes": { "mcpUpsert": "계획된 MCP 서버 구성을 적용합니다.", "mcpEnable": "이 MCP 서버를 활성화합니다.", "mcpDisable": "이 MCP 서버를 비활성화합니다.", "mcpRemove": "이 MCP 서버와 자격 증명을 제거합니다.", "skillsInstall": "고정된 패키지 절차로 Skills를 설치합니다.", "skillsEnable": "이 Skill을 활성화합니다.", "skillsDisable": "이 Skill을 비활성화합니다.", "skillsUpdate": "패키지 출처에서 이 Skill을 업데이트합니다.", "skillsUpdateAll": "패키지로 관리되는 모든 Skills를 업데이트합니다.", "skillsRemove": "워크스페이스에서 이 Skill을 제거합니다.", "commandsUpsert": "이 워크스페이스 명령을 만들거나 업데이트합니다.", "commandsRemove": "이 워크스페이스 명령을 삭제합니다.", "commandsMove": "이 워크스페이스 명령의 순서를 바꿉니다." },
-        "fields": { "server": "서버", "enabled": "활성화", "type": "유형", "command": "명령", "args": "인수", "envNames": "환경 변수 이름", "url": "URL", "auth": "인증", "headerNames": "헤더 이름", "bearerToken": "Bearer 토큰", "oauth": "OAuth", "oauthGrant": "OAuth 권한 부여", "oauthClientId": "OAuth 클라이언트 ID", "oauthScope": "OAuth 범위", "oauthClientSecret": "OAuth 클라이언트 비밀", "contextSaving": "컨텍스트 절약", "disabledTools": "비활성화된 도구", "source": "소스", "skills": "Skills", "skill": "Skill", "catalogRevision": "카탈로그 리비전", "icon": "아이콘", "prompt": "프롬프트", "before": "앞", "after": "뒤" },
-        "values": { "yes": "예", "no": "아니요", "clear": "지우기", "disabled": "비활성화", "updated": "업데이트됨" }
+        "titles": {
+          "mcp": {
+            "upsert": "MCP 서버 “{name}” 업데이트",
+            "enable": "MCP 서버 “{name}” 활성화",
+            "disable": "MCP 서버 “{name}” 비활성화",
+            "remove": "MCP 서버 “{name}” 제거"
+          },
+          "skills": {
+            "install": "“{source}”에서 Skills 설치",
+            "enable": "Skill “{name}” 활성화",
+            "disable": "Skill “{name}” 비활성화",
+            "update": "Skill “{name}” 업데이트",
+            "updateAll": "패키지로 관리되는 모든 Skills 업데이트",
+            "remove": "Skill “{name}” 제거"
+          },
+          "commands": {
+            "upsert": "명령 {command} 저장",
+            "remove": "명령 {command} 제거",
+            "move": "명령 {command} 이동"
+          }
+        },
+        "changes": {
+          "mcpUpsert": "계획된 MCP 서버 구성을 적용합니다.",
+          "mcpEnable": "이 MCP 서버를 활성화합니다.",
+          "mcpDisable": "이 MCP 서버를 비활성화합니다.",
+          "mcpRemove": "이 MCP 서버와 자격 증명을 제거합니다.",
+          "skillsInstall": "고정된 패키지 절차로 Skills를 설치합니다.",
+          "skillsEnable": "이 Skill을 활성화합니다.",
+          "skillsDisable": "이 Skill을 비활성화합니다.",
+          "skillsUpdate": "패키지 출처에서 이 Skill을 업데이트합니다.",
+          "skillsUpdateAll": "패키지로 관리되는 모든 Skills를 업데이트합니다.",
+          "skillsRemove": "워크스페이스에서 이 Skill을 제거합니다.",
+          "commandsUpsert": "이 워크스페이스 명령을 만들거나 업데이트합니다.",
+          "commandsRemove": "이 워크스페이스 명령을 삭제합니다.",
+          "commandsMove": "이 워크스페이스 명령의 순서를 바꿉니다."
+        },
+        "fields": {
+          "server": "서버",
+          "enabled": "활성화",
+          "type": "유형",
+          "command": "명령",
+          "args": "인수",
+          "envNames": "환경 변수 이름",
+          "url": "URL",
+          "auth": "인증",
+          "headerNames": "헤더 이름",
+          "bearerToken": "Bearer 토큰",
+          "oauth": "OAuth",
+          "oauthGrant": "OAuth 권한 부여",
+          "oauthClientId": "OAuth 클라이언트 ID",
+          "oauthScope": "OAuth 범위",
+          "oauthClientSecret": "OAuth 클라이언트 비밀",
+          "contextSaving": "컨텍스트 절약",
+          "disabledTools": "비활성화된 도구",
+          "source": "소스",
+          "skills": "Skills",
+          "skill": "Skill",
+          "catalogRevision": "카탈로그 리비전",
+          "icon": "아이콘",
+          "prompt": "프롬프트",
+          "before": "앞",
+          "after": "뒤"
+        },
+        "values": {
+          "yes": "예",
+          "no": "아니요",
+          "clear": "지우기",
+          "disabled": "비활성화",
+          "updated": "업데이트됨"
+        }
       }
     },
     "capabilityApproval": {
