@@ -68,6 +68,7 @@ function createToolbarTab(state: ChatState): TabData {
     dom: {
       richInput: { value: '', el: document.createElement('div') } as never,
       inputWrapper: document.createElement('div'),
+      resizeHandleEl: document.createElement('div'),
       eventCleanups: [],
     } as never,
     renderer: null,

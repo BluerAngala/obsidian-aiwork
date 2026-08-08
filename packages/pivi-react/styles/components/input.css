@@ -25,10 +25,39 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  min-height: 210px;
+  min-height: var(--pivi-input-wrapper-height, 210px);
   border: 1px solid var(--pivi-host-border);
   border-radius: var(--pivi-radius-sm);
   background: var(--pivi-host-background-primary);
+}
+
+/* Drag-to-resize handle at top of input wrapper */
+.pivi-input-resize-handle {
+  position: relative;
+  height: 6px;
+  flex-shrink: 0;
+  cursor: row-resize;
+  user-select: none;
+  touch-action: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pivi-input-resize-handle::after {
+  content: '';
+  width: 32px;
+  height: 3px;
+  border-radius: 2px;
+  background: transparent;
+  transition: background var(--pivi-duration-fast) var(--pivi-ease-out),
+    width var(--pivi-duration-fast) var(--pivi-ease-out);
+}
+
+.pivi-input-resize-handle:hover::after,
+.pivi-input-resize-handle.is-dragging::after {
+  width: 48px;
+  background: var(--pivi-host-text-faint);
 }
 
 /* Context row (file chip start, selection indicator end) - inside input wrapper at top */

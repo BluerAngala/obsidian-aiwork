@@ -51,7 +51,14 @@ describe('RichChatInput Markdown behavior', () => {
     const sendMessage = jest.fn(async () => undefined);
     const tab = {
       controllers: { inputController: { sendMessage } },
-      dom: { contentEl, eventCleanups: [], messagesEl, richInput: input },
+      dom: {
+        contentEl,
+        eventCleanups: [],
+        inputWrapper: contentEl,
+        messagesEl,
+        resizeHandleEl: contentEl.createDiv(),
+        richInput: input,
+      },
       state: { autoScrollEnabled: true, isStreaming: false },
       ui: {
         composerActions: null,
@@ -98,7 +105,14 @@ describe('RichChatInput Markdown behavior', () => {
     const sendMessage = jest.fn(async () => undefined);
     const tab = {
       controllers: { inputController: { sendMessage } },
-      dom: { contentEl, eventCleanups: [], messagesEl, richInput: input },
+      dom: {
+        contentEl,
+        eventCleanups: [],
+        inputWrapper: contentEl,
+        messagesEl,
+        resizeHandleEl: contentEl.createDiv(),
+        richInput: input,
+      },
       state: { autoScrollEnabled: true, isStreaming: false },
       ui: {
         composerActions: null,

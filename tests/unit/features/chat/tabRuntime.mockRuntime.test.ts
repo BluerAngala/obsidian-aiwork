@@ -68,6 +68,7 @@ function minimalTab(): TabData {
       queuePortalEl: contentEl,
       inputContainerEl: contentEl,
       inputWrapper: contentEl,
+      resizeHandleEl: contentEl,
       richInput: richInput as unknown as TabData["dom"]["richInput"],
       composerPortalEl: contentEl,
       contextRowEl: contentEl,

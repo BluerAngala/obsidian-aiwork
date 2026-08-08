@@ -101,6 +101,8 @@ export interface TabDOMElements {
   queuePortalEl: HTMLElement;
   inputContainerEl: HTMLElement;
   inputWrapper: HTMLElement;
+  /** Drag-to-resize handle at the top of the input wrapper. */
+  resizeHandleEl: HTMLElement;
   richInput: RichChatInput;
   /** Empty React-owned portal target for composer chrome. */
   composerPortalEl: HTMLElement;

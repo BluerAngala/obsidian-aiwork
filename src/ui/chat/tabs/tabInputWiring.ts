@@ -2,7 +2,7 @@ import type { ChatSettingsPort } from '@pivi/pivi-agent-core/runtime/chatPorts';
 
 import { getActiveWindow } from "@/ui/shared/dom";
 
-import { autoResizeTextarea } from "../ui/textareaResize";
+import { autoResizeTextarea, initInputResizeHandle } from "../ui/textareaResize";
 import { shouldSendMessageFromEnterKey } from "./tabAgentContext";
 import type { TabData } from "./types";
 
@@ -91,6 +91,13 @@ export function wireTabInputEvents(tab: TabData, settings: ChatSettingsPort): vo
   dom.eventCleanups.push(() =>
     dom.richInput.removeEventListener("input", inputHandler),
   );
+
+  const resizeCleanup = initInputResizeHandle(
+    dom.resizeHandleEl,
+    dom.inputWrapper,
+    dom.richInput.el,
+  );
+  dom.eventCleanups.push(resizeCleanup);
 
   const focusHandler = (e: FocusEvent) => {
     if (e.relatedTarget && dom.contentEl.contains(e.relatedTarget as Node))

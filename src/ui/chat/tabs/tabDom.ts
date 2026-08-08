@@ -34,6 +34,7 @@ export function buildTabDOM(
   const inputWrapper = inputContainerEl.createDiv({
     cls: "pivi-input-wrapper",
   });
+  const resizeHandleEl = inputWrapper.createDiv({ cls: "pivi-input-resize-handle" });
   const contextRowEl = inputWrapper.createDiv({ cls: "pivi-context-row" });
   const richInput = new RichChatInput(inputWrapper, {
     placeholder: t("chat.composer.placeholder"),
@@ -58,6 +59,7 @@ export function buildTabDOM(
     queuePortalEl,
     inputContainerEl,
     inputWrapper,
+    resizeHandleEl,
     richInput,
     composerPortalEl,
     contextRowEl,
