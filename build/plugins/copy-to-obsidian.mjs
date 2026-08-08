@@ -13,7 +13,7 @@ const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../.
 const obsidianPluginDeployFiles = new Set(['main.js', 'manifest.json', 'styles.css']);
 
 function pruneStaleObsidianPluginArtifacts(pluginPath) {
-  const keep = new Set([...obsidianPluginDeployFiles, 'data.json']);
+  const keep = new Set([...obsidianPluginDeployFiles, 'data.json', '.hotreload']);
   for (const name of readdirSync(pluginPath)) {
     if (keep.has(name)) {
       continue;
