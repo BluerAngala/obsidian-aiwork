@@ -47,8 +47,38 @@ async function copyMessage(tab: TabData, message: ChatMessage): Promise<void> {
   if (clipboard?.writeText) await clipboard.writeText(content);
 }
 
-function editAndResendMessage(tab: TabData, message: ChatMessage, newContent: string): void {
-  void tab.controllers.inputController?.sendMessage({ content: newContent });
+async function editAndResendMessage(tab: TabData, message: ChatMessage, newContent: string): Promise<void> {
+  const service = tab.service;
+  if (!service) {
+    // Fallback: just truncate UI and send if no service available
+    tab.state.truncateAt(message.id);
+    void tab.controllers.inputController?.sendMessage({ content: newContent });
+    return;
+  }
+
+  // Get the checkpoint ID from the user message's parentEntryId
+  const checkpointId = message.parentEntryId ?? null;
+  
+  // Rewind to the checkpoint (removes the user message and all subsequent messages from session history)
+  const rewind = await service.rewind(checkpointId);
+  if (!rewind.canRewind) {
+    // Fallback: just truncate UI and send if rewind fails
+    tab.state.truncateAt(message.id);
+    void tab.controllers.inputController?.sendMessage({ content: newContent });
+    return;
+  }
+
+  // Update the leaf ID if provided
+  tab.leafId = rewind.leafId ?? null;
+
+  // Truncate the UI messages from the edited message onward
+  tab.state.truncateAt(message.id);
+
+  // Save the session
+  await tab.controllers.openSessionController?.save(false);
+
+  // Send the new content
+  await tab.controllers.inputController?.sendMessage({ content: newContent });
 }
 
 const MARKDOWN_COPY_PAGE_SIZE = 100;
@@ -129,6 +159,9 @@ export function createMessagePresentation(
     setViewportHandle: handle => {
       viewportHandle = handle;
       publishViewportHandle(handle);
+    },
+    get viewportHandle() {
+      return viewportHandle;
     },
     contentAdapters: {
       markdown: markdownAdapter,

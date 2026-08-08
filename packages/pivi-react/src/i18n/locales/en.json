@@ -40,6 +40,8 @@
       "copyAgentResponseAriaLabel": "Copy this agent response",
       "copyConversationAsMarkdownAriaLabel": "Copy conversation through this turn as Markdown",
       "editAriaLabel": "Edit message",
+      "cancelEdit": "Cancel",
+      "resendEdit": "Resend",
       "scrollToRecentUserAriaLabel": "Scroll to most recent user message"
     },
     "messageImages": {
@@ -103,7 +105,9 @@
       "bashPersistPrefixDescription": "All commands starting with `{prefix}`"
     },
     "tabs": {
+      "openSettings": "Open settings",
       "startNewChat": "Start new chat",
+      "sessionList": "Session list",
       "switchTab": "Switch tab: {title}",
       "archiveTab": "Archive {title}",
       "restoreTab": "Restore {title}",
@@ -161,7 +165,9 @@
       "scrollToBottom": "Scroll to bottom",
       "previousMessage": "Previous message",
       "nextMessage": "Next message",
-      "resumeAutoScroll": "Resume auto-scroll"
+      "resumeAutoScroll": "Resume auto-scroll",
+      "messageList": "Message history",
+      "messageListTitle": "User Messages"
     },
     "queue": {
       "queued": "⌙ Queued: {preview}",

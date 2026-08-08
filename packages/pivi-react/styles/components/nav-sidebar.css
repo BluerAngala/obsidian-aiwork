@@ -61,3 +61,73 @@
 .pivi-nav-btn-bottom {
     margin-top: var(--pivi-spacing-xs);
 }
+
+/* Message list container */
+.pivi-nav-message-list-container {
+    position: relative;
+}
+
+.pivi-nav-btn-list {
+    margin: var(--pivi-spacing-xs) 0;
+}
+
+/* Message list popup */
+.pivi-nav-message-list {
+    position: absolute;
+    right: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 320px;
+    max-height: 500px;
+    background: var(--pivi-host-background-primary);
+    border: 1px solid var(--pivi-host-border);
+    border-radius: var(--pivi-radius-md);
+    box-shadow: var(--pivi-shadow-lg);
+    overflow: hidden;
+    z-index: var(--pivi-z-overlay);
+    margin-right: 8px;
+}
+
+.pivi-nav-message-list-header {
+    padding: 10px 14px;
+    font-size: var(--pivi-text-body);
+    font-weight: 600;
+    color: var(--pivi-host-text-muted);
+    border-bottom: 1px solid var(--pivi-host-border);
+    background: var(--pivi-host-background-secondary);
+}
+
+.pivi-nav-message-list-items {
+    overflow-y: auto;
+    max-height: 450px;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.pivi-nav-message-item {
+    display: block;
+    width: 100%;
+    padding: 8px 10px;
+    text-align: left;
+    border: none;
+    background: transparent;
+    color: var(--pivi-host-text-normal);
+    font-size: var(--pivi-text-sm);
+    cursor: pointer;
+    border-radius: var(--pivi-radius-sm);
+    transition: background var(--pivi-duration-fast) var(--pivi-ease-out);
+}
+
+.pivi-nav-message-item:hover {
+    background: var(--pivi-host-background-hover);
+}
+
+.pivi-nav-message-item-text {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.4;
+}

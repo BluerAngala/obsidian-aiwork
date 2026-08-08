@@ -475,15 +475,6 @@ export function ChatTabBar({ shell, ownerWindow }: { shell: ChatShellOptions; ow
         )
         : null}
       <div className="pivi-tab-switcher-control">
-        <TabAction
-          className="pivi-tab-switcher-new-chat"
-          icon="square-pen"
-          label={t('chat.tabs.startNewChat')}
-          onActivate={() => {
-            closeMenu();
-            void shell.actions.startNewChat();
-          }}
-        />
         <span
           aria-expanded={isOpen}
           aria-haspopup="menu"
@@ -521,9 +512,19 @@ export function ChatTabBar({ shell, ownerWindow }: { shell: ChatShellOptions; ow
           tabIndex={0}
         >
           <span className={`pivi-tab-switcher-dot${dotClass(activeItem)}`} />
-          <ActiveTabTitle item={activeItem} ownerWindow={ownerWindow} />
+          <ActiveTabTitle item={activeItem} ownerWindow={ownerWindow} defaultTitle={t('chat.tabs.sessionList')} />
           <span className="pivi-tab-switcher-chevron"><PlatformIcon name="chevron-up" /></span>
         </span>
+        <button
+          className="pivi-tab-switcher-new-chat-right"
+          onClick={(event) => {
+            event.stopPropagation();
+            void shell.actions.startNewChat();
+          }}
+          type="button"
+        >
+          {t('chat.tabs.startNewChat')}
+        </button>
       </div>
       <div aria-live="polite" className="pivi-visually-hidden">{reorder.announcement}</div>
     </div>

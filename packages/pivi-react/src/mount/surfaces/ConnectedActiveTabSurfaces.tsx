@@ -119,13 +119,16 @@ const NavigationPortal = memo(function NavigationPortal({
 }) {
   const snapshot = useActiveChatUiSlice(activeChat, NAVIGATION_SLICE_KEYS);
   const targets = usePortalTargets(activeChat);
+  const projectionStore = useProjectionStore(activeChat);
+  const messagePresentation = useMessagePresentation(activeChat);
   if (!targets?.navigation) return null;
   const actions = surfaceActions ?? EMPTY_SURFACE_ACTIONS;
   return createPortal(
     <NavigationSurface
       actions={actions}
-      autoScrollEnabled={snapshot.autoScrollEnabled}
       visible={snapshot.navigationVisible}
+      projectionStore={projectionStore}
+      scrollToMessage={(messageId) => messagePresentation?.viewportHandle?.scrollToMessage(messageId, 'start', 'smooth')}
     />,
     targets.navigation,
   );

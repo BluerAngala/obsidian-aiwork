@@ -158,6 +158,11 @@ export class PiviViewHost extends ItemView {
           activeChat: shell.activeChat,
           surfaceActions: chatAdapter.getSurfaceActions(),
           welcomeQuoteAdapter: chatAdapter.getWelcomeQuoteAdapter(),
+          openSettings: () => {
+            // Access app.setting.open() through the plugin's Obsidian App instance
+            const app = (this.plugin as unknown as { app?: { setting?: { open?: () => void } } }).app;
+            app?.setting?.open?.();
+          },
         },
         imperativeAdapter,
       });

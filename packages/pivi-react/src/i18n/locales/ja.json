@@ -40,7 +40,9 @@
       "copyAgentResponseAriaLabel": "このエージェント応答をコピー",
       "copyConversationAsMarkdownAriaLabel": "このターンまでの会話を Markdown としてコピー",
       "scrollToRecentUserAriaLabel": "最新のユーザーメッセージへスクロール",
-      "editAriaLabel": "Edit message"
+      "editAriaLabel": "Edit message",
+      "cancelEdit": "キャンセル",
+      "resendEdit": "再送信"
     },
     "inlineContext": {
       "addSelectionToChatInput": "選択範囲をチャットに追加",
@@ -154,7 +156,9 @@
       "bashPersistPrefixDescription": "`{prefix}` で始まるすべてのコマンド"
     },
     "tabs": {
+      "openSettings": "設定を開く",
       "startNewChat": "新しいチャットを開始",
+      "sessionList": "セッション一覧",
       "switchTab": "タブを切り替え: {title}",
       "archiveTab": "{title} をアーカイブ",
       "restoreTab": "{title} を復元",
@@ -212,7 +216,9 @@
       "scrollToBottom": "下部へスクロール",
       "previousMessage": "前のメッセージ",
       "nextMessage": "次のメッセージ",
-      "resumeAutoScroll": "自動スクロールを再開"
+      "resumeAutoScroll": "自動スクロールを再開",
+      "messageList": "メッセージ履歴",
+      "messageListTitle": "ユーザーメッセージ"
     },
     "queue": {
       "queued": "⌙ キュー済み：{preview}",

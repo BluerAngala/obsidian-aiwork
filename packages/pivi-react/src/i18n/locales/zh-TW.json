@@ -40,7 +40,9 @@
       "copyAgentResponseAriaLabel": "複製這則助手回覆",
       "copyConversationAsMarkdownAriaLabel": "將截至此輪的對話複製為 Markdown",
       "scrollToRecentUserAriaLabel": "捲動到最近的使用者訊息",
-      "editAriaLabel": "Edit message"
+      "editAriaLabel": "Edit message",
+      "cancelEdit": "取消",
+      "resendEdit": "重新發送"
     },
     "inlineContext": {
       "addSelectionToChatInput": "將選取內容加入聊天",
@@ -154,7 +156,9 @@
       "bashPersistPrefixDescription": "所有以 `{prefix}` 開頭的命令"
     },
     "tabs": {
+      "openSettings": "開啟設定",
       "startNewChat": "開始新聊天",
+      "sessionList": "工作階段列表",
       "switchTab": "切換分頁：{title}",
       "archiveTab": "封存 {title}",
       "restoreTab": "還原 {title}",
@@ -212,7 +216,9 @@
       "scrollToBottom": "捲動到底部",
       "previousMessage": "上一則訊息",
       "nextMessage": "下一則訊息",
-      "resumeAutoScroll": "恢復自動捲動"
+      "resumeAutoScroll": "恢復自動捲動",
+      "messageList": "訊息歷史",
+      "messageListTitle": "使用者訊息"
     },
     "queue": {
       "queued": "⌙ 已排入佇列：{preview}",

@@ -40,9 +40,9 @@ export const DEFAULT_PIVI_SETTINGS: PiviSettings = {
   sharedEnvironmentVariables: "",
   customContextLimits: {},
   keyboardNavigation: {
-    scrollUpKey: "w",
-    scrollDownKey: "s",
-    focusInputKey: "i",
+    scrollUpKey: "",
+    scrollDownKey: "",
+    focusInputKey: "",
   },
   requireCommandOrControlEnterToSend: false,
   locale: "en",

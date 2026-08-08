@@ -246,15 +246,44 @@ export const MessageView = memo(function MessageView({ actions, contentAdapters,
         {message.role === 'user'
           ? isEditing
             ? (
-              <textarea
-                className="pivi-message-inline-edit"
-                defaultValue={message.displayContent ?? message.content}
-                onBlur={() => setIsEditing(false)}
-                onChange={(e) => { editTextRef.current = e.target.value; }}
-                onKeyDown={handleEditKeyDown}
-                ref={textareaRef}
-                rows={3}
-              />
+              <div 
+                className="pivi-message-edit-container"
+                onClick={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                <textarea
+                  className="pivi-message-inline-edit"
+                  defaultValue={message.displayContent ?? message.content}
+                  onChange={(e) => { editTextRef.current = e.target.value; }}
+                  onKeyDown={handleEditKeyDown}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  ref={textareaRef}
+                  rows={3}
+                />
+                <div className="pivi-message-edit-actions">
+                  <button
+                    className="pivi-message-edit-cancel"
+                    onClick={() => setIsEditing(false)}
+                    type="button"
+                  >
+                    {t('chat.messageActions.cancelEdit')}
+                  </button>
+                  <button
+                    className="pivi-message-edit-resend"
+                    onClick={() => {
+                      const newContent = editTextRef.current.trim();
+                      if (newContent) {
+                        const latestMsg = (projectionStore?.getMessageSnapshot(messageRef.current.id) as ChatMessage | null) ?? messageRef.current;
+                        void Promise.resolve(actions.editAndResend?.(latestMsg, newContent));
+                      }
+                      setIsEditing(false);
+                    }}
+                    type="button"
+                  >
+                    {t('chat.messageActions.resendEdit')}
+                  </button>
+                </div>
+              </div>
             )
             : (
               <div onDoubleClick={handleDoubleClick}>

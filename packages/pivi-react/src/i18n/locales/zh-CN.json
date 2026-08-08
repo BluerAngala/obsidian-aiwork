@@ -40,7 +40,9 @@
       "copyAgentResponseAriaLabel": "复制这条助手回复",
       "copyConversationAsMarkdownAriaLabel": "将截至此轮的对话复制为 Markdown",
       "scrollToRecentUserAriaLabel": "滚动到最近的用户消息",
-      "editAriaLabel": "Edit message"
+      "editAriaLabel": "Edit message",
+      "cancelEdit": "取消",
+      "resendEdit": "重新发送"
     },
     "inlineContext": {
       "addSelectionToChatInput": "将选区添加到聊天",
@@ -154,7 +156,9 @@
       "bashPersistPrefixDescription": "所有以 `{prefix}` 开头的命令"
     },
     "tabs": {
+      "openSettings": "打开设置",
       "startNewChat": "开始新聊天",
+      "sessionList": "会话列表",
       "switchTab": "切换标签页：{title}",
       "archiveTab": "归档 {title}",
       "restoreTab": "恢复 {title}",
@@ -212,7 +216,9 @@
       "scrollToBottom": "滚动到底部",
       "previousMessage": "上一条消息",
       "nextMessage": "下一条消息",
-      "resumeAutoScroll": "恢复自动滚动"
+      "resumeAutoScroll": "恢复自动滚动",
+      "messageList": "消息历史",
+      "messageListTitle": "用户消息"
     },
     "queue": {
       "queued": "⌙ 已排队：{preview}",
@@ -262,7 +268,7 @@
       "thoughtFor": "思考了 {seconds} 秒",
       "thought": "思考",
       "defaultDurationFlavor": "完成",
-      "responseDuration": "* {flavor} 用时 {duration}",
+      "responseDuration": "* AI处理用时 {duration}",
       "thinkingExpandAria": "扩展思考 — 点击展开",
       "writing": "写入中…",
       "statusDone": "完成",

@@ -40,6 +40,7 @@ export interface MessagePresentationRuntime {
   readonly contentAdapters?: MessageContentAdapters;
   readonly loadPreviousPage?: () => Promise<boolean>;
   readonly setViewportHandle?: (handle: MessageViewportHandle | null) => void;
+  readonly viewportHandle?: MessageViewportHandle | null;
 }
 
 /**

@@ -40,7 +40,9 @@
       "copyAgentResponseAriaLabel": "Копировать этот ответ агента",
       "copyConversationAsMarkdownAriaLabel": "Копировать разговор до этого хода как Markdown",
       "scrollToRecentUserAriaLabel": "К последнему сообщению пользователя",
-      "editAriaLabel": "Edit message"
+      "editAriaLabel": "Edit message",
+      "cancelEdit": "Отмена",
+      "resendEdit": "Отправить повторно"
     },
     "inlineContext": {
       "addSelectionToChatInput": "Добавить выделение в чат",
@@ -154,7 +156,9 @@
       "bashPersistPrefixDescription": "Все команды, начинающиеся с `{prefix}`"
     },
     "tabs": {
+      "openSettings": "Открыть настройки",
       "startNewChat": "Начать новый чат",
+      "sessionList": "Список сеансов",
       "switchTab": "Переключить вкладку: {title}",
       "archiveTab": "Архивировать {title}",
       "restoreTab": "Восстановить {title}",
@@ -212,7 +216,9 @@
       "scrollToBottom": "Прокрутить вниз",
       "previousMessage": "Предыдущее сообщение",
       "nextMessage": "Следующее сообщение",
-      "resumeAutoScroll": "Возобновить автопрокрутку"
+      "resumeAutoScroll": "Возобновить автопрокрутку",
+      "messageList": "История сообщений",
+      "messageListTitle": "Сообщения пользователя"
     },
     "queue": {
       "queued": "⌙ В очереди: {preview}",

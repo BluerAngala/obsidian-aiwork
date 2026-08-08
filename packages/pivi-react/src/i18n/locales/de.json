@@ -40,7 +40,9 @@
       "copyAgentResponseAriaLabel": "Diese Agentenantwort kopieren",
       "copyConversationAsMarkdownAriaLabel": "Unterhaltung bis zu diesem Turn als Markdown kopieren",
       "scrollToRecentUserAriaLabel": "Zur neuesten Benutzernachricht scrollen",
-      "editAriaLabel": "Edit message"
+      "editAriaLabel": "Edit message",
+      "cancelEdit": "Abbrechen",
+      "resendEdit": "Erneut senden"
     },
     "messageImages": {
       "lightboxAria": "Bildvorschau",
@@ -159,7 +161,9 @@
       "bashPersistPrefixDescription": "Alle Befehle, die mit `{prefix}` beginnen"
     },
     "tabs": {
+      "openSettings": "Einstellungen öffnen",
       "startNewChat": "Neuen Chat starten",
+      "sessionList": "Sitzungsliste",
       "switchTab": "Tab wechseln: {title}",
       "archiveTab": "{title} archivieren",
       "restoreTab": "{title} wiederherstellen",
@@ -217,7 +221,9 @@
       "scrollToBottom": "Nach unten scrollen",
       "previousMessage": "Vorherige Nachricht",
       "nextMessage": "Nächste Nachricht",
-      "resumeAutoScroll": "Automatisches Scrollen fortsetzen"
+      "resumeAutoScroll": "Automatisches Scrollen fortsetzen",
+      "messageList": "Nachrichtenverlauf",
+      "messageListTitle": "Benutzernachrichten"
     },
     "queue": {
       "queued": "⌙ Warteschlange: {preview}",

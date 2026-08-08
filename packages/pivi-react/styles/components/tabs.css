@@ -8,29 +8,28 @@
   position: relative;
   display: flex;
   align-items: center;
-  width: min(260px, 68vw);
+  width: min(200px, 50vw);
   min-width: 0;
   transition: width var(--pivi-duration-deliberate) var(--pivi-ease-out);
   will-change: width;
 }
 
 .pivi-tab-switcher.is-open {
-  width: min(380px, calc(100vw - 48px));
+  width: min(300px, calc(100vw - 48px));
 }
 
 .pivi-container--header-mode .pivi-tab-switcher {
-  width: min(220px, 46vw);
+  width: min(180px, 40vw);
 }
 
 .pivi-container--header-mode .pivi-tab-switcher.is-open {
-  width: min(320px, calc(100vw - 48px));
+  width: min(280px, calc(100vw - 48px));
 }
 
 .pivi-tab-switcher-control {
   position: relative;
   z-index: var(--pivi-z-tab-control);
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  display: flex;
   align-items: center;
   width: 100%;
   height: 28px;
@@ -75,12 +74,13 @@
   align-items: center;
   gap: 7px;
   min-width: 0;
+  flex: 1;
   height: 100%;
   padding: 0 8px 0 10px;
   font-size: var(--pivi-text-sm);
   font-weight: 500;
   cursor: pointer;
-  border-radius: 0 var(--pivi-radius-pill) var(--pivi-radius-pill) 0;
+  border-radius: 0;
 }
 
 .pivi-container--header-mode .pivi-tab-switcher-trigger {
@@ -164,8 +164,46 @@
   transform: rotate(0deg);
 }
 
+.pivi-tab-switcher-new-chat-right {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 0 10px;
+  margin-inline-start: auto;
+  border: none;
+  border-radius: 0 var(--pivi-radius-pill) var(--pivi-radius-pill) 0;
+  background: transparent;
+  color: var(--pivi-host-text-muted);
+  font-size: var(--pivi-text-xs);
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  position: relative;
+  z-index: 1;
+  transition: color var(--pivi-duration-fast) var(--pivi-ease-out),
+              background var(--pivi-duration-fast) var(--pivi-ease-out);
+}
+
+.pivi-tab-switcher-new-chat-right:hover {
+  color: var(--pivi-host-text-normal);
+  background: var(--pivi-host-background-hover);
+}
+
+.pivi-container--header-mode .pivi-tab-switcher-new-chat-right {
+  border-radius: 0;
+}
+
+.pivi-tab-switcher-actions {
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+}
+
+.pivi-tab-switcher-settings,
 .pivi-tab-switcher-new-chat {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   align-self: stretch;
@@ -173,9 +211,8 @@
   height: 100%;
   min-height: 0;
   padding: 0;
-  line-height: 0;
+  line-height: 1;
   border-inline-end: 1px solid var(--pivi-host-border);
-  border-radius: var(--pivi-radius-pill) 0 0 var(--pivi-radius-pill);
   color: var(--pivi-host-text-faint);
   cursor: pointer;
   transition:
@@ -184,17 +221,38 @@
     scale var(--pivi-press-duration) var(--pivi-ease-out);
 }
 
+.pivi-tab-switcher-settings {
+  border-radius: var(--pivi-radius-pill) 0 0 var(--pivi-radius-pill);
+}
+
+.pivi-tab-switcher-new-chat {
+  border-radius: 0;
+}
+
+.pivi-container--header-mode .pivi-tab-switcher-settings,
 .pivi-container--header-mode .pivi-tab-switcher-new-chat {
   border-inline-end: 0;
   border-radius: 0;
 }
 
+.pivi-tab-switcher-settings > span,
+.pivi-tab-switcher-settings svg,
 .pivi-tab-switcher-new-chat > span,
 .pivi-tab-switcher-new-chat svg {
   display: block;
   width: 14px;
   height: 14px;
   line-height: 0;
+}
+
+.pivi-tab-switcher-settings-label,
+.pivi-tab-switcher-new-chat-label {
+  font-size: 8px;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .pivi-tab-switcher-menu {
@@ -476,11 +534,13 @@
     background: transparent;
   }
 
+  .pivi-tab-switcher-settings:hover,
   .pivi-tab-switcher-new-chat:hover,
   .pivi-tab-switcher-item:hover {
     background: var(--pivi-host-background-hover);
   }
 
+  .pivi-tab-switcher-settings:hover,
   .pivi-tab-switcher-new-chat:hover {
     color: var(--pivi-host-text-normal);
   }

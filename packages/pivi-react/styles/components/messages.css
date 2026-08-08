@@ -59,6 +59,17 @@
   flex: 0 0 auto;
 }
 
+/* Ensure user messages align right in virtual rows */
+.pivi-message-virtual-row > .pivi-message-user {
+  align-self: flex-end;
+  margin-left: auto;
+}
+
+/* Ensure assistant messages align left in virtual rows */
+.pivi-message-virtual-row > .pivi-message-assistant {
+  align-self: flex-start;
+}
+
 .pivi-streaming-markdown-tail {
   white-space: pre-wrap;
 }
@@ -187,12 +198,13 @@
 
 .pivi-message-user {
   position: relative;
-  background: transparent;
-  align-self: stretch;
-  width: 100%;
-  max-width: 100%;
+  background: color-mix(in srgb, var(--pivi-host-interactive-accent) 15%, transparent);
+  align-self: flex-end;
+  max-width: 92%;
   padding-block: var(--pivi-spacing-xs);
   margin-bottom: var(--pivi-spacing-md);
+  border-radius: var(--pivi-radius-md) var(--pivi-radius-md) var(--pivi-radius-xs) var(--pivi-radius-md);
+  margin-left: auto;
 }
 
 /* Text selection in user messages - visible highlight */
@@ -202,11 +214,10 @@
 }
 
 .pivi-message-assistant {
-  background: transparent;
-  align-self: stretch;
-  width: 100%;
-  max-width: 100%;
-  border-end-start-radius: 4px;
+  background: var(--pivi-host-background-secondary);
+  align-self: flex-start;
+  max-width: 95%;
+  border-radius: var(--pivi-radius-md) var(--pivi-radius-md) var(--pivi-radius-md) var(--pivi-radius-xs);
   text-align: start;
 }
 
@@ -295,13 +306,13 @@
 
 .pivi-user-msg-actions {
   position: absolute;
-  inset-inline-end: 12px;
+  inset-inline-end: 0;
   bottom: -20px;
   justify-content: flex-end;
 }
 
 .pivi-assistant-msg-actions {
-  justify-content: flex-end;
+  justify-content: flex-start;
   margin-top: var(--pivi-spacing-xs);
 }
 
@@ -490,6 +501,10 @@
 }
 
 /* Inline message edit textarea (double-click on user message) */
+.pivi-message-edit-container {
+  width: 100%;
+}
+
 .pivi-message-inline-edit {
   width: 100%;
   min-height: 60px;
@@ -504,4 +519,37 @@
   resize: vertical;
   outline: none;
   box-shadow: 0 0 0 1px var(--pivi-host-interactive-accent);
+}
+
+.pivi-message-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.pivi-message-edit-cancel,
+.pivi-message-edit-resend {
+  padding: 4px 12px;
+  border: 1px solid var(--pivi-host-border);
+  border-radius: var(--pivi-radius-sm);
+  background: var(--pivi-host-background-primary);
+  color: var(--pivi-host-text-normal);
+  font-size: var(--pivi-text-sm);
+  cursor: pointer;
+  transition: background var(--pivi-duration-fast) var(--pivi-ease-out);
+}
+
+.pivi-message-edit-cancel:hover {
+  background: var(--pivi-host-background-hover);
+}
+
+.pivi-message-edit-resend {
+  background: var(--pivi-host-interactive-accent);
+  color: var(--pivi-host-text-on-accent);
+  border-color: var(--pivi-host-interactive-accent);
+}
+
+.pivi-message-edit-resend:hover {
+  opacity: 0.9;
 }

@@ -91,6 +91,12 @@ export class NavigationController {
     // Ignore if any modifier is held - allow system shortcuts (Ctrl+W, Cmd+W, etc.)
     if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
 
+    // Ignore if the event target is an input, textarea, or contenteditable element
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+      return;
+    }
+
     const settings = this.deps.getSettings();
     const key = e.key.toLowerCase();
 

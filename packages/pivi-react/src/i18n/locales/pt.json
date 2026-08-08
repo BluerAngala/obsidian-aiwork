@@ -40,7 +40,9 @@
       "copyAgentResponseAriaLabel": "Copiar esta resposta do agente",
       "copyConversationAsMarkdownAriaLabel": "Copiar a conversa até este turno como Markdown",
       "scrollToRecentUserAriaLabel": "Rolar para a mensagem de usuário mais recente",
-      "editAriaLabel": "Edit message"
+      "editAriaLabel": "Edit message",
+      "cancelEdit": "Cancelar",
+      "resendEdit": "Reenviar"
     },
     "inlineContext": {
       "addSelectionToChatInput": "Adicionar seleção ao chat",
@@ -154,7 +156,9 @@
       "bashPersistPrefixDescription": "Todos os comandos que começam por `{prefix}`"
     },
     "tabs": {
+      "openSettings": "Abrir configurações",
       "startNewChat": "Iniciar novo chat",
+      "sessionList": "Lista de sessões",
       "switchTab": "Alternar aba: {title}",
       "archiveTab": "Arquivar {title}",
       "restoreTab": "Restaurar {title}",
@@ -212,7 +216,9 @@
       "scrollToBottom": "Ir abajo",
       "previousMessage": "Mensagem anterior",
       "nextMessage": "Mensagem siguiente",
-      "resumeAutoScroll": "Retomar rolagem automática"
+      "resumeAutoScroll": "Retomar rolagem automática",
+      "messageList": "Histórico de mensagens",
+      "messageListTitle": "Mensagens do usuário"
     },
     "queue": {
       "queued": "⌙ Na fila: {preview}",

@@ -8,11 +8,13 @@ export function TabAction({
   icon,
   label,
   onActivate,
+  showLabel = false,
 }: {
   className: string;
   icon: string;
   label: string;
   onActivate: () => void;
+  showLabel?: boolean;
 }) {
   const ref = useTooltip(label);
   const activate = (event: MouseEvent | KeyboardEvent): void => {
@@ -32,6 +34,7 @@ export function TabAction({
       tabIndex={0}
     >
       <PlatformIcon name={icon} />
+      {showLabel ? <span className={`${className}-label`}>{label}</span> : null}
     </span>
   );
 }

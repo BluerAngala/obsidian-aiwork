@@ -24,4 +24,5 @@ export interface ChatShellOptions {
   activeChat?: ActiveChatUiBridge;
   surfaceActions?: ChatSurfaceActions;
   welcomeQuoteAdapter?: WelcomeQuoteAdapter;
+  openSettings?: () => void;
 }

@@ -1,6 +1,8 @@
 import { useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 
+import { useT } from '../i18n';
+import { PlatformIcon } from '../icons';
 import { ChatLogo } from './ChatLogo';
 import { ActiveTabSurfaces } from './surfaces';
 import { ChatTabBar } from './tab-bar';
@@ -22,6 +24,7 @@ export function ChatShell({
     shell.store.getSnapshot,
     shell.store.getSnapshot,
   );
+  const t = useT();
   const inputPortalContainer = shell.inputPortalContainer;
   const tabBar = <ChatTabBar ownerWindow={ownerWindow} shell={shell} />;
 
@@ -32,8 +35,20 @@ export function ChatShell({
     >
       <header className="pivi-header">
         <div className="pivi-title-slot">
-          <span className="pivi-logo"><ChatLogo icon={snapshot.chatIcon} /></span>
-          <h4 className="pivi-title-text">Pivi</h4>
+          <div className="pivi-logo-group">
+            <span className="pivi-logo"><ChatLogo icon={snapshot.chatIcon} /></span>
+            <h4 className="pivi-title-text">Pivi</h4>
+          </div>
+          {shell.openSettings ? (
+            <button
+              aria-label={t('chat.tabs.openSettings')}
+              className="pivi-header-action-btn"
+              onClick={() => shell.openSettings?.()}
+              type="button"
+            >
+              <PlatformIcon name="settings" />
+            </button>
+          ) : null}
         </div>
         {snapshot.position === 'header'
           ? <div className="pivi-tab-bar-container">{tabBar}</div>
