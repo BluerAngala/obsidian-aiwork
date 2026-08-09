@@ -1,3 +1,5 @@
+import type { CustomPromptEntry, ReviewMode } from '../../foundation/settings';
+
 /** Narrow host surface for concrete Pi runtime adapters. */
 export interface PiRuntimeHost {
   getVaultPath(): string | null;
@@ -5,6 +7,7 @@ export interface PiRuntimeHost {
     model?: string;
     titleGenerationModel?: string;
     userName?: string;
-    smartReviewMode?: boolean;
+    reviewMode?: ReviewMode;
+    customPrompts?: CustomPromptEntry[];
   };
 }

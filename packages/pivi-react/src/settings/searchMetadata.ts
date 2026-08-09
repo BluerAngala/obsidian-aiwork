@@ -17,7 +17,7 @@ const SETTINGS_SEARCH_KEYS = [
   'settings.enableAutoScroll.name',
   'settings.deferMathRenderingDuringStreaming.name',
   'settings.autoTitle.name',
-  'settings.smartReviewMode.name',
+  'settings.reviewMode.name',
   'settings.personalizationContext',
   'settings.userName.name',
   'settings.excludedTags.name',

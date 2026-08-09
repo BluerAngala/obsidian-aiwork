@@ -60,5 +60,6 @@ export const DEFAULT_PIVI_SETTINGS: PiviSettings = {
       { id: "add-to-chat", kind: "pivi-action", actionId: "add-to-chat", enabled: true },
     ],
   },
-  smartReviewMode: true,
+  reviewMode: 'default' as const,
+  customPrompts: [],
 };

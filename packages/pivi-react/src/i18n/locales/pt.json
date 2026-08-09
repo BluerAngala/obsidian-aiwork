@@ -39,7 +39,6 @@
       "copyAriaLabel": "Copiar mensagem",
       "copyAgentResponseAriaLabel": "Copiar esta resposta do agente",
       "copyConversationAsMarkdownAriaLabel": "Copiar toda a conversa anterior",
-      "scrollToRecentUserAriaLabel": "Rolar para a mensagem de usuário mais recente",
       "editAriaLabel": "Edit message",
       "cancelEdit": "Cancelar",
       "resendEdit": "Reenviar"
@@ -217,7 +216,6 @@
       "scrollToBottom": "Ir abajo",
       "previousMessage": "Mensagem anterior",
       "nextMessage": "Mensagem siguiente",
-      "resumeAutoScroll": "Retomar rolagem automática",
       "messageList": "Histórico de mensagens",
       "messageListTitle": "Mensagens do usuário"
     },
@@ -429,10 +427,6 @@
     },
     "layout": "Diseño",
     "chatBehavior": "Comportamento do chat",
-    "smartReviewMode": {
-      "name": "Modo de revisão inteligente",
-      "desc": "A IA classifica autonomamente sua intenção (pergunta vs. ação, busca no vault vs. resposta direta) e executa por padrão em vez de pedir confirmação. Só escala decisões verdadeiramente ambíguas ou destrutivas."
-    },
     "personalizationContext": "Personalização e contexto",
     "inputShortcuts": "Entrada e atalhos",
     "userName": {
@@ -1008,6 +1002,23 @@
         "noTools": "Este servidor não retornou ferramentas."
       },
       "deleteConfirmTitle": "Excluir o servidor MCP \"{name}\"?"
+    },
+    "promptManagement": {
+      "heading": "Prompt do sistema",
+      "desc": "Veja o prompt padrão do sistema e adicione suas próprias instruções personalizadas. Prompts personalizados são adicionados ao prompt do sistema para cada conversa.",
+      "defaultPrompt": "Prompt padrão (somente leitura)",
+      "customPrompts": "Instruções personalizadas",
+      "addPrompt": "Adicionar instrução",
+      "promptLabelPlaceholder": "ex: Estilo de escrita",
+      "promptContentPlaceholder": "ex: Sempre escreva de forma concisa e formal. Use marcadores para listas.",
+      "toggleEnabled": "Ativado",
+      "removePrompt": "Remover"
+    },
+    "reviewMode": {
+      "name": "Modo de revisão",
+      "desc": "Controla como a IA lida com confirmações e riscos.",
+      "default": "Padrão (Cauteloso)",
+      "auto": "Totalmente automático"
     }
   },
   "commands": {

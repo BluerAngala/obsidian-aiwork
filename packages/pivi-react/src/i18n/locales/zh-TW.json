@@ -39,7 +39,6 @@
       "copyAriaLabel": "複製訊息",
       "copyAgentResponseAriaLabel": "複製這則助手回覆",
       "copyConversationAsMarkdownAriaLabel": "複製此前所有對話",
-      "scrollToRecentUserAriaLabel": "捲動到最近的使用者訊息",
       "editAriaLabel": "Edit message",
       "cancelEdit": "取消",
       "resendEdit": "重新發送"
@@ -217,7 +216,6 @@
       "scrollToBottom": "捲動到底部",
       "previousMessage": "上一則訊息",
       "nextMessage": "下一則訊息",
-      "resumeAutoScroll": "恢復自動捲動",
       "messageList": "訊息歷史",
       "messageListTitle": "使用者訊息"
     },
@@ -429,10 +427,6 @@
     },
     "layout": "版面配置",
     "chatBehavior": "聊天行為",
-    "smartReviewMode": {
-      "name": "智慧審查模式",
-      "desc": "AI 自主判斷你的意圖（問答 vs 執行、需要查 vault 還是直接回答），預設直接執行而非反覆確認。僅在真正有歧義或不可逆操作時才向你確認。"
-    },
     "personalizationContext": "個人化與上下文",
     "inputShortcuts": "輸入與快捷鍵",
     "userName": {
@@ -1008,6 +1002,23 @@
         "noTools": "此伺服器未回傳任何工具。"
       },
       "deleteConfirmTitle": "刪除 MCP 伺服器「{name}」？"
+    },
+    "promptManagement": {
+      "heading": "系統提示詞",
+      "desc": "查看預設系統提示詞，或新增自訂指令。自訂指令會附加到每次對話的系統提示詞中。",
+      "defaultPrompt": "預設提示詞（唯讀）",
+      "customPrompts": "自訂指令",
+      "addPrompt": "新增指令",
+      "promptLabelPlaceholder": "例如：寫作風格",
+      "promptContentPlaceholder": "例如：始終使用簡潔正式的語氣。列表使用項目符號。",
+      "toggleEnabled": "啟用",
+      "removePrompt": "移除"
+    },
+    "reviewMode": {
+      "name": "審查模式",
+      "desc": "控制 AI 如何處理確認和風險。",
+      "default": "預設（謹慎）",
+      "auto": "全自動"
     }
   },
   "commands": {

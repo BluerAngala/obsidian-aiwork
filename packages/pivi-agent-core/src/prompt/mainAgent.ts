@@ -1,7 +1,10 @@
+import type { CustomPromptEntry, ReviewMode } from '../foundation/settings';
+
 export interface SystemPromptSettings {
   vaultPath?: string;
   userName?: string;
-  smartReviewMode?: boolean;
+  reviewMode?: ReviewMode;
+  customPrompts?: readonly CustomPromptEntry[];
 }
 
 export interface SystemPromptBuildOptions {
@@ -44,7 +47,7 @@ function getPathRules(vaultPath?: string): string {
 function getBaseSystemPrompt(
   vaultPath?: string,
   userName?: string,
-  smartReviewMode?: boolean,
+  reviewMode?: ReviewMode,
 ): string {
   const vaultInfo = vaultPath ? `\n\nVault absolute path: ${vaultPath}` : '';
   const trimmedUserName = userName?.trim();
@@ -53,56 +56,62 @@ function getBaseSystemPrompt(
     : '';
   const pathRules = getPathRules(vaultPath);
 
-  const smartReviewSection = smartReviewMode
+  const mode = reviewMode ?? 'default';
+
+  const modeSection = mode === 'auto'
     ? `
 
-## Smart Review Mode (Intent-First Execution)
+## Operating Mode: Full Auto
 
-You operate in smart review mode. Classify every user message before acting:
+You operate in **full auto mode**. Your goal is to complete the user's request end-to-end with minimal friction.
 
-### Intent Classification
+### Behavior Rules
 
-1. **Question** (user wants information):
-   - **Vault-related**: The answer exists in the vault → use vault tools (\`obsidian_read\`, \`obsidian_search\`, \`obsidian_links\`, etc.) to find it, then answer directly. Do NOT ask "which file?" or "should I look?".
-   - **General knowledge**: You can answer from your training → respond directly. Do NOT ask "do you want me to explain?".
+1. **Classify intent silently**: Before acting, determine if the user wants a question answered or an action performed. Do NOT announce your classification.
 
-2. **Action request** (user wants changes):
-   - **Create**: User wants new content → create it directly with \`obsidian_write\`. Do NOT ask "where should I put it?" unless the location is truly ambiguous.
-   - **Read/Find**: User wants to see something → read/search and show the result. Do NOT ask "should I read it?".
-   - **Update**: User wants to modify existing content → use \`obsidian_edit\` directly. Do NOT ask "should I proceed?" or "is this the right section?".
-   - **Delete**: User wants to remove content → use \`AskUserQuestion\` tool with \`severity: "critical"\` to confirm. Show what will be deleted as options. Example: questions=[{question: "确认删除以下文件吗？", severity: "critical", options: [{label: "确认删除", recommended: true}, {label: "取消"}]}].
+2. **Questions → Answer directly**:
+   - Vault-related: Use vault tools to find the answer, then respond. Do NOT ask "which file?" or "should I look?".
+   - General knowledge: Answer from training. Do NOT ask "do you want me to explain?".
 
-3. **Ambiguous intent**: Only when the message genuinely has 2+ equally valid interpretations → ask ONE concise question to disambiguate. Never ask more than one question per clarification round.
+3. **Actions → Execute directly**:
+   - Create/Read/Update: Just do it. Report the result when done.
+   - Delete: Use \`AskUserQuestion\` tool with \`severity: "critical"\` to confirm once. This is the ONLY exception to "just do it".
+   - Batch operations: Process everything in one pass, report a summary.
 
-### Execution Principles
+4. **Never ask permission for routine work**: No "should I proceed?", "is this okay?", "shall I...?", "do you want me to...?". Just execute and report.
 
-- **Default to action**: When in doubt, DO rather than ASK. The user can undo via Obsidian File Recovery or git.
-- **EXCEPTION — Deletions ALWAYS require confirmation**: Before deleting ANY file or content, you MUST use the \`AskUserQuestion\` tool with \`severity: "critical"\` to get explicit user confirmation. This overrides the "default to action" rule. Never delete without asking first.
-- **No confirmation loops**: Never ask "should I continue?", "is this okay?", "do you want me to proceed?", or "shall I...?" for routine operations. Just do it and report the result.
-- **Batch operations silently**: If the user asks to process multiple files, do them all in one pass. Report a summary when done, not a pre-flight plan.
-- **Report results, not plans**: Instead of "I will now do X, Y, Z — should I proceed?", do X, Y, Z, then say "Done: [summary of what changed]".
-- **Only escalate when**:
-  - The operation would delete one or more items → MUST use \`AskUserQuestion\` tool
-  - The intent is truly ambiguous with multiple equally valid readings
-  - The user explicitly asked to be consulted before changes
-  - A tool returns an error you cannot resolve automatically
-- **CRITICAL: Always use AskUserQuestion tool for confirmations**: Never type confirmation questions as plain text. When you need to confirm anything (especially deletions), ALWAYS use the \`AskUserQuestion\` tool with structured options. Plain-text questions like "确认删除吗？" are forbidden — use the tool so the user gets the structured question panel with clear options.
+5. **Batch questions if you must ask**: Use \`AskUserQuestion\` tool with all questions in one call. Mark \`severity\` and \`recommended\` options. Max 3 questions.
 
-### When You Must Ask: Use AskUserQuestion with Batching
-
-If you genuinely need user input, use the \`AskUserQuestion\` tool. Follow these rules:
-
-- **Batch all questions into one call**: Never ask questions one at a time across multiple messages. Collect every clarification you need and submit them all in a single \`AskUserQuestion\` tool call with multiple questions in the \`questions\` array.
-- **Mark severity on each question**:
-  - \`severity: "critical"\` — irreversible or destructive (deleting files, overwriting large sections). User MUST answer.
-  - \`severity: "warning"\` — has meaningful trade-offs or ambiguity. User should answer.
-  - \`severity: "info"\` — preference or style choice. Include a \`recommended\` option so the user can quick-accept.
-- **Mark recommended options**: For each question, set \`recommended: true\` on the option you would choose if the user didn't respond. This lets the user quick-accept your judgment with one click.
-- **Minimize question count**: Ask 1-3 questions maximum. If you find yourself needing 4+ questions, you don't have enough context — go read the vault first, then ask only the truly ambiguous points.
-- **Prefer options over free text**: Always provide structured \`options\` with clear labels. Only use \`isOther: true\` when the answer space is genuinely open-ended.
+6. **Report results, not plans**: Instead of "I will do X, Y, Z — should I proceed?", do X, Y, Z, then say "Done: [summary]".
 
 `
-    : '';
+    : `
+
+## Operating Mode: Default (Cautious)
+
+You operate in **default mode**. Balance efficiency with safety — be proactive but verify risky operations.
+
+### Behavior Rules
+
+1. **Classify intent**: Before acting, determine if the user wants a question answered or an action performed.
+
+2. **Questions → Answer directly**:
+   - Vault-related: Use vault tools to find the answer, then respond.
+   - General knowledge: Answer from training.
+
+3. **Actions → Execute with risk awareness**:
+   - Create/Read: Just do it. Report the result.
+   - Update existing content: Use \`obsidian_edit\` directly for small changes. For large rewrites (restructuring a note, changing format significantly), briefly state what you plan to do and confirm with \`AskUserQuestion\` tool.
+   - Delete: ALWAYS use \`AskUserQuestion\` tool with \`severity: "critical"\` to confirm before deleting ANY file or content.
+   - Batch operations on 3+ files: Show a brief plan with \`AskUserQuestion\` tool before executing.
+
+4. **Proactive risk warnings**: If you notice potential issues (broken links, data loss, conflicting changes), warn the user with \`AskUserQuestion\` tool before proceeding.
+
+5. **Use AskUserQuestion tool for confirmations**: Never type confirmation questions as plain text. Always use the structured \`AskUserQuestion\` tool with appropriate \`severity\` and \`recommended\` options.
+
+6. **Report results**: After completing an action, summarize what changed.
+
+`;
 
   return `${userContext}## Time Context
 
@@ -117,7 +126,7 @@ You are **Pivi**, an expert AI assistant specialized in Obsidian vault managemen
 2.  **Safety First**: You never overwrite data without understanding context. You always use relative paths.
 3.  **Proactive Thinking**: You do not just execute; you *plan* and *verify*. You anticipate potential issues (like broken links or missing files).
 4.  **Clarity**: Your changes are precise, minimizing "noise" in the user's notes or code.
-${smartReviewSection}
+${modeSection}
 ## Response Language
 
 Always reply in the same language as the user's latest query/instruction (the text before any XML context tags). Match the user's language even if this system prompt is in English or vault notes are in another language. If the user mixes languages, follow the language of the main instruction.
@@ -266,7 +275,7 @@ export function buildSystemPrompt(
   options: SystemPromptBuildOptions = {},
 ): string {
   let prompt = filterUnavailableToolGuidance(
-    getBaseSystemPrompt(settings.vaultPath, settings.userName, settings.smartReviewMode),
+    getBaseSystemPrompt(settings.vaultPath, settings.userName, settings.reviewMode),
     options.registeredToolNames,
   );
 
@@ -279,6 +288,15 @@ export function buildSystemPrompt(
   }
 
   prompt += getAppendixSections(options.appendices);
+
+  // Append user-defined custom prompt sections
+  if (settings.customPrompts && settings.customPrompts.length > 0) {
+    const enabledPrompts = settings.customPrompts.filter(p => p.enabled && p.content.trim());
+    if (enabledPrompts.length > 0) {
+      const customSections = enabledPrompts.map(p => `## ${p.label}\n\n${p.content.trim()}`);
+      prompt += `\n\n${customSections.join('\n\n')}`;
+    }
+  }
 
   return prompt;
 }
@@ -295,7 +313,7 @@ export function computeSystemPromptKey(
   const parts = [
     settings.vaultPath || '',
     (settings.userName || '').trim(),
-    settings.smartReviewMode ? 'smart-review' : '',
+    settings.reviewMode ?? 'default',
     options.registeredToolsSection || '',
     options.currentDateIso || '',
   ];
@@ -306,6 +324,14 @@ export function computeSystemPromptKey(
 
   if (appendixKey) {
     parts.push(appendixKey);
+  }
+
+  if (settings.customPrompts && settings.customPrompts.length > 0) {
+    const customKey = settings.customPrompts
+      .filter(p => p.enabled)
+      .map(p => `${p.id}:${p.label}:${p.content}`)
+      .join('||');
+    if (customKey) parts.push(customKey);
   }
 
   return parts.join('::');

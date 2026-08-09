@@ -39,7 +39,6 @@
       "copyAriaLabel": "メッセージをコピー",
       "copyAgentResponseAriaLabel": "このエージェント応答をコピー",
       "copyConversationAsMarkdownAriaLabel": "この前のすべての会話をコピー",
-      "scrollToRecentUserAriaLabel": "最新のユーザーメッセージへスクロール",
       "editAriaLabel": "Edit message",
       "cancelEdit": "キャンセル",
       "resendEdit": "再送信"
@@ -217,7 +216,6 @@
       "scrollToBottom": "下部へスクロール",
       "previousMessage": "前のメッセージ",
       "nextMessage": "次のメッセージ",
-      "resumeAutoScroll": "自動スクロールを再開",
       "messageList": "メッセージ履歴",
       "messageListTitle": "ユーザーメッセージ"
     },
@@ -429,10 +427,6 @@
     },
     "layout": "レイアウト",
     "chatBehavior": "チャットの動作",
-    "smartReviewMode": {
-      "name": "スマートレビューモード",
-      "desc": "AIがユーザーの意図を自律的に分類（質問 vs. アクション、vault検索 vs. 直接回答）し、確認を求める代わりにデフォルトで実行します。本当に曖昧な判断や取り消し不能な操作のみ確認します。"
-    },
     "personalizationContext": "パーソナライズとコンテキスト",
     "inputShortcuts": "入力とショートカット",
     "userName": {
@@ -1008,6 +1002,23 @@
         "noTools": "このサーバーからツールが返されませんでした。"
       },
       "deleteConfirmTitle": "MCP サーバー「{name}」を削除しますか？"
+    },
+    "promptManagement": {
+      "heading": "システムプロンプト",
+      "desc": "デフォルトのシステムプロンプトを表示し、カスタム指示を追加します。カスタムプロンプトはすべての会話のシステムプロンプトに追加されます。",
+      "defaultPrompt": "デフォルトプロンプト（読み取り専用）",
+      "customPrompts": "カスタム指示",
+      "addPrompt": "指示を追加",
+      "promptLabelPlaceholder": "例: 文体",
+      "promptContentPlaceholder": "例: 常に簡潔で正式な文体で書いてください。リストには箇条書きを使用してください。",
+      "toggleEnabled": "有効",
+      "removePrompt": "削除"
+    },
+    "reviewMode": {
+      "name": "レビューモード",
+      "desc": "AI が確認とリスクをどう処理するかを制御します。",
+      "default": "デフォルト（慎重）",
+      "auto": "フルオート"
     }
   },
   "commands": {

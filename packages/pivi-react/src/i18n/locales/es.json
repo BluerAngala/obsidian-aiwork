@@ -39,7 +39,6 @@
       "copyAriaLabel": "Copiar mensaje",
       "copyAgentResponseAriaLabel": "Copiar esta respuesta del agente",
       "copyConversationAsMarkdownAriaLabel": "Copiar toda la conversación anterior",
-      "scrollToRecentUserAriaLabel": "Ir al mensaje de usuario más reciente",
       "editAriaLabel": "Edit message",
       "cancelEdit": "Cancelar",
       "resendEdit": "Reenviar"
@@ -217,7 +216,6 @@
       "scrollToBottom": "Ir abajo",
       "previousMessage": "Mensaje anterior",
       "nextMessage": "Mensaje siguiente",
-      "resumeAutoScroll": "Reanudar desplazamiento automático",
       "messageList": "Historial de mensajes",
       "messageListTitle": "Mensajes de usuario"
     },
@@ -429,10 +427,6 @@
     },
     "layout": "Diseño",
     "chatBehavior": "Comportamiento del chat",
-    "smartReviewMode": {
-      "name": "Modo de revisión inteligente",
-      "desc": "La IA clasifica autónomamente tu intención (pregunta vs. acción, búsqueda en vault vs. respuesta directa) y ejecuta por defecto en lugar de pedir confirmación. Solo escala decisiones verdaderamente ambiguas o destructivas."
-    },
     "personalizationContext": "Personalización y contexto",
     "inputShortcuts": "Entrada y atajos",
     "userName": {
@@ -1008,6 +1002,23 @@
         "noTools": "Este servidor no devolvió herramientas."
       },
       "deleteConfirmTitle": "¿Eliminar el servidor MCP \"{name}\"?"
+    },
+    "promptManagement": {
+      "heading": "Prompt del sistema",
+      "desc": "Ver el prompt predeterminado del sistema y agregar sus propias instrucciones personalizadas. Los prompts personalizados se añaden al prompt del sistema para cada conversación.",
+      "defaultPrompt": "Prompt predeterminado (solo lectura)",
+      "customPrompts": "Instrucciones personalizadas",
+      "addPrompt": "Agregar instrucción",
+      "promptLabelPlaceholder": "ej: Estilo de escritura",
+      "promptContentPlaceholder": "ej: Siempre escribe de manera concisa y formal. Usa viñetas para listas.",
+      "toggleEnabled": "Habilitado",
+      "removePrompt": "Eliminar"
+    },
+    "reviewMode": {
+      "name": "Modo de revisión",
+      "desc": "Controla cómo la IA maneja las confirmaciones y el riesgo.",
+      "default": "Predeterminado (Cauteloso)",
+      "auto": "Totalmente automático"
     }
   },
   "commands": {

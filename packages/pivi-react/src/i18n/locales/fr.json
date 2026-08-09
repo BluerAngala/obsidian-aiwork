@@ -39,7 +39,6 @@
       "copyAriaLabel": "Copier le message",
       "copyAgentResponseAriaLabel": "Copier cette réponse de l’agent",
       "copyConversationAsMarkdownAriaLabel": "Copier toute la conversation précédente",
-      "scrollToRecentUserAriaLabel": "Aller au message utilisateur le plus récent",
       "editAriaLabel": "Edit message",
       "cancelEdit": "Annuler",
       "resendEdit": "Renvoyer"
@@ -217,7 +216,6 @@
       "scrollToBottom": "Aller en bas",
       "previousMessage": "Message précédent",
       "nextMessage": "Message suivant",
-      "resumeAutoScroll": "Reprendre le défilement automatique",
       "messageList": "Historique des messages",
       "messageListTitle": "Messages utilisateur"
     },
@@ -429,10 +427,6 @@
     },
     "layout": "Mise en page",
     "chatBehavior": "Comportement du chat",
-    "smartReviewMode": {
-      "name": "Mode de révision intelligente",
-      "desc": "L'IA classifie autonomement votre intention (question vs. action, recherche dans le vault vs. réponse directe) et exécute par défaut au lieu de demander confirmation. Ne demande une confirmation que pour les décisions vraiment ambiguës ou destructrices."
-    },
     "personalizationContext": "Personnalisation et contexte",
     "inputShortcuts": "Saisie et raccourcis",
     "userName": {
@@ -1008,6 +1002,23 @@
         "noTools": "Ce serveur n’a renvoyé aucun outil."
       },
       "deleteConfirmTitle": "Supprimer le serveur MCP « {name} » ?"
+    },
+    "promptManagement": {
+      "heading": "Prompt système",
+      "desc": "Affichez le prompt système par défaut et ajoutez vos propres instructions personnalisées. Les prompts personnalisés sont ajoutés au prompt système pour chaque conversation.",
+      "defaultPrompt": "Prompt par défaut (lecture seule)",
+      "customPrompts": "Instructions personnalisées",
+      "addPrompt": "Ajouter une instruction",
+      "promptLabelPlaceholder": "ex: Style d'écriture",
+      "promptContentPlaceholder": "ex: Écrivez toujours de manière concise et formelle. Utilisez des puces pour les listes.",
+      "toggleEnabled": "Activé",
+      "removePrompt": "Supprimer"
+    },
+    "reviewMode": {
+      "name": "Mode de révision",
+      "desc": "Contrôle comment l'IA gère les confirmations et les risques.",
+      "default": "Par défaut (Prudent)",
+      "auto": "Entièrement automatique"
     }
   },
   "commands": {

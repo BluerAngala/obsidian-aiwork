@@ -1,3 +1,4 @@
+import type { CustomPromptEntry } from '@pivi/pivi-agent-core/foundation/settings';
 import { useEffect, useId, useRef, useState } from 'react';
 
 import type { Locale, TranslationKey } from '../i18n';
@@ -274,6 +275,89 @@ function NavMappingsRow({
   );
 }
 
+function PromptManagementSection({
+  customPrompts,
+  defaultPrompt,
+  onSave,
+}: {
+  readonly customPrompts: readonly CustomPromptEntry[];
+  readonly defaultPrompt: string;
+  readonly onSave: (prompts: CustomPromptEntry[]) => void;
+}) {
+  const t = useT();
+  const [expanded, setExpanded] = useState(false);
+
+  const addPrompt = () => {
+    const newEntry: CustomPromptEntry = {
+      id: `custom-${Date.now()}`,
+      label: '',
+      content: '',
+      enabled: true,
+    };
+    onSave([...customPrompts, newEntry]);
+  };
+
+  const updatePrompt = (id: string, patch: Partial<CustomPromptEntry>) => {
+    onSave(customPrompts.map(p => p.id === id ? { ...p, ...patch } : p));
+  };
+
+  const removePrompt = (id: string) => {
+    onSave(customPrompts.filter(p => p.id !== id));
+  };
+
+  return (
+    <SettingsSection title={t('settings.promptManagement.heading')}>
+      <div className="pivi-setting-description">{t('settings.promptManagement.desc')}</div>
+      <SettingRow name={t('settings.promptManagement.defaultPrompt')}>
+        <button type="button" onClick={() => setExpanded(!expanded)}>
+          {expanded ? 'Hide' : 'Show'}
+        </button>
+      </SettingRow>
+      {expanded ? (
+        <div className="pivi-prompt-default-view">
+          <pre className="pivi-prompt-default-text">{defaultPrompt}</pre>
+        </div>
+      ) : null}
+      <SettingRow name={t('settings.promptManagement.customPrompts')}>
+        <button type="button" onClick={addPrompt}>
+          + {t('settings.promptManagement.addPrompt')}
+        </button>
+      </SettingRow>
+      {customPrompts.map((prompt) => (
+        <div key={prompt.id} className="pivi-prompt-entry">
+          <div className="pivi-prompt-entry-header">
+            <input
+              className="pivi-settings-control pivi-prompt-label-input"
+              placeholder={t('settings.promptManagement.promptLabelPlaceholder')}
+              value={prompt.label}
+              onChange={(e) => updatePrompt(prompt.id, { label: e.target.value })}
+            />
+            <Toggle
+              checked={prompt.enabled}
+              label={t('settings.promptManagement.toggleEnabled')}
+              onChange={(enabled) => updatePrompt(prompt.id, { enabled })}
+            />
+            <button
+              className="pivi-button--danger pivi-prompt-remove-btn"
+              type="button"
+              onClick={() => removePrompt(prompt.id)}
+            >
+              {t('settings.promptManagement.removePrompt')}
+            </button>
+          </div>
+          <textarea
+            className="pivi-settings-control pivi-prompt-content-input"
+            rows={4}
+            placeholder={t('settings.promptManagement.promptContentPlaceholder')}
+            value={prompt.content}
+            onChange={(e) => updatePrompt(prompt.id, { content: e.target.value })}
+          />
+        </div>
+      ))}
+    </SettingsSection>
+  );
+}
+
 export function GeneralSettingsTab({
   store,
   actions,
@@ -362,14 +446,22 @@ export function GeneralSettingsTab({
             onChange={(enableAutoTitleGeneration) => { void save({ enableAutoTitleGeneration }); }}
           />
         </SettingRow>
-        <SettingRow name={t('settings.smartReviewMode.name')} description={t('settings.smartReviewMode.desc')}>
-          <Toggle
-            checked={general.smartReviewMode}
-            label={t('settings.smartReviewMode.name')}
-            onChange={(smartReviewMode) => { void save({ smartReviewMode }); }}
-          />
+        <SettingRow name={t('settings.reviewMode.name')} description={t('settings.reviewMode.desc')}>
+          <Select
+            label={t('settings.reviewMode.name')}
+            value={general.reviewMode}
+            onChange={(value) => { void save({ reviewMode: value as typeof general.reviewMode }); }}
+          >
+            <option value="default">{t('settings.reviewMode.default')}</option>
+            <option value="auto">{t('settings.reviewMode.auto')}</option>
+          </Select>
         </SettingRow>
       </SettingsSection>
+      <PromptManagementSection
+        customPrompts={general.customPrompts}
+        defaultPrompt="(System prompt is generated dynamically based on your settings and registered tools)"
+        onSave={(customPrompts) => { void save({ customPrompts }); }}
+      />
       <SessionFilesSettingsSection
         actions={actions}
         feedback={feedback}

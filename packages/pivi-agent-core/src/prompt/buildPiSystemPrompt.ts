@@ -1,3 +1,4 @@
+import type { CustomPromptEntry, ReviewMode } from '../foundation/settings';
 import {
   buildSystemPrompt,
   computeSystemPromptKey,
@@ -14,9 +15,10 @@ export interface PiSystemPromptToolRegistry {
 export function buildPiSystemPromptSettings(
   vaultPath: string | undefined,
   userName: string | undefined,
-  smartReviewMode?: boolean,
+  reviewMode?: ReviewMode,
+  customPrompts?: readonly CustomPromptEntry[],
 ): SystemPromptSettings {
-  return { vaultPath, userName, smartReviewMode };
+  return { vaultPath, userName, reviewMode, customPrompts };
 }
 
 function buildPiSystemPromptOptions(
@@ -34,10 +36,11 @@ export function buildPiSystemPrompt(
   vaultPath: string | undefined,
   userName: string | undefined,
   toolRegistry?: Pick<PiSystemPromptToolRegistry, 'registeredToolNames' | 'registeredToolsSection' | 'contextAppendices'>,
-  smartReviewMode?: boolean,
+  reviewMode?: ReviewMode,
+  customPrompts?: readonly CustomPromptEntry[],
 ): string {
   return buildSystemPrompt(
-    buildPiSystemPromptSettings(vaultPath, userName, smartReviewMode),
+    buildPiSystemPromptSettings(vaultPath, userName, reviewMode, customPrompts),
     buildPiSystemPromptOptions(toolRegistry),
   );
 }
@@ -46,10 +49,11 @@ export function computePiSystemPromptKey(
   vaultPath: string | undefined,
   userName: string | undefined,
   toolRegistry?: Pick<PiSystemPromptToolRegistry, 'registeredToolNames' | 'registeredToolsSection' | 'contextAppendices'>,
-  smartReviewMode?: boolean,
+  reviewMode?: ReviewMode,
+  customPrompts?: readonly CustomPromptEntry[],
 ): string {
   return computeSystemPromptKey(
-    buildPiSystemPromptSettings(vaultPath, userName, smartReviewMode),
+    buildPiSystemPromptSettings(vaultPath, userName, reviewMode, customPrompts),
     buildPiSystemPromptOptions(toolRegistry),
   );
 }

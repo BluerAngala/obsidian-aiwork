@@ -703,3 +703,54 @@ textarea.pivi-settings-control {
     width: 120px;
   }
 }
+
+/* ── Prompt management ── */
+
+.pivi-prompt-default-view {
+  margin-block: 8px;
+  padding-inline: var(--pivi-settings-gutter);
+}
+
+.pivi-prompt-default-text {
+  font-family: var(--pivi-host-font-monospace);
+  font-size: var(--pivi-text-xs);
+  color: var(--pivi-host-text-muted);
+  background: var(--pivi-host-background-secondary);
+  border: 1px solid var(--pivi-host-border);
+  border-radius: var(--pivi-radius-sm);
+  padding: 10px;
+  max-height: 300px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.pivi-prompt-entry {
+  margin-block: 8px;
+  padding: 10px;
+  border: 1px solid var(--pivi-host-border);
+  border-radius: var(--pivi-radius-sm);
+  background: var(--pivi-host-background-primary);
+}
+
+.pivi-prompt-entry-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.pivi-prompt-label-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.pivi-prompt-content-input {
+  width: 100%;
+  min-height: 80px;
+  resize: vertical;
+}
+
+.pivi-prompt-remove-btn {
+  flex-shrink: 0;
+}

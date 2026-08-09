@@ -39,7 +39,6 @@
       "copyAriaLabel": "메시지 복사",
       "copyAgentResponseAriaLabel": "이 에이전트 응답 복사",
       "copyConversationAsMarkdownAriaLabel": "이전 모든 대화 복사",
-      "scrollToRecentUserAriaLabel": "가장 최근 사용자 메시지로 스크롤",
       "editAriaLabel": "Edit message",
       "cancelEdit": "취소",
       "resendEdit": "다시 보내기"
@@ -217,7 +216,6 @@
       "scrollToBottom": "맨 아래로 스크롤",
       "previousMessage": "이전 메시지",
       "nextMessage": "다음 메시지",
-      "resumeAutoScroll": "자동 스크롤 다시 시작",
       "messageList": "메시지 기록",
       "messageListTitle": "사용자 메시지"
     },
@@ -429,10 +427,6 @@
     },
     "layout": "레이아웃",
     "chatBehavior": "채팅 동작",
-    "smartReviewMode": {
-      "name": "스마트 리뷰 모드",
-      "desc": "AI가 사용자의 의도를 자율적으로 분류(질문 vs. 작업, vault 검색 vs. 직접 응답)하고 확인 요청 대신 실행을 기본으로 합니다. 정말 모호하거나 되돌릴 수 없는 결정만 확인합니다."
-    },
     "personalizationContext": "개인화 및 컨텍스트",
     "inputShortcuts": "입력 및 단축키",
     "userName": {
@@ -1008,6 +1002,23 @@
         "noTools": "이 서버에서 반환된 도구가 없습니다."
       },
       "deleteConfirmTitle": "MCP 서버 \"{name}\"을(를) 삭제할까요?"
+    },
+    "promptManagement": {
+      "heading": "시스템 프롬프트",
+      "desc": "기본 시스템 프롬프트를 보고 사용자 지정 지시사항을 추가합니다. 사용자 지정 프롬프트는 모든 대화의 시스템 프롬프트에 추가됩니다.",
+      "defaultPrompt": "기본 프롬프트 (읽기 전용)",
+      "customPrompts": "사용자 지정 지시사항",
+      "addPrompt": "지시사항 추가",
+      "promptLabelPlaceholder": "예: 문체",
+      "promptContentPlaceholder": "예: 항상 간결하고 공식적인 문체로 작성하세요. 목록에는 글머리표를 사용하세요.",
+      "toggleEnabled": "활성화",
+      "removePrompt": "제거"
+    },
+    "reviewMode": {
+      "name": "검토 모드",
+      "desc": "AI가 확인 및 위험을 처리하는 방법을 제어합니다.",
+      "default": "기본 (신중)",
+      "auto": "완전 자동"
     }
   },
   "commands": {

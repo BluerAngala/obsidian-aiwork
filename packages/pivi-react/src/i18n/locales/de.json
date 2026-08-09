@@ -39,7 +39,6 @@
       "copyAriaLabel": "Nachricht kopieren",
       "copyAgentResponseAriaLabel": "Diese Agentenantwort kopieren",
       "copyConversationAsMarkdownAriaLabel": "Alle Unterhaltungen vor dieser kopieren",
-      "scrollToRecentUserAriaLabel": "Zur neuesten Benutzernachricht scrollen",
       "editAriaLabel": "Edit message",
       "cancelEdit": "Abbrechen",
       "resendEdit": "Erneut senden"
@@ -222,7 +221,6 @@
       "scrollToBottom": "Nach unten scrollen",
       "previousMessage": "Vorherige Nachricht",
       "nextMessage": "Nächste Nachricht",
-      "resumeAutoScroll": "Automatisches Scrollen fortsetzen",
       "messageList": "Nachrichtenverlauf",
       "messageListTitle": "Benutzernachrichten"
     },
@@ -429,10 +427,6 @@
     },
     "layout": "Layout",
     "chatBehavior": "Chat-Verhalten",
-    "smartReviewMode": {
-      "name": "Intelligenter Überprüfungsmodus",
-      "desc": "Die KI klassifiziert Ihre Absicht autonom (Frage vs. Aktion, Vault-Suche vs. direkte Antwort) und führt standardmäßig aus, anstatt nach Bestätigung zu Fragen. Nur bei wirklich mehrdeutigen oder zerstörerischen Entscheidungen wird nachgefragt."
-    },
     "personalizationContext": "Personalisierung & Kontext",
     "inputShortcuts": "Eingabe & Tastenkürzel",
     "userName": {
@@ -1008,6 +1002,23 @@
         "noTools": "Dieser Server hat keine Tools zurückgegeben."
       },
       "deleteConfirmTitle": "MCP-Server „{name}“ löschen?"
+    },
+    "promptManagement": {
+      "heading": "System-Prompt",
+      "desc": "Zeigen Sie den Standard-System-Prompt an und fügen Sie eigene benutzerdefinierte Anweisungen hinzu. Benutzerdefinierte Prompts werden jedem Gesprächs-System-Prompt angehängt.",
+      "defaultPrompt": "Standard-Prompt (schreibgeschützt)",
+      "customPrompts": "Benutzerdefinierte Anweisungen",
+      "addPrompt": "Anweisung hinzufügen",
+      "promptLabelPlaceholder": "z.B. Schreibstil",
+      "promptContentPlaceholder": "z.B. Schreiben Sie immer knapp und förmlich. Verwenden Sie Aufzählungszeichen für Listen.",
+      "toggleEnabled": "Aktiviert",
+      "removePrompt": "Entfernen"
+    },
+    "reviewMode": {
+      "name": "Überprüfungsmodus",
+      "desc": "Steuert, wie die KI Bestätigungen und Risiken handhabt.",
+      "default": "Standard (Vorsichtig)",
+      "auto": "Vollautomatisch"
     }
   },
   "commands": {

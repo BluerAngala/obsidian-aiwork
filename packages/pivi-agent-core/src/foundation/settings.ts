@@ -658,6 +658,13 @@ export function isAgentRuntimeSettings(
  * `string` here.  The active provider casts internally when it needs
  * narrower types.
  */
+/**
+ * Review mode controls how the AI handles confirmations and risk.
+ * - 'default': Cautious, asks for confirmation on risky operations, proactively warns about risks.
+ * - 'auto': Fully autonomous, figures everything out, minimal questions.
+ */
+export type ReviewMode = 'default' | 'auto';
+
 export interface PiviSettings {
   // User preferences
   userName: string;
@@ -704,12 +711,13 @@ export interface PiviSettings {
   editorSelectionToolbar: EditorSelectionToolbarSettings;
 
   /**
-   * Smart review mode: AI classifies user intent autonomously (question vs action,
-   * vault lookup vs direct answer, CRUD classification) and defaults to executing
-   * rather than asking for confirmation. Only escalates truly ambiguous or
-   * destructive decisions.
+   * Review mode: controls AI confirmation and risk behavior.
+   * 'default' = cautious with confirmations; 'auto' = fully autonomous.
    */
-  smartReviewMode: boolean;
+  reviewMode: ReviewMode;
+
+  /** User-defined custom prompt sections appended to the system prompt. */
+  customPrompts: CustomPromptEntry[];
 
   /** Set after first successful default skills bundle install for this vault. */
   defaultVaultSkillsSeeded?: boolean;
@@ -725,4 +733,12 @@ export interface PiviSettings {
 
   // Allow provider-specific extension fields
   [key: string]: unknown;
+}
+
+/** A single user-defined custom prompt section. */
+export interface CustomPromptEntry {
+  id: string;
+  label: string;
+  content: string;
+  enabled: boolean;
 }

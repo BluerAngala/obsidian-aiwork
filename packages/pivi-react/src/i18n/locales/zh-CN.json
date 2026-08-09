@@ -39,7 +39,6 @@
       "copyAriaLabel": "复制消息",
       "copyAgentResponseAriaLabel": "复制这条助手回复",
       "copyConversationAsMarkdownAriaLabel": "复制此前所有对话",
-      "scrollToRecentUserAriaLabel": "滚动到最近的用户消息",
       "editAriaLabel": "Edit message",
       "cancelEdit": "取消",
       "resendEdit": "重新发送"
@@ -217,7 +216,6 @@
       "scrollToBottom": "滚动到底部",
       "previousMessage": "上一条消息",
       "nextMessage": "下一条消息",
-      "resumeAutoScroll": "恢复自动滚动",
       "messageList": "消息历史",
       "messageListTitle": "用户消息"
     },
@@ -429,9 +427,22 @@
     },
     "layout": "布局",
     "chatBehavior": "聊天行为",
-    "smartReviewMode": {
-      "name": "智能审查模式",
-      "desc": "AI 自主判断你的意图（问答 vs 执行、需要查 vault 还是直接回答），默认直接执行而非反复确认。仅在真正有歧义或不可逆操作时才向你确认。"
+    "reviewMode": {
+      "name": "审查模式",
+      "desc": "控制 AI 如何处理确认和风险。",
+      "default": "默认（谨慎）",
+      "auto": "全自动"
+    },
+    "promptManagement": {
+      "heading": "系统提示词",
+      "desc": "查看默认系统提示词，或添加自定义指令。自定义指令会追加到每次对话的系统提示词中。",
+      "defaultPrompt": "默认提示词（只读）",
+      "customPrompts": "自定义指令",
+      "addPrompt": "添加指令",
+      "promptLabelPlaceholder": "例如：写作风格",
+      "promptContentPlaceholder": "例如：始终使用简洁正式的语气。列表使用项目符号。",
+      "toggleEnabled": "启用",
+      "removePrompt": "移除"
     },
     "personalizationContext": "个性化与上下文",
     "inputShortcuts": "输入与快捷键",

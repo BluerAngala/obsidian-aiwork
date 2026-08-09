@@ -41,8 +41,7 @@
       "copyConversationAsMarkdownAriaLabel": "Copy all conversation before this",
       "editAriaLabel": "Edit message",
       "cancelEdit": "Cancel",
-      "resendEdit": "Resend",
-      "scrollToRecentUserAriaLabel": "Scroll to most recent user message"
+      "resendEdit": "Resend"
     },
     "messageImages": {
       "lightboxAria": "Image preview",
@@ -74,19 +73,75 @@
       "deny": "Deny",
       "management": {
         "titles": {
-          "mcp": { "upsert": "Update MCP server \"{name}\"", "enable": "Enable MCP server \"{name}\"", "disable": "Disable MCP server \"{name}\"", "remove": "Remove MCP server \"{name}\"" },
-          "skills": { "install": "Install Skills from \"{source}\"", "enable": "Enable Skill \"{name}\"", "disable": "Disable Skill \"{name}\"", "update": "Update Skill \"{name}\"", "updateAll": "Update all package-managed Skills", "remove": "Remove Skill \"{name}\"" },
-          "commands": { "upsert": "Save command {command}", "remove": "Remove command {command}", "move": "Move command {command}" }
+          "mcp": {
+            "upsert": "Update MCP server \"{name}\"",
+            "enable": "Enable MCP server \"{name}\"",
+            "disable": "Disable MCP server \"{name}\"",
+            "remove": "Remove MCP server \"{name}\""
+          },
+          "skills": {
+            "install": "Install Skills from \"{source}\"",
+            "enable": "Enable Skill \"{name}\"",
+            "disable": "Disable Skill \"{name}\"",
+            "update": "Update Skill \"{name}\"",
+            "updateAll": "Update all package-managed Skills",
+            "remove": "Remove Skill \"{name}\""
+          },
+          "commands": {
+            "upsert": "Save command {command}",
+            "remove": "Remove command {command}",
+            "move": "Move command {command}"
+          }
         },
         "changes": {
-          "mcpUpsert": "Apply the planned MCP server configuration.", "mcpEnable": "Enable this MCP server.", "mcpDisable": "Disable this MCP server.", "mcpRemove": "Remove this MCP server and its owned credentials.",
-          "skillsInstall": "Install Skills through the pinned package workflow.", "skillsEnable": "Enable this Skill.", "skillsDisable": "Disable this Skill.", "skillsUpdate": "Update this Skill from its package provenance.", "skillsUpdateAll": "Update every package-managed Skill.", "skillsRemove": "Remove this Skill from the workspace.",
-          "commandsUpsert": "Create or update this workspace command.", "commandsRemove": "Delete this workspace command.", "commandsMove": "Reorder this workspace command."
+          "mcpUpsert": "Apply the planned MCP server configuration.",
+          "mcpEnable": "Enable this MCP server.",
+          "mcpDisable": "Disable this MCP server.",
+          "mcpRemove": "Remove this MCP server and its owned credentials.",
+          "skillsInstall": "Install Skills through the pinned package workflow.",
+          "skillsEnable": "Enable this Skill.",
+          "skillsDisable": "Disable this Skill.",
+          "skillsUpdate": "Update this Skill from its package provenance.",
+          "skillsUpdateAll": "Update every package-managed Skill.",
+          "skillsRemove": "Remove this Skill from the workspace.",
+          "commandsUpsert": "Create or update this workspace command.",
+          "commandsRemove": "Delete this workspace command.",
+          "commandsMove": "Reorder this workspace command."
         },
         "fields": {
-          "server": "Server", "enabled": "Enabled", "type": "Type", "command": "Command", "args": "Arguments", "envNames": "Environment variable names", "url": "URL", "auth": "Authentication", "headerNames": "Header names", "bearerToken": "Bearer token", "oauth": "OAuth", "oauthGrant": "OAuth grant", "oauthClientId": "OAuth client ID", "oauthScope": "OAuth scope", "oauthClientSecret": "OAuth client secret", "contextSaving": "Context saving", "disabledTools": "Disabled tools", "source": "Source", "skills": "Skills", "skill": "Skill", "catalogRevision": "Catalog revision", "icon": "Icon", "prompt": "Prompt", "before": "Before", "after": "After"
+          "server": "Server",
+          "enabled": "Enabled",
+          "type": "Type",
+          "command": "Command",
+          "args": "Arguments",
+          "envNames": "Environment variable names",
+          "url": "URL",
+          "auth": "Authentication",
+          "headerNames": "Header names",
+          "bearerToken": "Bearer token",
+          "oauth": "OAuth",
+          "oauthGrant": "OAuth grant",
+          "oauthClientId": "OAuth client ID",
+          "oauthScope": "OAuth scope",
+          "oauthClientSecret": "OAuth client secret",
+          "contextSaving": "Context saving",
+          "disabledTools": "Disabled tools",
+          "source": "Source",
+          "skills": "Skills",
+          "skill": "Skill",
+          "catalogRevision": "Catalog revision",
+          "icon": "Icon",
+          "prompt": "Prompt",
+          "before": "Before",
+          "after": "After"
         },
-        "values": { "yes": "Yes", "no": "No", "clear": "Clear", "disabled": "Disabled", "updated": "Updated" }
+        "values": {
+          "yes": "Yes",
+          "no": "No",
+          "clear": "Clear",
+          "disabled": "Disabled",
+          "updated": "Updated"
+        }
       }
     },
     "capabilityApproval": {
@@ -166,7 +221,6 @@
       "scrollToBottom": "Scroll to bottom",
       "previousMessage": "Previous message",
       "nextMessage": "Next message",
-      "resumeAutoScroll": "Resume auto-scroll",
       "messageList": "Message history",
       "messageListTitle": "User Messages"
     },
@@ -373,9 +427,22 @@
     },
     "layout": "Layout",
     "chatBehavior": "Chat behavior",
-    "smartReviewMode": {
-      "name": "Smart review mode",
-      "desc": "AI autonomously classifies your intent (question vs. action, vault lookup vs. direct answer) and defaults to executing rather than asking for confirmation. Only escalates truly ambiguous or destructive decisions."
+    "reviewMode": {
+      "name": "Review mode",
+      "desc": "Controls how the AI handles confirmations and risk.",
+      "default": "Default (Cautious)",
+      "auto": "Full Auto"
+    },
+    "promptManagement": {
+      "heading": "System prompt",
+      "desc": "View the default system prompt and add your own custom instructions. Custom prompts are appended to the system prompt for every conversation.",
+      "defaultPrompt": "Default prompt (read-only)",
+      "customPrompts": "Custom instructions",
+      "addPrompt": "Add instruction",
+      "promptLabelPlaceholder": "e.g. Writing style",
+      "promptContentPlaceholder": "e.g. Always write in a concise, formal tone. Use bullet points for lists.",
+      "toggleEnabled": "Enabled",
+      "removePrompt": "Remove"
     },
     "personalizationContext": "Personalization & context",
     "inputShortcuts": "Input & shortcuts",

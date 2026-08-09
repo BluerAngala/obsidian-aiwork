@@ -1,5 +1,7 @@
 import type {
+  CustomPromptEntry,
   EditorToolbarShortcut,
+  ReviewMode,
 } from '@pivi/pivi-agent-core/foundation/settings';
 
 export type SettingsEditorSelectionToolbarSnapshot = {
@@ -35,7 +37,8 @@ export interface SettingsGeneralSnapshot {
   readonly requireCommandOrControlEnterToSend: boolean;
   readonly keyboardNavigation: SettingsKeyboardNavigationSnapshot;
   readonly editorSelectionToolbar: SettingsEditorSelectionToolbarSnapshot;
-  readonly smartReviewMode: boolean;
+  readonly reviewMode: ReviewMode;
+  readonly customPrompts: readonly CustomPromptEntry[];
 }
 
 export interface SettingsHotkeyRow {
