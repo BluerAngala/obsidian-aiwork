@@ -34,6 +34,8 @@ export interface ComposerChromeActions {
   toggleExternalPinned: (path: string) => void;
   removeExternalPath: (path: string) => void;
   addExternalContext: () => void;
+  toggleReviewMode: () => void;
+  refresh: () => void;
 }
 
 export interface MessagePresentationRuntime {

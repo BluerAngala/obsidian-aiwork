@@ -47,6 +47,7 @@ export interface ChatUiSnapshotData {
   navigationVisible: boolean;
   composer: ComposerChromeSnapshot;
   externalContext: ExternalContextSnapshot;
+  reviewMode: string;
 }
 export interface ExternalContextItemSnapshot {
   readonly path: string;
@@ -180,6 +181,7 @@ export function createInitialChatUiSnapshot(): ChatUiSnapshotData {
       selectedCount: 0,
       availableSelectedCount: 0,
     },
+    reviewMode: 'default',
   };
 }
 

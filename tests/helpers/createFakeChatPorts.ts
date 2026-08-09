@@ -83,6 +83,7 @@ export function createFakeChatPorts(
           visibleModels: [],
           customProviders: [],
         },
+        reviewMode: 'default',
       }),
       commitSettingsSnapshot: async () => undefined,
       setPinnedExternalReadDirectories: async () => undefined,

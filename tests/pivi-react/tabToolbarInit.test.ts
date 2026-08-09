@@ -31,6 +31,7 @@ function settingsSnapshot(model: string): ChatSettingsSnapshot {
       visibleModels: [],
       customProviders: [],
     },
+    reviewMode: 'default',
   };
 }
 

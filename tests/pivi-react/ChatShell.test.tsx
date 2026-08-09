@@ -119,6 +119,7 @@ function createPortalTargets(ownerDocument: Document = document) {
   const todo = ownerDocument.createElement('div');
   const navigation = ownerDocument.createElement('div');
   const composer = ownerDocument.createElement('div');
+  const attachment = ownerDocument.createElement('div');
   const messages = ownerDocument.createElement('div');
   return {
     welcome,
@@ -126,6 +127,7 @@ function createPortalTargets(ownerDocument: Document = document) {
     todo,
     navigation,
     composer,
+    attachment,
     messages,
     messagesViewport: messages,
     remove: () => {
@@ -793,6 +795,8 @@ describe('React ChatShell tabs', () => {
       toggleExternalPinned: jest.fn(),
       removeExternalPath: jest.fn(),
       addExternalContext: jest.fn(),
+      toggleReviewMode: jest.fn(),
+      refresh: jest.fn(),
     };
     bridge.setActive(uiStore, projectionStore, targets, composerActions);
     const mounted = await mountShell({
@@ -1130,6 +1134,8 @@ describe('React ChatShell tabs', () => {
       toggleExternalPinned: jest.fn(),
       removeExternalPath: jest.fn(),
       addExternalContext: jest.fn(),
+      toggleReviewMode: jest.fn(),
+      refresh: jest.fn(),
     };
     act(() => {
       uiStore.update({
@@ -1160,23 +1166,23 @@ describe('React ChatShell tabs', () => {
           selectedCount: 1,
           availableSelectedCount: 1,
         },
+        reviewMode: 'default',
       });
       bridge.setActive(uiStore, projectionStore, targets, composerActions);
     });
     const mounted = await mountShell({ activeChat: bridge, position: 'header' });
     await act(async () => {});
-    expect(targets.composer.querySelector('.pivi-external-context-dropdown')).not.toBeNull();
-    expect(targets.composer.querySelector('.pivi-external-context-btn')).not.toBeNull();
-    expect(targets.composer.querySelector('.pivi-external-context-count')?.textContent).toBe('1');
+    expect(targets.attachment.querySelector('.pivi-external-context-dropdown')).not.toBeNull();
+    expect(targets.attachment.querySelector('.pivi-external-context-btn')).not.toBeNull();
+    expect(targets.attachment.querySelector('.pivi-external-context-count')?.textContent).toBe('1');
     expect(targets.composer.querySelector('.pivi-mcp-selector')).toBeNull();
-    fireEvent.mouseEnter(targets.composer.querySelector('.pivi-external-context-selector')!);
-    fireEvent.click(within(targets.composer).getByRole('checkbox', { name: 'External context /tmp/context' }));
+    fireEvent.mouseEnter(targets.attachment.querySelector('.pivi-external-context-selector')!);
+    fireEvent.click(within(targets.attachment).getByRole('checkbox', { name: 'Attachment /tmp/context' }));
     expect(composerActions.toggleExternalPath).toHaveBeenCalledWith('/tmp/context');
     const toolbarChildren = [...targets.composer.querySelector('.pivi-input-toolbar')!.children];
     expect(toolbarChildren.map(element => element.className)).toEqual([
       'pivi-model-selector',
       'pivi-thinking-selector',
-      'pivi-external-context-selector',
       'pivi-mode-selector',
       'pivi-input-action-group',
     ]);

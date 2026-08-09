@@ -167,6 +167,7 @@ export function createChatUiPorts(
         visibleModels: [...modelCatalog.visibleModels],
         customProviders: cloneChatCustomProviders(modelCatalog.customProviders),
       },
+      reviewMode: projected.reviewMode ?? 'default',
     };
   };
   return {

@@ -102,6 +102,7 @@ export interface ChatSettingsSnapshot {
   externalReadDirectories: string[];
   hiddenSlashCommands: string[];
   modelCatalog: ChatModelCatalogSnapshot;
+  reviewMode: string;
 }
 
 export interface ChatModelsPort {

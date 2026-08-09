@@ -155,6 +155,16 @@ export function wireComposerChrome(
     toggleExternalPinned: pathValue => tab.ui.externalContextSelector?.togglePinned(pathValue),
     removeExternalPath: pathValue => tab.ui.externalContextSelector?.removePath(pathValue),
     addExternalContext: () => void openExternalFolderPicker(),
+    toggleReviewMode: () => {
+      const currentSettings = toolbarCallbacks.getSettings();
+      const currentMode = currentSettings.reviewMode ?? 'default';
+      const nextMode = currentMode === 'default' ? 'auto' : 'default';
+      tab.state.uiStore.update({ reviewMode: nextMode });
+      const snapshot = ports.settings.getSettingsSnapshot();
+      ports.settings.commitSettingsSnapshot({ ...snapshot, reviewMode: nextMode }).catch(error => {
+        logger.error('Failed to save review mode', error);
+      });
+    },
     refresh: refreshComposerSnapshot,
   };
 
@@ -180,6 +190,7 @@ export function wireComposerChrome(
     const reasoningOptions = uiConfig.getReasoningOptions(settings.model, settings);
     const inputText = dom.richInput.value.trim();
     tab.state.uiStore.update({
+      reviewMode: settings.reviewMode ?? 'default',
       composer: {
         canSend: (inputText.length > 0 || (tab.ui.imageContextManager?.hasImages() ?? false))
           && !isSubmissionBlockedByContextLimit(tab.state.usage, inputText),

@@ -8,11 +8,59 @@
   padding: 0;
 }
 
-/* Attachment button portal (above input wrapper, leftmost) */
+/* Attachment row (above input, contains attachment button + mode toggle) */
+.pivi-attachment-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 4px 0;
+}
+
+/* Review mode toggle */
+.pivi-review-mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border: 1px solid var(--pivi-host-border);
+  border-radius: var(--pivi-radius-xs);
+  background: var(--pivi-host-background-primary);
+  color: var(--pivi-host-text-muted);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1;
+  transition:
+    background var(--pivi-duration-fast) var(--pivi-ease-out),
+    color var(--pivi-duration-fast) var(--pivi-ease-out),
+    border-color var(--pivi-duration-fast) var(--pivi-ease-out);
+}
+
+.pivi-review-mode-toggle:hover {
+  background: var(--pivi-host-background-hover);
+  color: var(--pivi-host-text-normal);
+}
+
+.pivi-review-mode-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--pivi-host-text-muted);
+  transition: background var(--pivi-duration-fast) var(--pivi-ease-out);
+}
+
+.pivi-review-mode-toggle.auto .pivi-review-mode-indicator {
+  background: var(--pivi-host-color-green);
+}
+
+.pivi-review-mode-label {
+  font-weight: 500;
+}
+
+/* Attachment button portal (inside attachment row) */
 .pivi-react-attachment-slot {
   display: flex;
   align-items: center;
-  padding: 4px 4px 0;
 }
 
 .pivi-react-attachment-slot .pivi-external-context-selector {

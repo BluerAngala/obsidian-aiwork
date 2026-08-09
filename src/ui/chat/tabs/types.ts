@@ -70,6 +70,7 @@ export interface ComposerChromeActions {
   toggleExternalPinned: (path: string) => void;
   removeExternalPath: (path: string) => void;
   addExternalContext: () => void;
+  toggleReviewMode: () => void;
 }
 
 /**

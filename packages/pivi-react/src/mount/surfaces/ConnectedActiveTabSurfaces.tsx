@@ -1,8 +1,10 @@
+import type { ReviewMode } from '@pivi/pivi-agent-core/foundation/settings';
 import { memo, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 
 import type { MessagePresentationActions } from '../../chat/messages';
 import { MessageList } from '../../chat/messages';
+import { useT } from '../../i18n';
 import type { ActiveChatUiBridge } from '../activeChatUiBridge';
 import { ComposerChrome } from '../composer';
 import { ExternalContextControl } from '../composer/ComposerSelectors';
@@ -19,7 +21,7 @@ const QUEUE_SLICE_KEYS = ['queuedTurns'] as const;
 const TODO_SLICE_KEYS = ['currentTodoVisualizationModel'] as const;
 const NAVIGATION_SLICE_KEYS = ['autoScrollEnabled', 'navigationVisible'] as const;
 const COMPOSER_SLICE_KEYS = ['composer', 'usage', 'isStreaming'] as const;
-const ATTACHMENT_SLICE_KEYS = ['externalContext'] as const;
+const ATTACHMENT_SLICE_KEYS = ['externalContext', 'reviewMode'] as const;
 const MESSAGES_SLICE_KEYS = ['isStreaming', 'autoScrollEnabled', 'thinkingIndicator', 'hasOlderMessages'] as const;
 
 function usePortalTargets(activeChat: ActiveChatUiBridge) {
@@ -165,10 +167,29 @@ const AttachmentPortal = memo(function AttachmentPortal({
   const composerActions = useComposerActions(activeChat);
   if (!targets?.attachment || !composerActions) return null;
   return createPortal(
-    <ExternalContextControl actions={composerActions} snapshot={snapshot} />,
+    <div className="pivi-attachment-row">
+      <ExternalContextControl actions={composerActions} snapshot={snapshot} />
+      <ReviewModeToggle mode={snapshot.reviewMode as ReviewMode} onToggle={composerActions.toggleReviewMode} />
+    </div>,
     targets.attachment,
   );
 });
+
+function ReviewModeToggle({ mode, onToggle }: { mode: ReviewMode; onToggle: () => void }) {
+  const t = useT();
+  const isAuto = mode === 'auto';
+  return (
+    <button
+      className={`pivi-review-mode-toggle${isAuto ? ' auto' : ''}`}
+      onClick={onToggle}
+      title={isAuto ? t('settings.reviewMode.auto') : t('settings.reviewMode.default')}
+      type="button"
+    >
+      <span className="pivi-review-mode-indicator" />
+      <span className="pivi-review-mode-label">{isAuto ? t('settings.reviewMode.auto') : t('settings.reviewMode.default')}</span>
+    </button>
+  );
+}
 
 const MessagesPortal = memo(function MessagesPortal({
   activeChat,
