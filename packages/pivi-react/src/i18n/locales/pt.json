@@ -320,7 +320,8 @@
       "optionFallback": "Opção",
       "hints": "Enter para selecionar · Tab/setas para navegar · Esc para cancelar",
       "hintsImmediate": "Enter para selecionar · Setas para navegar · Esc para cancelar",
-      "questionHeader": "P{number}"
+      "questionHeader": "P{number}",
+      "recommended": "recomendado"
     },
     "slash": {
       "ariaLabel": "Comandos slash",
@@ -427,6 +428,10 @@
     },
     "layout": "Diseño",
     "chatBehavior": "Comportamento do chat",
+    "smartReviewMode": {
+      "name": "Modo de revisão inteligente",
+      "desc": "A IA classifica autonomamente sua intenção (pergunta vs. ação, busca no vault vs. resposta direta) e executa por padrão em vez de pedir confirmação. Só escala decisões verdadeiramente ambíguas ou destrutivas."
+    },
     "personalizationContext": "Personalização e contexto",
     "inputShortcuts": "Entrada e atalhos",
     "userName": {

@@ -303,3 +303,43 @@
   margin-bottom: 6px;
   line-height: 1.4;
 }
+
+/* ── Question severity ──────────────────────────── */
+
+.pivi-ask-question-block {
+  margin-bottom: var(--pivi-spacing-sm);
+}
+
+.pivi-ask-severity-icon {
+  font-weight: 700;
+}
+
+.pivi-ask-question-severity-warning .pivi-ask-severity-icon {
+  color: var(--pivi-host-color-yellow, #e0a000);
+}
+
+.pivi-ask-question-severity-critical .pivi-ask-severity-icon {
+  color: var(--pivi-host-color-red, #e05050);
+}
+
+.pivi-ask-severity-critical .pivi-ask-inline-title {
+  color: var(--pivi-host-color-red, #e05050);
+}
+
+.pivi-ask-severity-warning .pivi-ask-inline-title {
+  color: var(--pivi-host-color-yellow, #e0a000);
+}
+
+/* ── Recommended option ─────────────────────────── */
+
+.pivi-ask-item.is-recommended {
+  background: hsla(210, 60%, 50%, 0.06);
+}
+
+.pivi-ask-recommended-badge {
+  font-size: 0.85em;
+  color: var(--pivi-host-text-muted);
+  font-weight: 400;
+  font-style: italic;
+  margin-left: 4px;
+}

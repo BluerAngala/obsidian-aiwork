@@ -320,7 +320,8 @@
       "optionFallback": "オプション",
       "hints": "Enter で選択 · Tab/矢印キーで移動 · Esc でキャンセル",
       "hintsImmediate": "Enter で選択 · 矢印キーで移動 · Esc でキャンセル",
-      "questionHeader": "Q{number}"
+      "questionHeader": "Q{number}",
+      "recommended": "推奨"
     },
     "slash": {
       "ariaLabel": "スラッシュコマンド",
@@ -427,6 +428,10 @@
     },
     "layout": "レイアウト",
     "chatBehavior": "チャットの動作",
+    "smartReviewMode": {
+      "name": "スマートレビューモード",
+      "desc": "AIがユーザーの意図を自律的に分類（質問 vs. アクション、vault検索 vs. 直接回答）し、確認を求める代わりにデフォルトで実行します。本当に曖昧な判断や取り消し不能な操作のみ確認します。"
+    },
     "personalizationContext": "パーソナライズとコンテキスト",
     "inputShortcuts": "入力とショートカット",
     "userName": {

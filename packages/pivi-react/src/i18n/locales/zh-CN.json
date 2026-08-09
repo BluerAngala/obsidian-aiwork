@@ -316,6 +316,7 @@
       "enterSecret": "请输入密钥。",
       "notAnswered": "未回答",
       "submit": "提交",
+      "recommended": "推荐",
       "defaultTitle": "问题",
       "optionFallback": "选项",
       "hints": "Enter 选择 · Tab/方向键导航 · Esc 取消",
@@ -427,6 +428,10 @@
     },
     "layout": "布局",
     "chatBehavior": "聊天行为",
+    "smartReviewMode": {
+      "name": "智能审查模式",
+      "desc": "AI 自主判断你的意图（问答 vs 执行、需要查 vault 还是直接回答），默认直接执行而非反复确认。仅在真正有歧义或不可逆操作时才向你确认。"
+    },
     "personalizationContext": "个性化与上下文",
     "inputShortcuts": "输入与快捷键",
     "userName": {

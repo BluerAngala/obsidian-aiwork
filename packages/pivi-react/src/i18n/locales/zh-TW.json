@@ -320,7 +320,8 @@
       "optionFallback": "選項",
       "hints": "Enter 選取 · Tab/方向鍵導覽 · Esc 取消",
       "hintsImmediate": "Enter 選取 · 方向鍵導覽 · Esc 取消",
-      "questionHeader": "Q{number}"
+      "questionHeader": "Q{number}",
+      "recommended": "推薦"
     },
     "slash": {
       "ariaLabel": "斜線指令",
@@ -427,6 +428,10 @@
     },
     "layout": "版面配置",
     "chatBehavior": "聊天行為",
+    "smartReviewMode": {
+      "name": "智慧審查模式",
+      "desc": "AI 自主判斷你的意圖（問答 vs 執行、需要查 vault 還是直接回答），預設直接執行而非反覆確認。僅在真正有歧義或不可逆操作時才向你確認。"
+    },
     "personalizationContext": "個人化與上下文",
     "inputShortcuts": "輸入與快捷鍵",
     "userName": {

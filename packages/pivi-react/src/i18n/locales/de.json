@@ -325,7 +325,8 @@
       "optionFallback": "Option",
       "hints": "Eingabe zum Auswählen · Tab/Pfeiltasten zum Navigieren · Esc zum Abbrechen",
       "hintsImmediate": "Eingabe zum Auswählen · Pfeiltasten zum Navigieren · Esc zum Abbrechen",
-      "questionHeader": "F{number}"
+      "questionHeader": "F{number}",
+      "recommended": "empfohlen"
     },
     "slash": {
       "ariaLabel": "Slash-Befehle",
@@ -427,6 +428,10 @@
     },
     "layout": "Layout",
     "chatBehavior": "Chat-Verhalten",
+    "smartReviewMode": {
+      "name": "Intelligenter Überprüfungsmodus",
+      "desc": "Die KI klassifiziert Ihre Absicht autonom (Frage vs. Aktion, Vault-Suche vs. direkte Antwort) und führt standardmäßig aus, anstatt nach Bestätigung zu Fragen. Nur bei wirklich mehrdeutigen oder zerstörerischen Entscheidungen wird nachgefragt."
+    },
     "personalizationContext": "Personalisierung & Kontext",
     "inputShortcuts": "Eingabe & Tastenkürzel",
     "userName": {

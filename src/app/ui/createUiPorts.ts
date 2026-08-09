@@ -307,6 +307,7 @@ export function createSettingsUiPorts(
         editorSelectionToolbar: normalizeEditorSelectionToolbarSettings(
           host.settings.editorSelectionToolbar,
         ),
+        smartReviewMode: settings.smartReviewMode ?? true,
       },
       subagents: {
         enabled: subagents.enabled,
@@ -330,6 +331,7 @@ export function createSettingsUiPorts(
       3650, Math.trunc(next.deletedSessionRetentionDays ?? 30),
     ));
     host.settings.requireCommandOrControlEnterToSend = next.requireCommandOrControlEnterToSend;
+    host.settings.smartReviewMode = next.smartReviewMode;
     host.settings.keyboardNavigation = {
       scrollUpKey: next.keyboardNavigation.scrollUpKey,
       scrollDownKey: next.keyboardNavigation.scrollDownKey,

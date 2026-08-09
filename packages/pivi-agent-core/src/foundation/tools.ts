@@ -12,7 +12,12 @@ export interface AskUserQuestionOption {
   label: string;
   description: string;
   value?: string;
+  /** When true, highlights this as the AI's recommended choice. */
+  recommended?: boolean;
 }
+
+/** Severity level for an AskUserQuestion question. */
+export type AskUserQuestionSeverity = 'info' | 'warning' | 'critical';
 
 /** Parsed question for AskUserQuestion tool. */
 export interface AskUserQuestionItem {
@@ -23,6 +28,8 @@ export interface AskUserQuestionItem {
   multiSelect: boolean;
   isOther?: boolean;
   isSecret?: boolean;
+  /** Visual severity indicator: info (default), warning, or critical. */
+  severity?: AskUserQuestionSeverity;
 }
 
 /** User-provided answers keyed by question text or stable question id. */

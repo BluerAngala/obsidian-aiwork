@@ -320,7 +320,8 @@
       "optionFallback": "옵션",
       "hints": "Enter로 선택 · Tab/화살표로 이동 · Esc로 취소",
       "hintsImmediate": "Enter로 선택 · 화살표로 이동 · Esc로 취소",
-      "questionHeader": "Q{number}"
+      "questionHeader": "Q{number}",
+      "recommended": "추천"
     },
     "slash": {
       "ariaLabel": "슬래시 명령",
@@ -427,6 +428,10 @@
     },
     "layout": "레이아웃",
     "chatBehavior": "채팅 동작",
+    "smartReviewMode": {
+      "name": "스마트 리뷰 모드",
+      "desc": "AI가 사용자의 의도를 자율적으로 분류(질문 vs. 작업, vault 검색 vs. 직접 응답)하고 확인 요청 대신 실행을 기본으로 합니다. 정말 모호하거나 되돌릴 수 없는 결정만 확인합니다."
+    },
     "personalizationContext": "개인화 및 컨텍스트",
     "inputShortcuts": "입력 및 단축키",
     "userName": {

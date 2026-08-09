@@ -703,6 +703,14 @@ export interface PiviSettings {
   /** Editor selection toolbar shortcut buttons. */
   editorSelectionToolbar: EditorSelectionToolbarSettings;
 
+  /**
+   * Smart review mode: AI classifies user intent autonomously (question vs action,
+   * vault lookup vs direct answer, CRUD classification) and defaults to executing
+   * rather than asking for confirmation. Only escalates truly ambiguous or
+   * destructive decisions.
+   */
+  smartReviewMode: boolean;
+
   /** Set after first successful default skills bundle install for this vault. */
   defaultVaultSkillsSeeded?: boolean;
   /** User dismissed the startup prompt for the default skills bundle. */

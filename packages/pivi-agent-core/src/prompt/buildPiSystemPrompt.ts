@@ -14,8 +14,9 @@ export interface PiSystemPromptToolRegistry {
 export function buildPiSystemPromptSettings(
   vaultPath: string | undefined,
   userName: string | undefined,
+  smartReviewMode?: boolean,
 ): SystemPromptSettings {
-  return { vaultPath, userName };
+  return { vaultPath, userName, smartReviewMode };
 }
 
 function buildPiSystemPromptOptions(
@@ -33,9 +34,10 @@ export function buildPiSystemPrompt(
   vaultPath: string | undefined,
   userName: string | undefined,
   toolRegistry?: Pick<PiSystemPromptToolRegistry, 'registeredToolNames' | 'registeredToolsSection' | 'contextAppendices'>,
+  smartReviewMode?: boolean,
 ): string {
   return buildSystemPrompt(
-    buildPiSystemPromptSettings(vaultPath, userName),
+    buildPiSystemPromptSettings(vaultPath, userName, smartReviewMode),
     buildPiSystemPromptOptions(toolRegistry),
   );
 }
@@ -44,9 +46,10 @@ export function computePiSystemPromptKey(
   vaultPath: string | undefined,
   userName: string | undefined,
   toolRegistry?: Pick<PiSystemPromptToolRegistry, 'registeredToolNames' | 'registeredToolsSection' | 'contextAppendices'>,
+  smartReviewMode?: boolean,
 ): string {
   return computeSystemPromptKey(
-    buildPiSystemPromptSettings(vaultPath, userName),
+    buildPiSystemPromptSettings(vaultPath, userName, smartReviewMode),
     buildPiSystemPromptOptions(toolRegistry),
   );
 }

@@ -35,6 +35,7 @@ export interface SettingsGeneralSnapshot {
   readonly requireCommandOrControlEnterToSend: boolean;
   readonly keyboardNavigation: SettingsKeyboardNavigationSnapshot;
   readonly editorSelectionToolbar: SettingsEditorSelectionToolbarSnapshot;
+  readonly smartReviewMode: boolean;
 }
 
 export interface SettingsHotkeyRow {

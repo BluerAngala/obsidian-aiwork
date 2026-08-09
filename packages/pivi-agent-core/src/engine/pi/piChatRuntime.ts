@@ -272,7 +272,7 @@ export class PiChatRuntime implements PiChatService {
     }
 
     const registry = this.buildToolRegistry();
-    const systemPrompt = buildPiSystemPrompt(this.getVaultPath() ?? undefined, this.plugin.settings.userName, registry);
+    const systemPrompt = buildPiSystemPrompt(this.getVaultPath() ?? undefined, this.plugin.settings.userName, registry, this.plugin.settings.smartReviewMode);
     const sessionMessages = this.sessionTree?.loadAgentMessages() ?? [];
 
     this.agent = new Agent({
@@ -289,7 +289,7 @@ export class PiChatRuntime implements PiChatService {
       steeringMode: 'one-at-a-time',
     });
 
-    this.systemPromptKey = computePiSystemPromptKey(this.getVaultPath() ?? undefined, this.plugin.settings.userName, registry);
+    this.systemPromptKey = computePiSystemPromptKey(this.getVaultPath() ?? undefined, this.plugin.settings.userName, registry, this.plugin.settings.smartReviewMode);
     this.toolRegistryKey = registry.registeredToolsSection;
     this.setReady(true);
     return true;
@@ -750,13 +750,13 @@ export class PiChatRuntime implements PiChatService {
 
   private applySystemPrompt(registry?: ReturnType<typeof buildPiToolRegistry>): void {
     const resolvedRegistry = registry ?? this.buildToolRegistry();
-    const nextKey = computePiSystemPromptKey(this.getVaultPath() ?? undefined, this.plugin.settings.userName, resolvedRegistry);
+    const nextKey = computePiSystemPromptKey(this.getVaultPath() ?? undefined, this.plugin.settings.userName, resolvedRegistry, this.plugin.settings.smartReviewMode);
     if (this.systemPromptKey === nextKey) {
       return;
     }
 
     if (this.agent) {
-      this.agent.state.systemPrompt = buildPiSystemPrompt(this.getVaultPath() ?? undefined, this.plugin.settings.userName, resolvedRegistry);
+      this.agent.state.systemPrompt = buildPiSystemPrompt(this.getVaultPath() ?? undefined, this.plugin.settings.userName, resolvedRegistry, this.plugin.settings.smartReviewMode);
     }
     this.systemPromptKey = nextKey;
   }

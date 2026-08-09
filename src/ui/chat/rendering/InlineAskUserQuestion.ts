@@ -1,4 +1,4 @@
-import type { AskUserQuestionItem, AskUserQuestionOption } from '@pivi/pivi-agent-core/foundation/tools';
+import type { AskUserQuestionItem, AskUserQuestionOption, AskUserQuestionSeverity } from '@pivi/pivi-agent-core/foundation/tools';
 
 import { t } from '@/app/i18n';
 
@@ -73,6 +73,12 @@ export class InlineAskUserQuestion {
     if (this.questions.length === 0) {
       this.handleResolve(null);
       return;
+    }
+
+    // Add highest severity class to root for visual styling
+    const highestSeverity = this.getHighestSeverity();
+    if (highestSeverity) {
+      this.rootEl.addClass(`pivi-ask-severity-${highestSeverity}`);
     }
 
     if (this.config.immediateSelect && this.questions.length !== 1) {
@@ -202,6 +208,14 @@ export class InlineAskUserQuestion {
     return question.options
       .filter(option => selected.has(this.getOptionValue(option)))
       .map(option => option.label);
+  }
+
+  private getHighestSeverity(): AskUserQuestionSeverity | undefined {
+    const severityOrder: AskUserQuestionSeverity[] = ['critical', 'warning', 'info'];
+    for (const level of severityOrder) {
+      if (this.questions.some(q => q.severity === level)) return level;
+    }
+    return undefined;
   }
 
   handleResolve(result: Record<string, string | string[]> | null): void {

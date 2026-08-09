@@ -320,7 +320,8 @@
       "optionFallback": "Option",
       "hints": "Entrée pour sélectionner · Tab/flèches pour naviguer · Échap pour annuler",
       "hintsImmediate": "Entrée pour sélectionner · Flèches pour naviguer · Échap pour annuler",
-      "questionHeader": "Q{number}"
+      "questionHeader": "Q{number}",
+      "recommended": "recommandé"
     },
     "slash": {
       "ariaLabel": "Commandes slash",
@@ -427,6 +428,10 @@
     },
     "layout": "Mise en page",
     "chatBehavior": "Comportement du chat",
+    "smartReviewMode": {
+      "name": "Mode de révision intelligente",
+      "desc": "L'IA classifie autonomement votre intention (question vs. action, recherche dans le vault vs. réponse directe) et exécute par défaut au lieu de demander confirmation. Ne demande une confirmation que pour les décisions vraiment ambiguës ou destructrices."
+    },
     "personalizationContext": "Personnalisation et contexte",
     "inputShortcuts": "Saisie et raccourcis",
     "userName": {

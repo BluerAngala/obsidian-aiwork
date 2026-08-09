@@ -14,6 +14,7 @@ const snapshot: SettingsUiSnapshotData = {
     requireCommandOrControlEnterToSend: false,
     keyboardNavigation: { scrollUpKey: 'w', scrollDownKey: 's', focusInputKey: 'i' },
     editorSelectionToolbar: { enabled: true, shortcuts: [] },
+    smartReviewMode: true,
   },
   subagents: { enabled: true, allowBackground: false, maxConcurrentSubagents: 2 },
 };

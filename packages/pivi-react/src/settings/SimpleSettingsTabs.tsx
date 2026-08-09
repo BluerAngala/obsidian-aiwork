@@ -362,6 +362,13 @@ export function GeneralSettingsTab({
             onChange={(enableAutoTitleGeneration) => { void save({ enableAutoTitleGeneration }); }}
           />
         </SettingRow>
+        <SettingRow name={t('settings.smartReviewMode.name')} description={t('settings.smartReviewMode.desc')}>
+          <Toggle
+            checked={general.smartReviewMode}
+            label={t('settings.smartReviewMode.name')}
+            onChange={(smartReviewMode) => { void save({ smartReviewMode }); }}
+          />
+        </SettingRow>
       </SettingsSection>
       <SessionFilesSettingsSection
         actions={actions}

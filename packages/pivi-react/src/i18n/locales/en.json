@@ -269,7 +269,8 @@
       "typeSomething": "Type something.",
       "enterSecret": "Enter secret.",
       "notAnswered": "Not answered",
-      "submit": "Submit"
+      "submit": "Submit",
+      "recommended": "recommended"
     },
     "slash": {
       "ariaLabel": "Slash commands",
@@ -371,6 +372,10 @@
     },
     "layout": "Layout",
     "chatBehavior": "Chat behavior",
+    "smartReviewMode": {
+      "name": "Smart review mode",
+      "desc": "AI autonomously classifies your intent (question vs. action, vault lookup vs. direct answer) and defaults to executing rather than asking for confirmation. Only escalates truly ambiguous or destructive decisions."
+    },
     "personalizationContext": "Personalization & context",
     "inputShortcuts": "Input & shortcuts",
     "userName": {

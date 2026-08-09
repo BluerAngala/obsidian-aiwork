@@ -1,4 +1,4 @@
-import type { AskUserQuestionItem, AskUserQuestionOption } from '@pivi/pivi-agent-core/foundation/tools';
+import type { AskUserQuestionItem, AskUserQuestionOption, AskUserQuestionSeverity } from '@pivi/pivi-agent-core/foundation/tools';
 
 import { t } from '@/app/i18n';
 
@@ -32,7 +32,8 @@ export function coerceOption(opt: unknown): AskUserQuestionOption {
     const label = extractLabel(obj);
     const description = typeof obj.description === 'string' ? obj.description : '';
     const value = extractValue(obj, label);
-    return { label, description, ...(value !== label ? { value } : {}) };
+    const recommended = obj.recommended === true;
+    return { label, description, ...(value !== label ? { value } : {}), ...(recommended ? { recommended } : {}) };
   }
   return { label: stringifyOptionValue(opt), description: '' };
 }
@@ -60,6 +61,7 @@ export function parseQuestionsFromInput(input: Record<string, unknown>): AskUser
         isOther?: boolean;
         isSecret?: boolean;
         id?: string;
+        severity?: string;
       } => {
         if (!q || typeof q !== 'object' || Array.isArray(q)) {
           return false;
@@ -69,15 +71,23 @@ export function parseQuestionsFromInput(input: Record<string, unknown>): AskUser
           && ((Array.isArray(record.options) && record.options.length > 0) || record.isOther === true);
       },
     )
-    .map((q, idx) => ({
-      question: q.question,
-      id: typeof (q as Record<string, unknown>).id === 'string' ? (q as Record<string, unknown>).id as string : undefined,
-      header: typeof q.header === 'string' ? q.header.slice(0, 12) : t('chat.askUser.questionHeader', { number: idx + 1 }),
-      options: deduplicateOptions((q.options ?? []).map((o) => coerceOption(o))),
-      multiSelect: q.multiSelect === true,
-      isOther: q.isOther === true,
-      isSecret: q.isSecret === true,
-    }));
+    .map((q, idx) => {
+      const rawSeverity = typeof q.severity === 'string' ? q.severity : undefined;
+      const severity: AskUserQuestionSeverity | undefined =
+        rawSeverity === 'critical' || rawSeverity === 'warning' || rawSeverity === 'info'
+          ? rawSeverity
+          : undefined;
+      return {
+        question: q.question,
+        id: typeof (q as Record<string, unknown>).id === 'string' ? (q as Record<string, unknown>).id as string : undefined,
+        header: typeof q.header === 'string' ? q.header.slice(0, 12) : t('chat.askUser.questionHeader', { number: idx + 1 }),
+        options: deduplicateOptions((q.options ?? []).map((o) => coerceOption(o))),
+        multiSelect: q.multiSelect === true,
+        isOther: q.isOther === true,
+        isSecret: q.isSecret === true,
+        ...(severity ? { severity } : {}),
+      };
+    });
 }
 
 function renderMultiSelectCheckbox(parent: HTMLElement, checked: boolean): void {
@@ -194,10 +204,18 @@ function renderQuestionTab(host: InlineAskUserQuestionHost, idx: number): void {
   const isMulti = q.multiSelect;
   const selected = host.answers.get(idx)!;
 
-  host.contentArea.createDiv({
-    text: q.question,
-    cls: 'pivi-ask-question-text',
-  });
+  const questionBlock = host.contentArea.createDiv({ cls: 'pivi-ask-question-block' });
+  if (q.severity) {
+    questionBlock.addClass(`pivi-ask-question-severity-${q.severity}`);
+  }
+
+  const questionTextEl = questionBlock.createDiv({ cls: 'pivi-ask-question-text' });
+  if (q.severity === 'critical') {
+    questionTextEl.createSpan({ text: '\u26A0 ', cls: 'pivi-ask-severity-icon' });
+  } else if (q.severity === 'warning') {
+    questionTextEl.createSpan({ text: '\u25C6 ', cls: 'pivi-ask-severity-icon' });
+  }
+  questionTextEl.createSpan({ text: q.question });
 
   const listEl = host.contentArea.createDiv({ cls: 'pivi-ask-list' });
 
@@ -211,6 +229,7 @@ function renderQuestionTab(host: InlineAskUserQuestionHost, idx: number): void {
     const row = listEl.createDiv({ cls: 'pivi-ask-item' });
     if (isFocused) row.addClass('is-focused');
     if (isSelected) row.addClass('is-selected');
+    if (option.recommended) row.addClass('is-recommended');
 
     row.createSpan({ text: isFocused ? '\u203A' : '\u00A0', cls: 'pivi-ask-cursor' });
     row.createSpan({ text: `${optIdx + 1}. `, cls: 'pivi-ask-item-num' });
@@ -222,6 +241,9 @@ function renderQuestionTab(host: InlineAskUserQuestionHost, idx: number): void {
     const labelBlock = row.createDiv({ cls: 'pivi-ask-item-content' });
     const labelRow = labelBlock.createDiv({ cls: 'pivi-ask-label-row' });
     labelRow.createSpan({ text: option.label, cls: 'pivi-ask-item-label' });
+    if (option.recommended) {
+      labelRow.createSpan({ text: ` (${t('chat.askUser.recommended')})`, cls: 'pivi-ask-recommended-badge' });
+    }
 
     if (!isMulti && isSelected) {
       labelRow.createSpan({ text: ' \u2713', cls: 'pivi-ask-check-mark' });

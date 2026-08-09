@@ -5,5 +5,6 @@ export interface PiRuntimeHost {
     model?: string;
     titleGenerationModel?: string;
     userName?: string;
+    smartReviewMode?: boolean;
   };
 }
