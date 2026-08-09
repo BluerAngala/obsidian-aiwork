@@ -106,6 +106,8 @@ export interface TabDOMElements {
   richInput: RichChatInput;
   /** Empty React-owned portal target for composer chrome. */
   composerPortalEl: HTMLElement;
+  /** Empty React-owned portal target for attachment control (above input). */
+  attachmentPortalEl: HTMLElement;
 
   /** Context row for file chips and selection indicator (inside input wrapper). */
   contextRowEl: HTMLElement;

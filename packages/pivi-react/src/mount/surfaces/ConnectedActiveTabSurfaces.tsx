@@ -5,6 +5,7 @@ import type { MessagePresentationActions } from '../../chat/messages';
 import { MessageList } from '../../chat/messages';
 import type { ActiveChatUiBridge } from '../activeChatUiBridge';
 import { ComposerChrome } from '../composer';
+import { ExternalContextControl } from '../composer/ComposerSelectors';
 import type { ChatShellOptions } from '../types';
 import { useActiveChatUiSlice } from '../useActiveChatUiSlice';
 import { EMPTY_MESSAGE_ACTIONS, EMPTY_SURFACE_ACTIONS } from './constants';
@@ -17,7 +18,8 @@ const WELCOME_SLICE_KEYS = ['welcomeGreeting'] as const;
 const QUEUE_SLICE_KEYS = ['queuedTurns'] as const;
 const TODO_SLICE_KEYS = ['currentTodoVisualizationModel'] as const;
 const NAVIGATION_SLICE_KEYS = ['autoScrollEnabled', 'navigationVisible'] as const;
-const COMPOSER_SLICE_KEYS = ['composer', 'externalContext', 'usage', 'isStreaming'] as const;
+const COMPOSER_SLICE_KEYS = ['composer', 'usage', 'isStreaming'] as const;
+const ATTACHMENT_SLICE_KEYS = ['externalContext'] as const;
 const MESSAGES_SLICE_KEYS = ['isStreaming', 'autoScrollEnabled', 'thinkingIndicator', 'hasOlderMessages'] as const;
 
 function usePortalTargets(activeChat: ActiveChatUiBridge) {
@@ -153,6 +155,21 @@ const ComposerPortal = memo(function ComposerPortal({
   );
 });
 
+const AttachmentPortal = memo(function AttachmentPortal({
+  activeChat,
+}: {
+  activeChat: ActiveChatUiBridge;
+}) {
+  const snapshot = useActiveChatUiSlice(activeChat, ATTACHMENT_SLICE_KEYS);
+  const targets = usePortalTargets(activeChat);
+  const composerActions = useComposerActions(activeChat);
+  if (!targets?.attachment || !composerActions) return null;
+  return createPortal(
+    <ExternalContextControl actions={composerActions} snapshot={snapshot} />,
+    targets.attachment,
+  );
+});
+
 const MessagesPortal = memo(function MessagesPortal({
   activeChat,
 }: {
@@ -198,6 +215,7 @@ export const ConnectedActiveTabSurfaces = memo(function ConnectedActiveTabSurfac
       <QueuePortal activeChat={activeChat} surfaceActions={shell.surfaceActions} />
       <TodoPortal activeChat={activeChat} />
       <NavigationPortal activeChat={activeChat} surfaceActions={shell.surfaceActions} />
+      <AttachmentPortal activeChat={activeChat} />
       <ComposerPortal activeChat={activeChat} />
       <MessagesPortal activeChat={activeChat} />
     </>

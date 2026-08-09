@@ -516,10 +516,8 @@ export function ExternalContextControl({
         title={title}
         type="button"
       >
-        <span className="pivi-external-context-icon">
-          <PlatformIcon name="database-search" />
-        </span>
-        <span className={`pivi-external-context-count${external.availableSelectedCount !== external.selectedCount ? ' has-unavailable' : ''}`}>{count}</span>
+        <span className="pivi-external-context-label">{t('chat.toolbar.selectAttachment')}</span>
+        {external.selectedCount > 0 ? <span className={`pivi-external-context-count${external.availableSelectedCount !== external.selectedCount ? ' has-unavailable' : ''}`}>{count}</span> : null}
       </button>
       <div className="pivi-external-context-dropdown" ref={dropdownRef}>
         <div className="pivi-external-context-header">{t('chat.toolbar.externalContexts')}</div>

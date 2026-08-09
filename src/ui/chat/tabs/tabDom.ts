@@ -31,6 +31,7 @@ export function buildTabDOM(
     cls: "pivi-react-queue-slot",
   });
   const inputContainerEl = contentEl.createDiv({ cls: "pivi-input-container" });
+  const attachmentPortalEl = inputContainerEl.createDiv({ cls: "pivi-react-attachment-slot" });
   const inputWrapper = inputContainerEl.createDiv({
     cls: "pivi-input-wrapper",
   });
@@ -62,6 +63,7 @@ export function buildTabDOM(
     resizeHandleEl,
     richInput,
     composerPortalEl,
+    attachmentPortalEl,
     contextRowEl,
     selectionIndicatorEl: null,
     browserIndicatorEl: null,

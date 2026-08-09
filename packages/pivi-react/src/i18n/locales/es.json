@@ -192,19 +192,20 @@
       "titlePersistenceFailed": "No se pudo guardar el título de sesión generado."
     },
     "toolbar": {
-      "externalContexts": "Contextos externos",
-      "externalEmpty": "No hay contextos externos",
-      "externalAdd": "Añadir carpeta…",
+      "externalContexts": "Adjuntos",
+      "externalEmpty": "Sin adjuntos",
+      "externalAdd": "Agregar carpeta…",
       "externalPickerFailed": "No se puede abrir el selector de carpetas.",
-      "externalPickerTitle": "Seleccionar contexto externo",
-      "externalPathAria": "Contexto externo {path}",
+      "externalPickerTitle": "Seleccionar adjunto",
+      "externalPathAria": "Adjunto {path}",
       "externalPin": "Fijar {path}",
       "externalUnpin": "Desfijar {path}",
       "externalUnavailable": "No disponible: {reason}",
       "externalRemove": "Eliminar ruta",
-      "externalActiveTitle": "{count} contexto(s) externo(s) (haz clic para añadir más)",
-      "externalIdleTitle": "Añadir contextos externos (clic)",
-      "contextOverLimit": "El contexto (~{tokens}) supera la ventana de {limit} del modelo seleccionado. Cambia a un modelo con una ventana de contexto mayor o inicia una nueva sesión."
+      "externalActiveTitle": "{count} adjunto(s) (clic para agregar más)",
+      "externalIdleTitle": "Adjuntos (clic para agregar)",
+      "contextOverLimit": "El contexto (~{tokens}) supera la ventana de {limit} del modelo seleccionado. Cambia a un modelo con una ventana de contexto mayor o inicia una nueva sesión.",
+      "selectAttachment": "Seleccionar adjunto"
     },
     "selection": {
       "linesSelected": "{count} {lines} seleccionada(s)",

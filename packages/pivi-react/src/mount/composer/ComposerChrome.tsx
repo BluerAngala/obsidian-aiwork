@@ -6,7 +6,6 @@ import { usePresentationPlatform } from '../../platform';
 import type { ChatUiSnapshot } from '../../store';
 import type { ComposerChromeActions } from '../activeChatUiBridge';
 import {
-  ExternalContextControl,
   ModelSelector,
   ModeSelector,
   ThinkingSelector,
@@ -50,7 +49,6 @@ export function ComposerChrome({
         options={composer.thinkingOptions}
         value={composer.adaptiveReasoning ? composer.thinkingLevel : composer.thinkingBudget}
       />
-      <ExternalContextControl actions={actions} snapshot={snapshot} />
       <ModeSelector
         activeValue={composer.modeActiveValue}
         label={composer.modeLabel}

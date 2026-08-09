@@ -141,18 +141,19 @@
       "titlePersistenceFailed": "Failed to save the generated session title."
     },
     "toolbar": {
-      "externalContexts": "External contexts",
-      "externalEmpty": "No external contexts",
+      "externalContexts": "Attachments",
+      "externalEmpty": "No attachments",
       "externalAdd": "Add folder…",
       "externalPickerFailed": "Unable to open folder picker.",
-      "externalPickerTitle": "Select external context",
-      "externalPathAria": "External context {path}",
+      "externalPickerTitle": "Select attachment",
+      "externalPathAria": "Attachment {path}",
       "externalPin": "Pin {path}",
       "externalUnpin": "Unpin {path}",
       "externalUnavailable": "Unavailable: {reason}",
       "externalRemove": "Remove path",
-      "externalActiveTitle": "{count} external context(s) (click to add more)",
-      "externalIdleTitle": "Add external contexts (click)",
+      "externalActiveTitle": "{count} attachment(s) (click to add more)",
+      "externalIdleTitle": "Attachments (click to add)",
+      "selectAttachment": "Select attachment",
       "contextOverLimit": "Context (~{tokens}) exceeds the selected model's {limit} window. Switch to a model with a larger context window or start a new session."
     },
     "selection": {

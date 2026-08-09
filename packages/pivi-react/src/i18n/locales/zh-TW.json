@@ -192,19 +192,20 @@
       "titlePersistenceFailed": "無法儲存產生的工作階段標題。"
     },
     "toolbar": {
-      "externalContexts": "外部上下文",
-      "externalEmpty": "暫無外部上下文",
+      "externalContexts": "附件",
+      "externalEmpty": "暫無附件",
       "externalAdd": "新增資料夾…",
       "externalPickerFailed": "無法開啟資料夾選擇器。",
-      "externalPickerTitle": "選擇外部內容",
-      "externalPathAria": "外部上下文 {path}",
+      "externalPickerTitle": "選擇附件",
+      "externalPathAria": "附件 {path}",
       "externalPin": "釘選 {path}",
       "externalUnpin": "取消釘選 {path}",
       "externalUnavailable": "無法使用：{reason}",
       "externalRemove": "移除路徑",
-      "externalActiveTitle": "{count} 個外部上下文（點擊新增更多）",
-      "externalIdleTitle": "新增外部上下文（點擊）",
-      "contextOverLimit": "目前上下文（約 {tokens}）已超出所選模型的 {limit} 上下文視窗。請切換到上下文視窗更大的模型，或開始新對話。"
+      "externalActiveTitle": "{count} 個附件（點擊新增更多）",
+      "externalIdleTitle": "附件（點擊新增）",
+      "contextOverLimit": "目前上下文（約 {tokens}）已超出所選模型的 {limit} 上下文視窗。請切換到上下文視窗更大的模型，或開始新對話。",
+      "selectAttachment": "選擇附件"
     },
     "selection": {
       "linesSelected": "已選取 {count} {lines}",

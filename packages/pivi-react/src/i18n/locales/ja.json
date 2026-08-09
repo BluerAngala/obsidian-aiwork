@@ -192,19 +192,20 @@
       "titlePersistenceFailed": "生成されたセッションタイトルを保存できませんでした。"
     },
     "toolbar": {
-      "externalContexts": "外部コンテキスト",
-      "externalEmpty": "外部コンテキストはありません",
-      "externalAdd": "フォルダーを追加…",
+      "externalContexts": "添付ファイル",
+      "externalEmpty": "添付ファイルなし",
+      "externalAdd": "フォルダを追加…",
       "externalPickerFailed": "フォルダーピッカーを開けません。",
-      "externalPickerTitle": "外部コンテキストを選択",
-      "externalPathAria": "外部コンテキスト {path}",
+      "externalPickerTitle": "添付ファイルを選択",
+      "externalPathAria": "添付ファイル {path}",
       "externalPin": "{path} をピン留め",
       "externalUnpin": "{path} のピン留めを解除",
       "externalUnavailable": "利用不可：{reason}",
       "externalRemove": "パスを削除",
-      "externalActiveTitle": "外部コンテキスト {count} 件（クリックして追加）",
-      "externalIdleTitle": "外部コンテキストを追加（クリック）",
-      "contextOverLimit": "コンテキスト（約 {tokens}）が選択したモデルの {limit} ウィンドウを超えています。より大きなコンテキストウィンドウのモデルに切り替えるか、新しいセッションを開始してください。"
+      "externalActiveTitle": "添付ファイル {count} 件（クリックして追加）",
+      "externalIdleTitle": "添付ファイル（クリックして追加）",
+      "contextOverLimit": "コンテキスト（約 {tokens}）が選択したモデルの {limit} ウィンドウを超えています。より大きなコンテキストウィンドウのモデルに切り替えるか、新しいセッションを開始してください。",
+      "selectAttachment": "添付ファイルを選択"
     },
     "selection": {
       "linesSelected": "{count} {lines} 選択中",

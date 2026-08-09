@@ -203,6 +203,7 @@ export function createImperativeChatAdapter(
             messages: tab.dom.messagesPortalEl,
             messagesViewport: tab.dom.messagesEl,
             composer: tab.dom.composerPortalEl,
+            attachment: tab.dom.attachmentPortalEl,
           }
         : null,
       tab?.ui.composerActions ?? null,

@@ -8,6 +8,55 @@
   padding: 0;
 }
 
+/* Attachment button portal (above input wrapper, leftmost) */
+.pivi-react-attachment-slot {
+  display: flex;
+  align-items: center;
+  padding: 4px 4px 0;
+}
+
+.pivi-react-attachment-slot .pivi-external-context-selector {
+  display: flex;
+  align-items: center;
+}
+
+.pivi-react-attachment-slot .pivi-external-context-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: 1px solid var(--pivi-host-border);
+  border-radius: var(--pivi-radius-xs);
+  background: var(--pivi-host-background-primary);
+  color: var(--pivi-host-text-muted);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: 1;
+  transition:
+    background var(--pivi-duration-fast) var(--pivi-ease-out),
+    color var(--pivi-duration-fast) var(--pivi-ease-out),
+    border-color var(--pivi-duration-fast) var(--pivi-ease-out);
+}
+
+.pivi-react-attachment-slot .pivi-external-context-btn:hover {
+  background: var(--pivi-host-background-hover);
+  color: var(--pivi-host-text-normal);
+  border-color: var(--pivi-host-text-muted);
+}
+
+.pivi-react-attachment-slot .pivi-external-context-btn.active {
+  color: var(--pivi-host-text-accent);
+  border-color: var(--pivi-host-text-accent);
+}
+
+.pivi-external-context-label {
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 1;
+  color: inherit;
+}
+
 .pivi-input-container.pivi-mention-dropdown-open,
 .pivi-input-container.pivi-slash-dropdown-open,
 .pivi-input-container:focus-within {

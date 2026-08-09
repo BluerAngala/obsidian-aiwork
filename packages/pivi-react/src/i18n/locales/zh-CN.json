@@ -192,18 +192,19 @@
       "titlePersistenceFailed": "无法保存生成的会话标题。"
     },
     "toolbar": {
-      "externalContexts": "外部上下文",
-      "externalEmpty": "暂无外部上下文",
+      "externalContexts": "附件",
+      "externalEmpty": "暂无附件",
       "externalAdd": "添加文件夹…",
       "externalPickerFailed": "无法打开文件夹选择器。",
-      "externalPickerTitle": "选择外部上下文",
-      "externalPathAria": "外部上下文 {path}",
+      "externalPickerTitle": "选择附件",
+      "externalPathAria": "附件 {path}",
       "externalPin": "固定 {path}",
       "externalUnpin": "取消固定 {path}",
       "externalUnavailable": "不可用：{reason}",
       "externalRemove": "移除路径",
-      "externalActiveTitle": "{count} 个外部上下文（点击添加更多）",
-      "externalIdleTitle": "添加外部上下文（点击）",
+      "externalActiveTitle": "{count} 个附件（点击添加更多）",
+      "externalIdleTitle": "附件（点击添加）",
+      "selectAttachment": "选择附件",
       "contextOverLimit": "当前上下文（约 {tokens}）已超出所选模型的 {limit} 上下文窗口。请切换到上下文窗口更大的模型，或新建会话。"
     },
     "selection": {

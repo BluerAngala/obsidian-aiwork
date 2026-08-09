@@ -71,6 +71,7 @@ function minimalTab(): TabData {
       resizeHandleEl: contentEl,
       richInput: richInput as unknown as TabData["dom"]["richInput"],
       composerPortalEl: contentEl,
+      attachmentPortalEl: contentEl,
       contextRowEl: contentEl,
       selectionIndicatorEl: null,
       browserIndicatorEl: null,

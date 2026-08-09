@@ -20,6 +20,7 @@ export interface ChatTabPortalTargets {
   readonly messages: HTMLElement | null;
   readonly messagesViewport: HTMLElement | null;
   readonly composer?: HTMLElement | null;
+  readonly attachment?: HTMLElement | null;
 }
 
 export interface ComposerChromeActions {

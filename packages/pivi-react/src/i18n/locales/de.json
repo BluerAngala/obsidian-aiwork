@@ -197,19 +197,20 @@
       "titlePersistenceFailed": "Der generierte Sitzungstitel konnte nicht gespeichert werden."
     },
     "toolbar": {
-      "externalContexts": "Externe Kontexte",
-      "externalEmpty": "Keine externen Kontexte",
+      "externalContexts": "Anhänge",
+      "externalEmpty": "Keine Anhänge",
       "externalAdd": "Ordner hinzufügen…",
       "externalPickerFailed": "Ordnerauswahl kann nicht geöffnet werden.",
-      "externalPickerTitle": "Externen Kontext auswählen",
-      "externalPathAria": "Externer Kontext {path}",
+      "externalPickerTitle": "Anhang auswählen",
+      "externalPathAria": "Anhang {path}",
       "externalPin": "{path} anheften",
       "externalUnpin": "{path} lösen",
       "externalUnavailable": "Nicht verfügbar: {reason}",
       "externalRemove": "Pfad entfernen",
-      "externalActiveTitle": "{count} externe(r) Kontext(e) (klicken zum Hinzufügen)",
-      "externalIdleTitle": "Externe Kontexte hinzufügen (klicken)",
-      "contextOverLimit": "Der Kontext (~{tokens}) überschreitet das {limit}-Fenster des gewählten Modells. Wechsle zu einem Modell mit größerem Kontextfenster oder starte eine neue Sitzung."
+      "externalActiveTitle": "{count} Anhang/Anhänge (klicken zum Hinzufügen)",
+      "externalIdleTitle": "Anhänge (klicken zum Hinzufügen)",
+      "contextOverLimit": "Der Kontext (~{tokens}) überschreitet das {limit}-Fenster des gewählten Modells. Wechsle zu einem Modell mit größerem Kontextfenster oder starte eine neue Sitzung.",
+      "selectAttachment": "Anhang auswählen"
     },
     "selection": {
       "linesSelected": "{count} {lines} ausgewählt",
